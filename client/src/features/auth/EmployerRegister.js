@@ -59,7 +59,7 @@ export const EmployerRegisterForm = ({ onSuccess, onSwitchToLogin }) => {
         setLoading(true);
 
         try {
-            const response = await fetch('/id/auth/register-employer', {
+            const response = await fetch('/auth/register-employer', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
