@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import './ForgotPassword.css';
 
 const ForgotPassword = ({ onClose, inline = false }) => {
+    const apiBase = process.env.REACT_APP_API_BASE || '';
     const [step, setStep] = useState(1);
     const [email, setEmail] = useState('');
     const [otp, setOtp] = useState('');
@@ -16,7 +17,7 @@ const ForgotPassword = ({ onClose, inline = false }) => {
         setLoading(true);
         try {
             const payloadEmail = email.trim();
-            const res = await fetch('/auth/forgot-password', {
+            const res = await fetch(`${apiBase}/auth/forgot-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: payloadEmail })
@@ -38,7 +39,7 @@ const ForgotPassword = ({ onClose, inline = false }) => {
         setMessage('');
         setLoading(true);
         try {
-            const res = await fetch('/auth/reset-password', {
+            const res = await fetch(`${apiBase}/auth/reset-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: email.trim(), otp: otp.trim(), newPassword })

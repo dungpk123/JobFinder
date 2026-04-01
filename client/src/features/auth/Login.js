@@ -6,7 +6,7 @@ import { useNotification } from '../../components/NotificationProvider';
 export const LoginForm = ({ onSuccess, onCreateAccount, onForgotPassword }) => {
     const navigate = useNavigate();
     const { notify } = useNotification();
-    // Gọi API trực tiếp qua /id/auth/login vì backend và frontend cùng port
+    const apiBase = process.env.REACT_APP_API_BASE || '';
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -19,7 +19,7 @@ export const LoginForm = ({ onSuccess, onCreateAccount, onForgotPassword }) => {
         setLoading(true);
 
         try {
-            const response = await fetch(`/auth/login`, {
+            const response = await fetch(`${apiBase}/auth/login`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -27,10 +27,23 @@ export const LoginForm = ({ onSuccess, onCreateAccount, onForgotPassword }) => {
                 body: JSON.stringify({ email, password })
             });
 
-            const data = await response.json();
+            const raw = await response.text();
+            let data = {};
+            try {
+                data = raw ? JSON.parse(raw) : {};
+            } catch {
+                data = {};
+            }
 
             if (!response.ok) {
-                throw new Error(data.error || 'Đăng nhập thất bại');
+                const backendHint = response.status === 405
+                    ? 'API chưa trỏ đúng backend. Kiểm tra REACT_APP_API_BASE trên Vercel và redeploy.'
+                    : '';
+                throw new Error(data.error || `${response.status} ${response.statusText}. ${backendHint}`.trim());
+            }
+
+            if (!data.token || !data.user) {
+                throw new Error('Phản hồi đăng nhập không hợp lệ từ máy chủ.');
             }
 
             // Lưu token và thông tin user

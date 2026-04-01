@@ -5,6 +5,7 @@ import { useNotification } from '../../components/NotificationProvider';
 export const EmployerRegisterForm = ({ onSuccess, onSwitchToLogin }) => {
     const navigate = useNavigate();
     const { notify } = useNotification();
+    const apiBase = process.env.REACT_APP_API_BASE || '';
     const [formData, setFormData] = useState({
         companyName: '',
         taxCode: '',
@@ -59,7 +60,7 @@ export const EmployerRegisterForm = ({ onSuccess, onSwitchToLogin }) => {
         setLoading(true);
 
         try {
-            const response = await fetch('/auth/register-employer', {
+            const response = await fetch(`${apiBase}/auth/register-employer`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

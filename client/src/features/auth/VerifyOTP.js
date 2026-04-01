@@ -5,6 +5,7 @@ const VerifyOTP = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const email = location.state?.email || '';
+    const apiBase = process.env.REACT_APP_API_BASE || '';
     
     const [otp, setOtp] = useState('');
     const [error, setError] = useState('');
@@ -25,7 +26,7 @@ const VerifyOTP = () => {
         }
 
         try {
-            const response = await fetch('/auth/verify-otp', {
+            const response = await fetch(`${apiBase}/auth/verify-otp`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -56,7 +57,7 @@ const VerifyOTP = () => {
         setResending(true);
 
         try {
-            const response = await fetch('/auth/resend-otp', {
+            const response = await fetch(`${apiBase}/auth/resend-otp`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

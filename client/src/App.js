@@ -40,6 +40,8 @@ import CareerGuideDetail from './features/career-guide/CareerGuideDetail';
 import CareerGuideManage from './features/career-guide/CareerGuideManage';
 import './App.css';
 
+const API_BASE = process.env.REACT_APP_API_BASE || '';
+
 function AppContent() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
@@ -53,7 +55,7 @@ function AppContent() {
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          const res = await fetch('/auth/verify-token', {
+          const res = await fetch(`${API_BASE}/auth/verify-token`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           if (!res.ok) {
