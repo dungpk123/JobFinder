@@ -1,0 +1,902 @@
+.App {
+  text-align: center;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.AppMain {
+  flex: 1 0 auto;
+}
+
+/* Compact footer */
+.jf-footer {
+  background: #07122b;
+  font-size: 13px;
+  padding: 12px 0 10px;
+}
+
+.jf-footer-grid {
+  justify-content: space-around;
+}
+
+.jf-footer-title {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 15px;
+  line-height: 1.2;
+}
+
+.jf-footer ul {
+  margin: 0;
+}
+
+.jf-footer li {
+  margin: 0;
+  padding: 2px 0;
+  line-height: 1.25;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 1050;
+}
+
+.modal-dialog-custom {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #ffffff;
+  border-radius: 1rem;
+  width: min(480px, 90vw);
+  padding: 1rem 1.25rem 1.25rem;
+  z-index: 1060;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
+  margin-bottom: 0;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+}
+
+.modal-dialog-custom .modal-title {
+  font-weight: 600;
+  font-size: 1.25rem;
+  line-height: 1.2;
+  margin: 0.25rem 0 1rem;
+  padding-right: 2.5rem;
+}
+
+/* Only apply the "pulled up" title style when the modal includes a logo wrapper (login modal). */
+.modal-dialog-custom .modal-logo-wrapper ~ .modal-title {
+  font-size: 1.5rem;
+  margin: -0.75rem 0 1rem;
+}
+
+.modal-logo {
+  height: 180px;
+  object-fit: contain;
+}
+
+.modal-logo-wrapper {
+  margin-top: -1.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.modal-close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  z-index: 1;
+}
+
+.modal-dialog-register {
+  width: min(640px, 95vw);
+  padding: 1.5rem 1.75rem;
+}
+
+/* Larger modal variant for forgot-password */
+.modal-dialog-large {
+  width: min(640px, 92vw);
+  padding: 1.25rem 1.5rem;
+}
+
+.modal-dialog-register .register-card {
+  box-shadow: none;
+  padding: 1rem 1.5rem 2rem;
+}
+
+.login-panel {
+  background-color: #ffffff;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+}
+
+.login-panel .form-control {
+  border-radius: 0.75rem;
+  border-color: #d6d9df;
+  background-color: var(--jf-input-bg, inherit);
+}
+
+.login-panel hr {
+  margin: 1.5rem 0;
+}
+
+.login-panel .btn-primary {
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+  border-radius: 0.75rem;
+  font-weight: 600;
+}
+
+.login-panel .btn-success {
+  background-color: #31a24c;
+  border-color: #2f9446;
+  border-radius: 0.75rem;
+  font-weight: 600;
+}
+
+.login-panel a {
+  color: #0d6efd;
+  font-weight: 500;
+}
+
+.register-card {
+  background-color: #ffffff;
+  border-radius: 1rem;
+  padding: 2rem;
+  box-shadow: 0 10px 35px rgba(15, 23, 42, 0.15);
+}
+
+.register-card .form-control,
+.register-card .form-select {
+  border-radius: 0.75rem;
+  border-color: #d6d9df;
+  height: 52px;
+  background-color: var(--jf-input-bg, inherit);
+}
+
+.register-section-label {
+  font-weight: 600;
+  color: #4b5563;
+  display: block;
+  margin-bottom: 0.35rem;
+  text-align: left;
+}
+
+.register-card .form-control:focus,
+.register-card .form-select:focus {
+  border-color: #0d6efd;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+}
+
+.register-gender-option {
+  border: 1px solid #d6d9df;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+}
+
+.register-gender-option .form-check-input {
+  float: none;
+  margin: 0;
+  position: static;
+}
+
+.register-help-text {
+  font-size: 0.85rem;
+  color: #4b5563;
+}
+
+.register-terms {
+  font-size: 0.8rem;
+  color: #4b5563;
+}
+
+.register-terms a {
+  color: #0d6efd;
+  text-decoration: none;
+}
+
+.register-card .btn-success {
+  background-color: #31a24c;
+  border-color: #2f9446;
+  border-radius: 0.75rem;
+  font-weight: 600;
+}
+
+.register-card a:hover {
+  text-decoration: underline;
+}
+
+.register-card .btn-link {
+  color: #0d6efd;
+  font-weight: 500;
+}
+
+.register-card .btn-link:hover {
+  text-decoration: underline;
+}
+
+/* Header: hover dropdown like TopCV */
+.jf-nav-dropdown {
+  position: relative;
+}
+
+.jf-nav-dropdown-toggle {
+  cursor: default;
+}
+
+.jf-nav-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% - 2px);
+  left: 0;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+}
+
+.jf-nav-dropdown:hover .jf-nav-dropdown-menu {
+  display: block;
+}
+
+.jf-nav-dropdown:hover .jf-nav-dropdown-toggle {
+  color: #00C271;
+}
+
+.jf-nav-dropdown:hover .jf-nav-chevron {
+  transform: rotate(180deg);
+  transition: transform 0.15s ease-in-out;
+}
+
+/* Top nav links: match hover behavior with the "Việc làm" dropdown */
+.navbar .navbar-nav > .nav-item > .nav-link {
+  transition: color 0.15s ease-in-out;
+}
+
+.navbar .navbar-nav > .nav-item > .nav-link:hover,
+.navbar .navbar-nav > .nav-item > .nav-link:focus {
+  color: #00C271;
+}
+
+/* Job Search Page */
+.jf-job-search-page {
+  padding-top: 110px; /* fixed header spacing */
+}
+
+.jf-job-search-hero {
+  background: #4b2bd6;
+  padding: 16px 0;
+}
+
+.jf-job-searchbar {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.jf-job-searchbar--v2 {
+  border: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.jf-job-searchbar-pill {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 10px;
+  height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.jf-job-searchbar-input {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 10px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 10px;
+}
+
+.jf-job-searchbar-input .bi {
+  color: rgba(15, 23, 42, 0.55);
+}
+
+.jf-job-searchbar-input .form-control,
+.jf-job-searchbar-input .form-select {
+  height: 44px;
+  box-shadow: none;
+}
+
+.jf-job-search-btn {
+  height: 46px;
+  border-radius: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.jf-job-advanced-btn {
+  height: 46px;
+  border-radius: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.jf-job-filterbar {
+  margin-top: 10px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 10px;
+}
+
+.jf-job-filterbar-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+/* Online CV editor: add offset for the fixed header */
+.online-cv-editor-page {
+  /* Bootstrap utilities like .py-4 use !important, so we must override */
+  padding-top: 110px !important;
+  padding-bottom: 48px !important;
+}
+
+@media (max-width: 767.98px) {
+  .online-cv-editor-page {
+    padding-top: 96px !important;
+  }
+}
+
+.jf-filter-chip {
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 10px;
+  height: 40px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jf-filter-chip.active {
+  border-color: rgba(15, 23, 42, 0.28);
+}
+
+.jf-filter-select {
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jf-job-searchbar-input .form-select {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jf-filter-clear {
+  background: transparent;
+  border: 0;
+  color: #ffffff;
+  font-weight: 600;
+  height: 40px;
+  padding: 0 6px;
+}
+
+@media (max-width: 992px) {
+  .jf-filter-select {
+    max-width: none;
+    flex: 1 1 180px;
+  }
+}
+
+.jf-filter-card {
+  position: sticky;
+  top: 120px;
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 0 18px 14px;
+  background: linear-gradient(180deg, #f6f8ff 0%, #ffffff 38%);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.12);
+  max-height: 80vh;
+  overflow-y: auto;
+  z-index: 10;
+}
+
+.jf-filter-card__header {
+  position: sticky;
+  top: 0;
+  margin: 0 -18px;
+  padding: 14px 18px 10px;
+  background: linear-gradient(180deg, #f6f8ff 0%, #ffffff 100%);
+  z-index: 2;
+  border-bottom: 1px solid #e7e9f2;
+}
+
+.jf-filter-card__footer {
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82) 0%, #ffffff 70%);
+  padding: 12px 0 4px;
+  margin-top: 12px;
+  z-index: 2;
+  border-top: 1px solid #e7e9f2;
+}
+
+.jf-filter-section {
+  font-size: 14px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f2f7;
+}
+
+.jf-filter-section:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.jf-filter-section .fw-semibold {
+  color: #0f172a;
+}
+
+.jf-filter-section label {
+  padding: 6px 0;
+  border-radius: 8px;
+}
+
+.jf-filter-section label:hover {
+  background: rgba(13, 110, 253, 0.06);
+}
+
+.jf-filter-card .text-muted {
+  color: #4b5563 !important;
+}
+
+/* Clear filters: always visible, faded until active */
+.jf-clear-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.jf-clear-btn.jf-clear-btn--active {
+  opacity: 1;
+}
+
+.jf-clear-btn {
+  border-radius: 12px;
+  border: 1px solid #d4d8e6;
+  color: #0f172a;
+  background: linear-gradient(180deg, #fdfefe 0%, #f6f8ff 100%);
+}
+
+.jf-clear-btn:hover:not(:disabled) {
+  border-color: #0d6efd;
+  box-shadow: 0 8px 18px rgba(13, 110, 253, 0.18);
+}
+
+.jf-filter-card::-webkit-scrollbar {
+  width: 8px;
+}
+
+.jf-filter-card::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.jf-filter-card::-webkit-scrollbar-thumb {
+  background: #c7cedd;
+  border-radius: 999px;
+}
+
+.jf-filter-card::-webkit-scrollbar-thumb:hover {
+  background: #aab4c9;
+}
+
+.jf-job-card {
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  border-radius: 14px;
+  padding: 16px;
+  background: #fff;
+  position: relative;
+  transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease;
+}
+
+.jf-job-card:hover {
+  border-color: rgba(0, 194, 113, 0.45);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.10);
+  transform: translateY(-2px);
+}
+
+/* Job hover preview panel (TopCV-like) */
+.jf-job-preview {
+  position: fixed;
+  width: 560px;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  padding: 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: #ffffff;
+  box-shadow: 0 28px 70px rgba(15, 23, 42, 0.22);
+  z-index: 1100;
+}
+
+.jf-job-preview-head {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+
+.jf-job-preview-head::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  background: linear-gradient(90deg, #00c271 0%, #0dcaf0 100%);
+}
+
+.jf-job-preview-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  overflow: hidden;
+  background: #fff;
+  flex: 0 0 auto;
+}
+
+.jf-job-preview-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.jf-job-preview-title {
+  font-weight: 800;
+  font-size: 17px;
+  line-height: 1.2;
+  margin-bottom: 2px;
+}
+
+.jf-job-preview-company {
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.65);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.jf-job-preview-salary {
+  font-weight: 800;
+  color: #00C271;
+  font-size: 14px;
+}
+
+.jf-job-preview-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+
+.jf-job-preview-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.80);
+  box-shadow: inset 0 0 0 1px rgba(0, 194, 113, 0.08);
+}
+
+.jf-job-preview-section {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.jf-job-preview-section-title {
+  font-weight: 800;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.jf-job-preview-list {
+  margin: 0;
+  padding-left: 18px;
+  color: rgba(15, 23, 42, 0.80);
+  font-size: 13px;
+}
+
+.jf-job-preview-list li {
+  margin-bottom: 6px;
+}
+
+.jf-job-preview-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 10px;
+}
+
+.jf-job-preview-actions .btn {
+  flex: 1 1 0;
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 992px) {
+  .jf-job-preview {
+    display: none;
+  }
+}
+
+/* Job detail page */
+.job-detail-page {
+  background: #f7f8fb;
+  min-height: 100vh;
+  padding-top: 96px;
+}
+
+.job-detail-hero {
+  background: linear-gradient(135deg, #0f172a 0%, #111827 60%, #1f2937 100%);
+  color: #fff;
+  padding: 36px 0 42px;
+  margin-bottom: 24px;
+  box-shadow: inset 0 -1px 0 rgba(255,255,255,0.04);
+}
+
+.job-detail-hero__content {
+  max-width: 1200px;
+}
+
+.job-detail-logo {
+  width: 82px;
+  height: 82px;
+  border-radius: 18px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,255,255,0.12);
+  overflow: hidden;
+  box-shadow: 0 14px 35px rgba(0,0,0,0.25);
+}
+
+.job-detail-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.job-detail-title {
+  color: #fff;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  color: #f1f5f9;
+  border: 1px solid rgba(255,255,255,0.15);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.pill-strong {
+  background: #0ea5e9;
+  border-color: #0284c7;
+  color: #fff;
+}
+
+.job-detail-body {
+  max-width: 1200px;
+  padding-bottom: 32px;
+}
+
+.map-embed-wrapper {
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.05);
+}
+
+@media (max-width: 768px) {
+  .job-detail-hero {
+    padding: 26px 0 32px;
+  }
+
+  .job-detail-logo {
+    width: 68px;
+    height: 68px;
+  }
+}
+
+.jf-job-logo {
+  width: 74px;
+  height: 74px;
+  border-radius: 14px;
+  border: 1px solid rgba(15, 23, 42, 0.10);
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.jf-job-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.jf-job-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: #00C271;
+}
+
+.jf-job-title {
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.jf-job-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.04);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  font-size: 12px;
+  color: rgba(15, 23, 42, 0.75);
+}
+
+.jf-job-salary {
+  font-weight: 800;
+  color: #00C271;
+}
+
+.jf-heart {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 194, 113, 0.25);
+  background: #fff;
+  color: #00C271;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jf-heart:hover {
+  border-color: rgba(0, 194, 113, 0.45);
+}
+
+.jf-heart.is-saved {
+  background: rgba(0, 194, 113, 0.12);
+  border-color: rgba(0, 194, 113, 0.55);
+}
+
+
+/* Password visibility toggle: keep background same as input and only icon hovers */
+.login-panel .input-group,
+.register-card .input-group {
+  --jf-input-bg: #e9f2ff; /* matches input bg */
+  --jf-input-radius: 0.75rem;
+}
+.input-group .password-toggle-btn {
+  background-color: var(--jf-input-bg, #e9f2ff);
+  border: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-top-right-radius: var(--jf-input-radius, 0.75rem);
+  border-bottom-right-radius: var(--jf-input-radius, 0.75rem);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.input-group.input-group-lg .password-toggle-btn {
+  padding: 0 0.85rem;
+}
+
+.input-group .password-toggle-btn:hover,
+.input-group .password-toggle-btn:focus {
+  background-color: var(--jf-input-bg, #e9f2ff);
+  box-shadow: none;
+}
+
+.input-group .password-toggle-btn .bi {
+  color: var(--bs-secondary-color, #6c757d);
+  transition: color 0.15s ease-in-out;
+}
+
+/* Only the icon changes color on hover */
+.input-group .password-toggle-btn .bi:hover {
+  color: var(--bs-body-color, #212529);
+}
+
+/* Remove vertical divider by merging borders */
+.input-group > .form-control:not(:last-child) {
+  border-right: 0;
+}
+
+/* Employer register form: match same input background and radius for toggles */
+.employer-register-form .form-control {
+  border-radius: 0.75rem;
+  border-color: #d6d9df;
+  background-color: var(--jf-input-bg, inherit);
+}
+
+.employer-register-form .input-group {
+  --jf-input-bg: #e9f2ff;
+  --jf-input-radius: 0.75rem;
+}
+

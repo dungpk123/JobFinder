@@ -1,0 +1,335 @@
+/* Career Guide Detail Container */
+.career-guide-detail-container {
+  background: #f6f7f9;
+  min-height: 100vh;
+  padding: 100px 0 60px;
+}
+
+.career-guide-detail-container .container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Loading Spinner */
+.loading-spinner {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+}
+
+/* Breadcrumb */
+.breadcrumb-nav {
+  margin-bottom: 30px;
+}
+
+.breadcrumb {
+  background: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.breadcrumb-item a {
+  color: #667eea;
+  text-decoration: none;
+}
+
+.breadcrumb-item a:hover {
+  text-decoration: underline;
+}
+
+.breadcrumb-item.active {
+  color: #6b7280;
+}
+
+/* Post Detail Card */
+.post-detail-card {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  margin-bottom: 40px;
+}
+
+/* Post Header */
+.post-header {
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+.post-detail-title {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #111827;
+  margin-bottom: 20px;
+  line-height: 1.3;
+}
+
+.post-detail-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.meta-left {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+.meta-item i {
+  font-size: 1.1rem;
+  color: #667eea;
+}
+
+.meta-item strong {
+  color: #374151;
+}
+
+/* Post Content */
+.post-detail-content {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: #374151;
+}
+
+.post-detail-content h1,
+.post-detail-content h2,
+.post-detail-content h3,
+.post-detail-content h4,
+.post-detail-content h5,
+.post-detail-content h6 {
+  margin-top: 30px;
+  margin-bottom: 15px;
+  color: #111827;
+  font-weight: 700;
+}
+
+.post-detail-content p {
+  margin-bottom: 20px;
+}
+
+.post-detail-content ul,
+.post-detail-content ol {
+  margin-bottom: 20px;
+  padding-left: 25px;
+}
+
+.post-detail-content li {
+  margin-bottom: 10px;
+}
+
+.post-detail-content a {
+  color: #667eea;
+  text-decoration: none;
+}
+
+.post-detail-content a:hover {
+  text-decoration: underline;
+}
+
+.post-detail-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.post-detail-content blockquote {
+  border-left: 4px solid #667eea;
+  padding-left: 20px;
+  margin: 20px 0;
+  color: #6b7280;
+  font-style: italic;
+}
+
+.post-detail-content code {
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: #dc2626;
+}
+
+.post-detail-content pre {
+  background: #1f2937;
+  color: #f9fafb;
+  padding: 20px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 20px 0;
+}
+
+.post-detail-content pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+}
+
+/* Comments Section */
+.comments-section {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.comments-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 25px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.comments-title i {
+  color: #667eea;
+}
+
+/* Comment Form */
+.comment-form {
+  margin-bottom: 40px;
+  padding-bottom: 30px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.comment-form textarea {
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 15px;
+  font-size: 1rem;
+  transition: all 0.2s;
+  resize: vertical;
+}
+
+.comment-form textarea:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Comments List */
+.comments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.comment-item {
+  padding: 20px;
+  background: #f9fafb;
+  border-radius: 8px;
+  border-left: 3px solid #667eea;
+}
+
+.comment-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.comment-author {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #374151;
+  font-weight: 600;
+}
+
+.comment-author i {
+  font-size: 1.5rem;
+  color: #667eea;
+}
+
+.comment-actions {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.comment-date {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.btn-delete-comment {
+  background: none;
+  border: none;
+  color: #dc2626;
+  cursor: pointer;
+  padding: 5px 10px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.btn-delete-comment:hover {
+  background: #fee2e2;
+}
+
+.comment-content {
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.no-comments {
+  text-align: center;
+  color: #6b7280;
+  padding: 40px 20px;
+  font-style: italic;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .career-guide-detail-container {
+    padding: 80px 0 40px;
+  }
+
+  .post-detail-card,
+  .comments-section {
+    padding: 25px 20px;
+  }
+
+  .post-detail-title {
+    font-size: 1.8rem;
+  }
+
+  .post-detail-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .meta-left {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .post-detail-content {
+    font-size: 1rem;
+  }
+
+  .comments-title {
+    font-size: 1.5rem;
+  }
+
+  .comment-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+}

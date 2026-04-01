@@ -1,0 +1,290 @@
+/* Online CV Editor - Modern UI */
+.online-cv-editor-page {
+  background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
+  min-height: 100vh;
+}
+
+.cv-editor-header {
+  background: white;
+  border-radius: 16px;
+  padding: 24px 28px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  margin-bottom: 24px;
+}
+
+.cv-editor-header h3 {
+  color: #1a202c;
+  font-size: 28px;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.5px;
+}
+
+.cv-editor-header .text-muted {
+  color: #64748b;
+  font-size: 15px;
+  margin: 0;
+}
+
+.cv-editor-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cv-editor-actions .btn {
+  border-radius: 10px;
+  font-weight: 600;
+  padding: 10px 20px;
+  font-size: 14.5px;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.cv-editor-actions .btn-outline-secondary {
+  background: white;
+  border: 2px solid #e2e8f0;
+  color: #475569;
+}
+
+.cv-editor-actions .btn-outline-secondary:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+}
+
+.cv-editor-actions .btn-outline-primary {
+  background: white;
+  border: 2px solid #3b82f6;
+  color: #3b82f6;
+}
+
+.cv-editor-actions .btn-outline-primary:hover {
+  background: #3b82f6;
+  color: white;
+  transform: translateY(-1px);
+}
+
+.cv-editor-actions .btn-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.cv-editor-actions .btn-success:hover {
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+  transform: translateY(-2px);
+}
+
+.cv-editor-actions .btn-success:disabled {
+  background: #94a3b8;
+  box-shadow: none;
+  transform: none;
+}
+
+/* Form Card */
+.cv-editor-form-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+}
+
+.cv-editor-form-card .card-body {
+  padding: 28px;
+}
+
+.cv-editor-form-group {
+  margin-bottom: 24px;
+}
+
+.cv-editor-form-group:last-child {
+  margin-bottom: 0;
+}
+
+.cv-editor-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  color: #1e293b;
+  margin-bottom: 10px;
+  letter-spacing: 0.2px;
+}
+
+.cv-editor-label i {
+  color: #3b82f6;
+  font-size: 16px;
+}
+
+.cv-editor-input,
+.cv-editor-select,
+.cv-editor-textarea {
+  border-radius: 10px;
+  border: 2px solid #e2e8f0;
+  padding: 12px 16px;
+  font-size: 14.5px;
+  transition: all 0.2s ease;
+  background: #f8fafc;
+}
+
+.cv-editor-input:focus,
+.cv-editor-select:focus,
+.cv-editor-textarea:focus {
+  background: white;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+
+.cv-editor-textarea {
+  resize: vertical;
+  line-height: 1.6;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+.cv-editor-hint {
+  font-size: 13px;
+  color: #64748b;
+  margin-top: 8px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.cv-editor-hint i {
+  color: #94a3b8;
+  font-size: 14px;
+  margin-top: 2px;
+}
+
+/* Preview Card */
+.cv-editor-preview-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  position: sticky;
+  top: 20px;
+}
+
+.cv-editor-preview-header {
+  padding: 20px 24px;
+  border-bottom: 2px solid #f1f5f9;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cv-editor-preview-header i {
+  color: #3b82f6;
+  font-size: 20px;
+}
+
+.cv-editor-preview-header .fw-semibold {
+  font-size: 16px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.cv-editor-preview-body {
+  padding: 20px;
+  background: #f8fafc;
+}
+
+.cv-editor-preview-iframe {
+  width: 100%;
+  height: calc(100vh - 280px);
+  min-height: 800px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+/* Loading State */
+.cv-editor-loading {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+  color: #64748b;
+  font-size: 15px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.cv-editor-loading i {
+  font-size: 24px;
+  color: #3b82f6;
+  margin-bottom: 8px;
+}
+
+/* Responsive */
+@media (max-width: 991.98px) {
+  .cv-editor-preview-card {
+    position: static;
+    margin-top: 24px;
+  }
+  
+  .cv-editor-preview-iframe {
+    height: 600px;
+    min-height: 600px;
+  }
+  
+  .cv-editor-header {
+    padding: 20px;
+  }
+  
+  .cv-editor-form-card .card-body {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 575.98px) {
+  .cv-editor-header h3 {
+    font-size: 24px;
+  }
+  
+  .cv-editor-actions {
+    width: 100%;
+  }
+  
+  .cv-editor-actions .btn {
+    flex: 1;
+    min-width: auto;
+  }
+}
+
+/* Template Select Special Styling */
+.cv-editor-template-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%233b82f6' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
+}
+
+/* Smooth Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.cv-editor-form-card,
+.cv-editor-preview-card {
+  animation: fadeInUp 0.4s ease;
+}
+
+.cv-editor-header {
+  animation: fadeInUp 0.3s ease;
+}

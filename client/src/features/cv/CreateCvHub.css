@@ -1,0 +1,110 @@
+.create-cv-hub-page {
+  background: #f6f7f9;
+  padding: 120px 0 48px;
+}
+
+.create-cv-hub-container {
+  max-width: 1150px;
+}
+
+.create-cv-hero {
+  background: var(--bs-success);
+}
+
+.create-cv-hero-body {
+  display: grid;
+  grid-template-columns: 1fr minmax(220px, 380px);
+  gap: 18px;
+  align-items: center;
+  padding: 22px;
+}
+
+.create-cv-hero-left h2 {
+  color: #ffffff;
+  font-size: clamp(1.2rem, 2.1vw, 1.6rem);
+}
+
+.create-cv-hero-right {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.create-cv-chart {
+  position: relative;
+  width: min(360px, 100%);
+  height: 160px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  overflow: hidden;
+}
+
+.create-cv-chart-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.create-cv-chart-grid {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+  background-size: 26px 26px;
+  opacity: 0.35;
+}
+
+.create-cv-chart-line {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 34px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.9);
+  transform-origin: left;
+  transform: rotate(-12deg);
+  border-radius: 999px;
+}
+
+.create-cv-chart-dot {
+  position: absolute;
+  right: 38px;
+  top: 54px;
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  background: #ffffff;
+}
+
+.create-cv-empty {
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.create-cv-empty-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.06);
+  color: rgba(15, 23, 42, 0.6);
+  font-size: 28px;
+}
+
+@media (max-width: 768px) {
+  .create-cv-hero-body {
+    grid-template-columns: 1fr;
+  }
+
+  .create-cv-hero-right {
+    justify-content: flex-start;
+  }
+}

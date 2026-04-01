@@ -1,0 +1,161 @@
+.employer-layout {
+    display: flex;
+    min-height: 100vh;
+    background-color: #f8f9fa;
+}
+
+.employer-sidebar {
+    width: 280px;
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    transition: width 0.3s ease;
+    position: fixed;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+.employer-sidebar.collapsed {
+    width: 80px;
+}
+
+.sidebar-header {
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-logo {
+    height: 40px;
+    width: 40px;
+    object-fit: contain;
+}
+
+.sidebar-user {
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.user-avatar {
+    color: #ffc107;
+}
+
+.user-info h6 {
+    color: white;
+    font-weight: 600;
+}
+
+.sidebar-menu {
+    flex: 1;
+    padding: 1rem 0;
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    transition: all 0.2s;
+    border-left: 3px solid transparent;
+}
+
+.menu-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.menu-item.active {
+    background-color: rgba(255, 255, 255, 0.15);
+    color: #ffc107;
+    border-left-color: #ffc107;
+}
+
+.menu-item i {
+    font-size: 1.2rem;
+    min-width: 24px;
+}
+
+.sidebar-footer {
+    padding: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sidebar-footer button {
+    color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 0.5rem;
+}
+
+.sidebar-footer button:hover {
+    color: white;
+}
+
+.employer-main {
+    flex: 1;
+    margin-left: 280px;
+    transition: margin-left 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.employer-sidebar.collapsed ~ .employer-main {
+    margin-left: 80px;
+}
+
+.main-header {
+    background: white;
+    padding: 1rem 2rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 999;
+}
+
+.sidebar-toggle {
+    color: #333;
+    text-decoration: none;
+}
+
+.main-content {
+    padding: 2rem;
+    flex: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .employer-sidebar {
+        width: 80px;
+    }
+
+    .employer-sidebar.collapsed {
+        width: 0;
+    }
+
+    .employer-main {
+        margin-left: 80px;
+    }
+
+    .employer-sidebar.collapsed ~ .employer-main {
+        margin-left: 0;
+    }
+
+    .sidebar-header h5,
+    .user-info,
+    .menu-item span,
+    .sidebar-footer span {
+        display: none;
+    }
+}
