@@ -1,7 +1,7 @@
 require('dotenv').config();
 
 const cors = require('cors');
-const db = require('./config/sqlite');
+const db = require('./config/db');
 const { bootstrapSuperAdmin } = require('./tools/bootstrap-super-admin');
 
 var createError = require('http-errors');
@@ -12,6 +12,7 @@ var logger = require('morgan');
 const { registerRoutes } = require('./routes/registerRoutes');
 
 var app = express();
+app.set('trust proxy', 1);
 
 // Ensure a Super Admin account exists (idempotent)
 bootstrapSuperAdmin().catch((err) => {
@@ -33,7 +34,20 @@ const normalizeBase = (p) => {
 };
 const BASE = normalizeBase(BASE_PATH);
 
-app.use(cors());
+const allowedOrigins = (process.env.CORS_ORIGIN || '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.length === 0) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true
+}));
 app.use(logger('dev'));
 // Increase body size limits because CV Online stores rendered HTML in JSON.
 app.use(express.json({ limit: '5mb' }));

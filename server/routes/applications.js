@@ -1,6 +1,6 @@
 const express = require('express');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
-const db = require('../config/sqlite');
+const db = require('../config/db');
 const router = express.Router();
 
 const dbGet = (sql, params = []) => new Promise((resolve, reject) => {

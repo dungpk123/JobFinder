@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const db = require('../config/sqlite');
+const db = require('../config/db');
 
 const router = express.Router();
 const JWT_SECRET = 'your_jwt_secret';

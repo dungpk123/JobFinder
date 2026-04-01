@@ -1,14 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const db = require('../config/db');
 const { authenticateToken } = require('../middleware/auth');
-
-const dbPath = path.join(__dirname, '../data/timkiemvieclam.db');
 
 // Get all career guide posts with pagination
 router.get('/', async (req, res) => {
-  const db = new sqlite3.Database(dbPath);
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const offset = (page - 1) * limit;
@@ -39,7 +35,6 @@ router.get('/', async (req, res) => {
       `;
 
       db.all(sql, [limit, offset], (err, rows) => {
-        db.close();
         if (err) {
           return res.status(500).json({ success: false, error: 'Lỗi database' });
         }
@@ -57,14 +52,12 @@ router.get('/', async (req, res) => {
       });
     });
   } catch (error) {
-    db.close();
     res.status(500).json({ success: false, error: error.message });
   }
 });
 
 // Get single post with comments
 router.get('/:id', (req, res) => {
-  const db = new sqlite3.Database(dbPath);
   const { id } = req.params;
 
   const sql = `
@@ -84,12 +77,10 @@ router.get('/:id', (req, res) => {
 
   db.get(sql, [id], (err, post) => {
     if (err) {
-      db.close();
       return res.status(500).json({ success: false, error: 'Lỗi database' });
     }
 
     if (!post) {
-      db.close();
       return res.status(404).json({ success: false, error: 'Không tìm thấy bài viết' });
     }
 
@@ -113,7 +104,6 @@ router.get('/:id', (req, res) => {
     `;
 
     db.all(commentSql, [id], (err, comments) => {
-      db.close();
       if (err) {
         return res.status(500).json({ success: false, error: 'Lỗi khi tải bình luận' });
       }
@@ -129,7 +119,6 @@ router.get('/:id', (req, res) => {
 
 // Create new post (authenticated)
 router.post('/', authenticateToken, (req, res) => {
-  const db = new sqlite3.Database(dbPath);
   const { title, content } = req.body;
   
   // Get user info from JWT token
@@ -145,7 +134,6 @@ router.post('/', authenticateToken, (req, res) => {
   }
 
   if (!title || !content) {
-    db.close();
     return res.status(400).json({ success: false, error: 'Thiếu thông tin bài viết' });
   }
 
@@ -155,7 +143,6 @@ router.post('/', authenticateToken, (req, res) => {
   `;
 
   db.run(sql, [title, content, userId, userType], function(err) {
-    db.close();
     if (err) {
       return res.status(500).json({ success: false, error: 'Lỗi khi tạo bài viết' });
     }
@@ -166,7 +153,6 @@ router.post('/', authenticateToken, (req, res) => {
 
 // Add comment (authenticated)
 router.post('/:id/comments', authenticateToken, (req, res) => {
-  const db = new sqlite3.Database(dbPath);
   const { id } = req.params;
   const { content } = req.body;
   
@@ -183,7 +169,6 @@ router.post('/:id/comments', authenticateToken, (req, res) => {
   }
 
   if (!content) {
-    db.close();
     return res.status(400).json({ success: false, error: 'Nội dung bình luận không được để trống' });
   }
 
@@ -193,7 +178,6 @@ router.post('/:id/comments', authenticateToken, (req, res) => {
   `;
 
   db.run(sql, [id, userId, userType, content], function(err) {
-    db.close();
     if (err) {
       return res.status(500).json({ success: false, error: 'Lỗi khi thêm bình luận' });
     }
@@ -204,7 +188,6 @@ router.post('/:id/comments', authenticateToken, (req, res) => {
 
 // Delete post (admin or author)
 router.delete('/:id', authenticateToken, (req, res) => {
-  const db = new sqlite3.Database(dbPath);
   const { id } = req.params;
   
   // Get user info from JWT token
@@ -225,32 +208,27 @@ router.delete('/:id', authenticateToken, (req, res) => {
   
   db.get(checkSql, [id], (err, post) => {
     if (err) {
-      db.close();
       return res.status(500).json({ success: false, error: 'Lỗi database' });
     }
 
     if (!post) {
-      db.close();
       return res.status(404).json({ success: false, error: 'Không tìm thấy bài viết' });
     }
 
     const isAuthor = Number(post.authorId) === Number(userId) && post.authorType === userType;
     
     if (!isAdmin && !isAuthor) {
-      db.close();
       return res.status(403).json({ success: false, error: 'Bạn không có quyền xóa bài viết này' });
     }
 
     // Delete comments first
     db.run('DELETE FROM CareerGuideComment WHERE postId = ?', [id], (err) => {
       if (err) {
-        db.close();
         return res.status(500).json({ success: false, error: 'Lỗi khi xóa bình luận' });
       }
 
       // Delete post
       db.run('DELETE FROM CareerGuide WHERE id = ?', [id], function(err) {
-        db.close();
         if (err) {
           return res.status(500).json({ success: false, error: 'Lỗi khi xóa bài viết' });
         }
@@ -262,7 +240,6 @@ router.delete('/:id', authenticateToken, (req, res) => {
 
 // Delete comment (admin or author)
 router.delete('/:postId/comments/:commentId', authenticateToken, (req, res) => {
-  const db = new sqlite3.Database(dbPath);
   const { commentId } = req.params;
   const userId = req.user.id;
   const userRole = req.user.role;
@@ -279,24 +256,20 @@ router.delete('/:postId/comments/:commentId', authenticateToken, (req, res) => {
   
   db.get(checkSql, [commentId], (err, comment) => {
     if (err) {
-      db.close();
       return res.status(500).json({ success: false, error: 'Lỗi database' });
     }
 
     if (!comment) {
-      db.close();
       return res.status(404).json({ success: false, error: 'Không tìm thấy bình luận' });
     }
 
     const isAuthor = Number(comment.userId) === Number(userId) && comment.userType === userType;
     
     if (!isAdmin && !isAuthor) {
-      db.close();
       return res.status(403).json({ success: false, error: 'Bạn không có quyền xóa bình luận này' });
     }
 
     db.run('DELETE FROM CareerGuideComment WHERE id = ?', [commentId], function(err) {
-      db.close();
       if (err) {
         return res.status(500).json({ success: false, error: 'Lỗi khi xóa bình luận' });
       }

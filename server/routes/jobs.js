@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const https = require('https');
 const path = require('path');
 const multer = require('multer');
-const db = require('../config/sqlite');
+const db = require('../config/db');
 const { jobs: mockJobs } = require('../data/mockJobs');
 const router = express.Router();
 

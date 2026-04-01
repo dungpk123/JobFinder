@@ -1,0 +1,296 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "mysql"
+  url          = env("DATABASE_URL")
+}
+
+model NguoiDung {
+  maNguoiDung          Int       @id @default(autoincrement()) @map("MaNguoiDung")
+  email                String    @unique @db.VarChar(191) @map("Email")
+  matKhau              String    @db.VarChar(255) @map("MatKhau")
+  hoTen                String?   @db.VarChar(255) @map("HoTen")
+  soDienThoai          String?   @db.VarChar(50) @map("SoDienThoai")
+  vaiTro               String    @default("Ứng viên") @db.VarChar(50) @map("VaiTro")
+  trangThai            Int       @default(1) @map("TrangThai")
+  diaChi               String?   @db.Text @map("DiaChi")
+  ngayTao              DateTime  @default(now()) @map("NgayTao")
+  ngayCapNhat          DateTime  @default(now()) @map("NgayCapNhat")
+  lanDangNhapCuoi      DateTime? @map("LanDangNhapCuoi")
+  soLanDangNhapSai     Int       @default(0) @map("SoLanDangNhapSai")
+  thoiGianKhoaDangNhap DateTime? @map("ThoiGianKhoaDangNhap")
+  maXacThuc            String?   @db.VarChar(20) @map("MaXacThuc")
+  thoiGianMaXacThuc    DateTime? @map("ThoiGianMaXacThuc")
+  isSuperAdmin         Boolean   @default(false) @map("IsSuperAdmin")
+
+  @@map("NguoiDung")
+}
+
+model CongTy {
+  maCongTy     Int       @id @default(autoincrement()) @map("MaCongTy")
+  tenCongTy    String    @db.VarChar(255) @map("TenCongTy")
+  maSoThue     String?   @db.VarChar(100) @map("MaSoThue")
+  diaChi       String?   @db.Text @map("DiaChi")
+  thanhPho     String?   @db.VarChar(191) @map("ThanhPho")
+  website      String?   @db.VarChar(255) @map("Website")
+  linhVuc      String?   @db.VarChar(255) @map("LinhVuc")
+  moTa         String?   @db.LongText @map("MoTa")
+  logo         String?   @db.VarChar(500) @map("Logo")
+  nguoiDaiDien Int?      @map("NguoiDaiDien")
+  ngayTao      DateTime  @default(now()) @map("NgayTao")
+  ngayCapNhat  DateTime  @default(now()) @map("NgayCapNhat")
+
+  @@map("CongTy")
+}
+
+model HoSoUngVien {
+  maHoSo            Int       @id @default(autoincrement()) @map("MaHoSo")
+  maNguoiDung       Int       @unique @map("MaNguoiDung")
+  ngaySinh          DateTime? @map("NgaySinh")
+  gioiTinh          String?   @db.VarChar(20) @map("GioiTinh")
+  diaChi            String?   @db.Text @map("DiaChi")
+  thanhPho          String?   @db.VarChar(191) @map("ThanhPho")
+  quanHuyen         String?   @db.VarChar(191) @map("QuanHuyen")
+  gioiThieuBanThan  String?   @db.LongText @map("GioiThieuBanThan")
+  soNamKinhNghiem   Int       @default(0) @map("SoNamKinhNghiem")
+  trinhDoHocVan     String?   @db.VarChar(255) @map("TrinhDoHocVan")
+  anhDaiDien        String?   @db.VarChar(500) @map("AnhDaiDien")
+  chucDanh          String?   @db.VarChar(255) @map("ChucDanh")
+  linkCaNhan        String?   @db.VarChar(500) @map("LinkCaNhan")
+  educationListJson String?   @db.LongText @map("EducationListJson")
+  workListJson      String?   @db.LongText @map("WorkListJson")
+  languageListJson  String?   @db.LongText @map("LanguageListJson")
+  ngayTao           DateTime  @default(now()) @map("NgayTao")
+  ngayCapNhat       DateTime  @default(now()) @map("NgayCapNhat")
+
+  @@map("HoSoUngVien")
+}
+
+model NhaTuyenDung {
+  maNhaTuyenDung Int      @id @default(autoincrement()) @map("MaNhaTuyenDung")
+  maNguoiDung    Int      @unique @map("MaNguoiDung")
+  tenCongTy      String   @db.VarChar(255) @map("TenCongTy")
+  maSoThue       String?  @db.VarChar(100) @map("MaSoThue")
+  website        String?  @db.VarChar(255) @map("Website")
+  diaChi         String?  @db.Text @map("DiaChi")
+  thanhPho       String?  @db.VarChar(191) @map("ThanhPho")
+  moTa           String?  @db.LongText @map("MoTa")
+  logo           String?  @db.VarChar(500) @map("Logo")
+  ngayTao        DateTime @default(now()) @map("NgayTao")
+  ngayCapNhat    DateTime @default(now()) @map("NgayCapNhat")
+
+  @@map("NhaTuyenDung")
+}
+
+model DanhMucCongViec {
+  maDanhMuc   Int                 @id @default(autoincrement()) @map("MaDanhMuc")
+  tenDanhMuc  String              @unique @db.VarChar(255) @map("TenDanhMuc")
+  maCha       Int?                @map("MaCha")
+
+  @@map("DanhMucCongViec")
+}
+
+model TinTuyenDung {
+  maTin           Int               @id @default(autoincrement()) @map("MaTin")
+  maNhaTuyenDung  Int               @map("MaNhaTuyenDung")
+  tieuDe          String            @db.VarChar(255) @map("TieuDe")
+  moTa            String?           @db.LongText @map("MoTa")
+  yeuCau          String?           @db.LongText @map("YeuCau")
+  quyenLoi        String?           @db.LongText @map("QuyenLoi")
+  kinhNghiem      String?           @db.VarChar(255) @map("KinhNghiem")
+  capBac          String?           @db.VarChar(255) @map("CapBac")
+  luongTu         Int?              @map("LuongTu")
+  luongDen        Int?              @map("LuongDen")
+  kieuLuong       String            @default("Thỏa thuận") @db.VarChar(50) @map("KieuLuong")
+  diaDiem         String?           @db.Text @map("DiaDiem")
+  thanhPho        String?           @db.VarChar(191) @map("ThanhPho")
+  linhVucCongViec String?           @db.VarChar(255) @map("LinhVucCongViec")
+  maDanhMuc       Int?              @map("MaDanhMuc")
+  hinhThuc        String            @default("Toàn thời gian") @db.VarChar(50) @map("HinhThuc")
+  trangThai       String            @default("Nháp") @db.VarChar(50) @map("TrangThai")
+  ngayDang        DateTime          @default(now()) @map("NgayDang")
+  hanNopHoSo      DateTime?         @map("HanNopHoSo")
+  luotXem         Int               @default(0) @map("LuotXem")
+  soLuongUngTuyen Int               @default(0) @map("SoLuongUngTuyen")
+
+
+  @@map("TinTuyenDung")
+}
+
+model LuuCV {
+  maLuuCV        Int           @id @default(autoincrement()) @map("MaLuuCV")
+  maNhaTuyenDung Int           @map("MaNhaTuyenDung")
+  maCV           Int           @map("MaCV")
+  trangThai      String        @default("Đã lưu") @db.VarChar(50) @map("TrangThai")
+  ngayLuu        DateTime      @default(now()) @map("NgayLuu")
+
+  @@unique([maNhaTuyenDung, maCV])
+  @@map("LuuCV")
+}
+
+model KyNang {
+  maKyNang  Int     @id @default(autoincrement()) @map("MaKyNang")
+  tenKyNang String  @unique @db.VarChar(255) @map("TenKyNang")
+
+  @@map("KyNang")
+}
+
+model HoSoCV {
+  maCV         Int       @id @default(autoincrement()) @map("MaCV")
+  maNguoiDung  Int       @map("MaNguoiDung")
+  tieuDe       String?   @db.VarChar(255) @map("TieuDe")
+  tomTat       String?   @db.LongText @map("TomTat")
+  tepCV        String?   @db.VarChar(500) @map("TepCV")
+  macDinh      Int       @default(0) @map("MacDinh")
+  linhVuc      String?   @db.VarChar(255) @map("LinhVuc")
+  ngayTao      DateTime  @default(now()) @map("NgayTao")
+  ngayCapNhat  DateTime  @default(now()) @map("NgayCapNhat")
+
+  @@map("HoSoCV")
+}
+
+model ChiTietCV_KyNang {
+  maCV     Int    @map("MaCV")
+  maKyNang Int    @map("MaKyNang")
+  mucDo    String @default("Trung bình") @db.VarChar(50) @map("MucDo")
+
+  @@id([maCV, maKyNang])
+  @@map("ChiTietCV_KyNang")
+}
+
+model ChiTietTin_KyNang {
+  maTin       Int @map("MaTin")
+  maKyNang    Int @map("MaKyNang")
+  doQuanTrong Int @default(1) @map("DoQuanTrong")
+
+  @@id([maTin, maKyNang])
+  @@map("ChiTietTin_KyNang")
+}
+
+model UngTuyen {
+  maUngTuyen    Int       @id @default(autoincrement()) @map("MaUngTuyen")
+  maTin         Int       @map("MaTin")
+  maCV          Int?      @map("MaCV")
+  maUngVien     Int       @map("MaUngVien")
+  thuGioiThieu  String?   @db.LongText @map("ThuGioiThieu")
+  trangThai     String    @default("Đã nộp") @db.VarChar(50) @map("TrangThai")
+  ngayNop       DateTime  @default(now()) @map("NgayNop")
+  ghiChu        String?   @db.LongText @map("GhiChu")
+
+  @@map("UngTuyen")
+}
+
+model LuuTin {
+  maNguoiDung Int      @map("MaNguoiDung")
+  maTin       Int      @map("MaTin")
+  ngayLuu     DateTime @default(now()) @map("NgayLuu")
+
+  @@id([maNguoiDung, maTin])
+  @@map("LuuTin")
+}
+
+model ThongBao {
+  maThongBao  Int      @id @default(autoincrement()) @map("MaThongBao")
+  maNguoiDung Int      @map("MaNguoiDung")
+  tieuDe      String?  @db.VarChar(255) @map("TieuDe")
+  noiDung     String?  @db.LongText @map("NoiDung")
+  daDoc       Int      @default(0) @map("DaDoc")
+  loai        String?  @db.VarChar(100) @map("Loai")
+  maLienQuan  Int?     @map("MaLienQuan")
+  ngayTao     DateTime @default(now()) @map("NgayTao")
+
+  @@map("ThongBao")
+}
+
+model BaoCao {
+  maBaoCao      Int      @id @default(autoincrement()) @map("MaBaoCao")
+  maNguoiBaoCao Int?     @map("MaNguoiBaoCao")
+  loaiDoiTuong  String   @db.VarChar(100) @map("LoaiDoiTuong")
+  maDoiTuong    Int      @map("MaDoiTuong")
+  lyDo          String?  @db.VarChar(255) @map("LyDo")
+  chiTiet       String?  @db.LongText @map("ChiTiet")
+  trangThai     String   @default("Chưa xử lý") @db.VarChar(50) @map("TrangThai")
+  ngayBaoCao    DateTime @default(now()) @map("NgayBaoCao")
+
+  @@map("BaoCao")
+}
+
+model NhatKyQuanTri {
+  maNhatKy     Int      @id @default(autoincrement()) @map("MaNhatKy")
+  maQuanTri    Int?     @map("MaQuanTri")
+  hanhDong     String?  @db.VarChar(255) @map("HanhDong")
+  doiTuong     String?  @db.VarChar(255) @map("DoiTuong")
+  maDoiTuong   Int?     @map("MaDoiTuong")
+  ghiChu       String?  @db.LongText @map("GhiChu")
+  ngayThucHien DateTime @default(now()) @map("NgayThucHien")
+
+  @@map("NhatKyQuanTri")
+}
+
+model ThongKeCongViec {
+  maTin           Int       @id @map("MaTin")
+  luotXem         Int       @default(0) @map("LuotXem")
+  soLuongUngTuyen Int       @default(0) @map("SoLuongUngTuyen")
+  lanXemCuoi      DateTime? @map("LanXemCuoi")
+
+  @@map("ThongKeCongViec")
+}
+
+model TinNhan {
+  maTinNhan   Int       @id @default(autoincrement()) @map("MaTinNhan")
+  maNguoiGui  Int       @map("MaNguoiGui")
+  maNguoiNhan Int       @map("MaNguoiNhan")
+  maTin       Int?      @map("MaTin")
+  noiDung     String    @db.LongText @map("NoiDung")
+  daDoc       Int       @default(0) @map("DaDoc")
+  ngayGui     DateTime  @default(now()) @map("NgayGui")
+
+  @@map("TinNhan")
+}
+
+model DanhGiaCongTy {
+  maDanhGia      Int      @id @default(autoincrement()) @map("MaDanhGia")
+  maNhaTuyenDung Int      @map("MaNhaTuyenDung")
+  maUngVien      Int      @map("MaUngVien")
+  soSao          Int      @map("SoSao")
+  ngayDanhGia    DateTime @default(now()) @map("NgayDanhGia")
+
+  @@unique([maNhaTuyenDung, maUngVien])
+  @@map("DanhGiaCongTy")
+}
+
+model BinhLuanCongTy {
+  maBinhLuan     Int      @id @default(autoincrement()) @map("MaBinhLuan")
+  maNhaTuyenDung Int      @map("MaNhaTuyenDung")
+  maNguoiDung    Int      @map("MaNguoiDung")
+  noiDung        String   @db.LongText @map("NoiDung")
+  ngayTao        DateTime @default(now()) @map("NgayTao")
+
+  @@map("BinhLuanCongTy")
+}
+
+model CareerGuide {
+  id         Int      @id @default(autoincrement()) @map("id")
+  title      String   @db.VarChar(255) @map("title")
+  content    String   @db.LongText @map("content")
+  authorId   Int      @map("authorId")
+  authorType String   @db.VarChar(50) @map("authorType")
+  createdAt  DateTime @default(now()) @map("createdAt")
+  updatedAt  DateTime @default(now()) @map("updatedAt")
+  views      Int      @default(0) @map("views")
+
+  @@map("CareerGuide")
+}
+
+model CareerGuideComment {
+  id        Int      @id @default(autoincrement()) @map("id")
+  postId    Int      @map("postId")
+  userId    Int      @map("userId")
+  userType  String   @db.VarChar(50) @map("userType")
+  content   String   @db.LongText @map("content")
+  createdAt DateTime @default(now()) @map("createdAt")
+
+  @@map("CareerGuideComment")
+}

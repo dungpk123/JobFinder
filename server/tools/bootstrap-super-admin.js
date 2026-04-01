@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const db = require('../config/sqlite');
+const db = require('../config/db');
 
 const DEFAULT_EMAIL = process.env.SUPER_ADMIN_EMAIL || 'superadmin@jobfinder.local';
 const DEFAULT_PASSWORD = process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin123';
@@ -7,7 +7,7 @@ const DEFAULT_PASSWORD = process.env.SUPER_ADMIN_PASSWORD || 'SuperAdmin123';
 const ensureColumn = (sql) =>
   new Promise((resolve) => {
     db.run(sql, (err) => {
-      if (err && !String(err.message || '').includes('duplicate column name')) {
+      if (err && !/duplicate column/i.test(String(err.message || ''))) {
         console.error('[bootstrap-super-admin] schema error:', err.message);
       }
       resolve();

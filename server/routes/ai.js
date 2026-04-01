@@ -1,6 +1,6 @@
 const express = require('express');
 const https = require('https');
-const db = require('../config/sqlite');
+const db = require('../config/db');
 const { jobs: mockJobs } = require('../data/mockJobs');
 const multer = require('multer');
 const pdfParse = require('pdf-parse');

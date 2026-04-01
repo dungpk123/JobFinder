@@ -3,7 +3,7 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const multer = require('multer');
-const db = require('../config/sqlite');
+const db = require('../config/db');
 
 const BASE_PATH = (() => {
   const basePath = process.env.BASE_PATH || '/';

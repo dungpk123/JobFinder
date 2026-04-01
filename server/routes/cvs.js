@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const multer = require('multer');
-const db = require('../config/sqlite');
+const db = require('../config/db');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
 const router = express.Router();

@@ -1,5 +1,5 @@
 const express = require('express');
-const db = require('../config/sqlite');
+const db = require('../config/db');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 
 const router = express.Router();
@@ -18,6 +18,7 @@ const dbRun = (sql, params = []) =>
   });
 
 const ensureRatingTable = async () => {
+  if (process.env.DATABASE_URL) return;
   await dbRun(
     `CREATE TABLE IF NOT EXISTS DanhGiaCongTy (
       MaDanhGia INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -31,6 +32,7 @@ const ensureRatingTable = async () => {
 };
 
 const ensureCommentTable = async () => {
+  if (process.env.DATABASE_URL) return;
   await dbRun(
     `CREATE TABLE IF NOT EXISTS BinhLuanCongTy (
       MaBinhLuan INTEGER PRIMARY KEY AUTOINCREMENT,
