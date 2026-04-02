@@ -39,11 +39,34 @@ const allowedOrigins = (process.env.CORS_ORIGIN || '')
   .map((origin) => origin.trim())
   .filter(Boolean);
 
+const matchesAllowedOrigin = (requestOrigin, allowedOrigin) => {
+  if (requestOrigin === allowedOrigin) return true;
+
+  if (!allowedOrigin.includes('*')) return false;
+
+  try {
+    const requestUrl = new URL(requestOrigin);
+    const normalizedAllowed = allowedOrigin.replace('*.', '__wildcard__.');
+    const allowedUrl = new URL(normalizedAllowed);
+    const suffix = allowedUrl.hostname.replace('__wildcard__.', '');
+
+    if (requestUrl.protocol !== allowedUrl.protocol) return false;
+
+    return requestUrl.hostname === suffix || requestUrl.hostname.endsWith(`.${suffix}`);
+  } catch {
+    return false;
+  }
+};
+
+const isAllowedOrigin = (requestOrigin) => {
+  if (allowedOrigins.length === 0) return true;
+  return allowedOrigins.some((allowedOrigin) => matchesAllowedOrigin(requestOrigin, allowedOrigin));
+};
+
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    if (allowedOrigins.length === 0) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (isAllowedOrigin(origin)) return callback(null, true);
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true
