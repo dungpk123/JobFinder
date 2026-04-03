@@ -66,6 +66,135 @@ const normalizeTemplateKey = (value) => {
     return ok ? v : 'accent-one';
 };
 
+const isMysql = /^mysql:\/\//i.test(process.env.DATABASE_URL || '');
+
+const toInt = (value, fallback) => {
+    const num = parseInt(String(value ?? ''), 10);
+    return Number.isFinite(num) ? num : fallback;
+};
+
+const sqlGet = (sql, params = []) => new Promise((resolve, reject) => {
+    db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
+});
+
+const sqlAll = (sql, params = []) => new Promise((resolve, reject) => {
+    db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows || [])));
+});
+
+const sqlRun = (sql, params = []) => new Promise((resolve, reject) => {
+    db.run(sql, params, function (err) {
+        if (err) return reject(err);
+        resolve({ lastID: this.lastID, changes: this.changes });
+    });
+});
+
+let ensureCvTemplateTablePromise = null;
+const ensureCvTemplateTable = async () => {
+    if (ensureCvTemplateTablePromise) return ensureCvTemplateTablePromise;
+
+    ensureCvTemplateTablePromise = (async () => {
+        const mysqlSql = `
+            CREATE TABLE IF NOT EXISTS CvTemplate (
+                MaTemplateCV INT AUTO_INCREMENT PRIMARY KEY,
+                TenTemplate VARCHAR(255) NOT NULL,
+                Slug VARCHAR(191) NOT NULL UNIQUE,
+                MoTa TEXT NULL,
+                ThumbnailUrl TEXT NULL,
+                HtmlContent LONGTEXT NOT NULL,
+                TrangThai TINYINT DEFAULT 1,
+                NguoiTao INT NULL,
+                NguoiCapNhat INT NULL,
+                NgayTao DATETIME DEFAULT CURRENT_TIMESTAMP,
+                NgayCapNhat DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `;
+
+        const sqliteSql = `
+            CREATE TABLE IF NOT EXISTS CvTemplate (
+                MaTemplateCV INTEGER PRIMARY KEY AUTOINCREMENT,
+                TenTemplate TEXT NOT NULL,
+                Slug TEXT NOT NULL UNIQUE,
+                MoTa TEXT,
+                ThumbnailUrl TEXT,
+                HtmlContent TEXT NOT NULL,
+                TrangThai INTEGER DEFAULT 1,
+                NguoiTao INTEGER,
+                NguoiCapNhat INTEGER,
+                NgayTao TEXT DEFAULT (datetime('now', 'localtime')),
+                NgayCapNhat TEXT DEFAULT (datetime('now', 'localtime'))
+            )
+        `;
+
+        await sqlRun(isMysql ? mysqlSql : sqliteSql);
+
+        if (isMysql) {
+            const row = await sqlGet(
+                `SELECT COUNT(*) AS c
+                 FROM INFORMATION_SCHEMA.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME = 'CvTemplate'
+                   AND COLUMN_NAME = 'ThumbnailUrl'`
+            );
+
+            if (Number(row?.c || 0) === 0) {
+                await sqlRun('ALTER TABLE CvTemplate ADD COLUMN ThumbnailUrl TEXT NULL');
+            }
+            return;
+        }
+
+        const columns = await sqlAll(`PRAGMA table_info('CvTemplate')`);
+        const hasThumbnailUrl = columns.some((col) => String(col?.name || '').toLowerCase() === 'thumbnailurl');
+        if (!hasThumbnailUrl) {
+            await sqlRun('ALTER TABLE CvTemplate ADD COLUMN ThumbnailUrl TEXT');
+        }
+    })();
+
+    try {
+        await ensureCvTemplateTablePromise;
+    } catch (err) {
+        ensureCvTemplateTablePromise = null;
+        throw err;
+    }
+};
+
+router.get('/templates', async (req, res) => {
+    try {
+        await ensureCvTemplateTable();
+
+        const limit = Math.min(Math.max(toInt(req.query.limit, 24), 1), 80);
+        const offset = Math.max(toInt(req.query.offset, 0), 0);
+
+        const templates = await sqlAll(
+            `SELECT
+                MaTemplateCV,
+                TenTemplate,
+                Slug,
+                MoTa,
+                ThumbnailUrl,
+                HtmlContent,
+                TrangThai,
+                NgayTao,
+                NgayCapNhat
+             FROM CvTemplate
+             WHERE IFNULL(TrangThai, 1) = 1
+             ORDER BY MaTemplateCV DESC
+             LIMIT ? OFFSET ?`,
+            [limit, offset]
+        );
+
+        const totalRow = await sqlGet(
+            `SELECT COUNT(*) AS c
+             FROM CvTemplate
+             WHERE IFNULL(TrangThai, 1) = 1`
+        );
+
+        return res.json({ success: true, templates, total: Number(totalRow?.c || 0) });
+    } catch (err) {
+        console.error('Lỗi lấy danh sách template công khai:', err);
+        return res.status(500).json({ success: false, error: 'Không tải được danh sách template' });
+    }
+});
+
 router.get('/', (req, res) => {
     const userId = parseInt(req.query.userId, 10);
     if (isNaN(userId)) {

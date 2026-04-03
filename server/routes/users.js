@@ -1,21 +1,20 @@
 
 const express = require('express');
 const router = express.Router();
+const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const db = require('../config/db');
+const { isCloudinaryConfigured, uploadImageFromPath } = require('../config/cloudinary');
 
-const BASE_PATH = (() => {
-  const basePath = process.env.BASE_PATH || '/';
-  let normalized = basePath;
-  if (!normalized.startsWith('/')) normalized = '/' + normalized;
-  if (normalized.length > 1 && normalized.endsWith('/')) normalized = normalized.slice(0, -1);
-  return normalized;
-})();
-const PUBLIC_PREFIX = BASE_PATH === '/' ? '' : BASE_PATH;
-
-const buildAvatarRelativePath = (filename) => `${PUBLIC_PREFIX}/images/avatars/${filename}`;
-const buildAbsoluteUrl = (req, relativePath) => (relativePath ? `${req.protocol}://${req.get('host')}${relativePath}` : '');
+const isAbsoluteUrl = (value = '') => /^https?:\/\//i.test(value) || value.startsWith('//');
+const buildAbsoluteUrl = (req, relativePath) => {
+  if (!relativePath) return '';
+  if (isAbsoluteUrl(relativePath)) {
+    return relativePath.startsWith('//') ? `${req.protocol}:${relativePath}` : relativePath;
+  }
+  return `${req.protocol}://${req.get('host')}${relativePath}`;
+};
 const safeJsonArray = (val) => {
   try {
     const arr = Array.isArray(val) ? val : [];
@@ -58,7 +57,7 @@ const upload = multer({
 });
 
 // API upload avatar
-router.post('/upload-avatar', upload.single('avatar'), (req, res) => {
+router.post('/upload-avatar', upload.single('avatar'), async (req, res) => {
   const userId = req.body.userId;
   if (!userId || !req.file) {
     return res.status(400).json({ error: 'Thiếu userId hoặc file.' });
@@ -67,7 +66,34 @@ router.post('/upload-avatar', upload.single('avatar'), (req, res) => {
   if (Number.isNaN(numUserId)) {
     return res.status(400).json({ error: 'userId không hợp lệ' });
   }
-  const avatarUrl = buildAvatarRelativePath(req.file.filename);
+
+  if (!isCloudinaryConfigured()) {
+    if (req.file?.path) {
+      fs.unlink(req.file.path, () => {});
+    }
+    return res.status(500).json({
+      error: 'Cloudinary chưa được cấu hình trên server. Vui lòng cấu hình biến môi trường CLOUDINARY_*.'
+    });
+  }
+
+  let avatarUrl = '';
+  try {
+    const uploadResult = await uploadImageFromPath(req.file.path, {
+      folder: 'jobfinder/avatars',
+      public_id: `avatar_${numUserId}_${Date.now()}`
+    });
+    avatarUrl = uploadResult?.secure_url || uploadResult?.url || '';
+    if (!avatarUrl) {
+      throw new Error('Cloudinary không trả về URL ảnh.');
+    }
+  } catch (err) {
+    return res.status(500).json({ error: `Không thể upload ảnh lên Cloudinary: ${err.message}` });
+  } finally {
+    if (req.file?.path) {
+      fs.unlink(req.file.path, () => {});
+    }
+  }
+
   const absoluteUrl = buildAbsoluteUrl(req, avatarUrl);
 
   // Upsert: nếu chưa có HoSoUngVien thì tạo mới để không bị mất avatar sau reload

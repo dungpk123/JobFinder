@@ -80,7 +80,7 @@ function AppContent() {
   const closeEmployerRegisterModal = () => setShowEmployerRegisterModal(false);
 
   // Ẩn Header và Footer khi ở các trang dashboard
-  const isDashboardPage = location.pathname === '/admin' || 
+  const isDashboardPage = location.pathname.startsWith('/admin') || 
                           location.pathname.startsWith('/employer') || 
                           location.pathname === '/candidate';
 
@@ -129,7 +129,7 @@ function AppContent() {
 
           {/* Protected routes for role-based dashboards */}
           <Route
-            path="/admin"
+            path="/admin/*"
             element={
               <ProtectedRoute allowedRoles={['Quản trị', 'Siêu quản trị viên']}>
                 <AdminDashboard />

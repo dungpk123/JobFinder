@@ -62,7 +62,7 @@ export const LoginForm = ({ onSuccess, onCreateAccount, onForgotPassword }) => {
             switch(data.user.role) {
                 case 'Quản trị':
                 case 'Siêu quản trị viên':
-                    navigate('/admin');
+                    navigate('/admin/dashboard');
                     break;
                 case 'Nhà tuyển dụng':
                     navigate('/employer');

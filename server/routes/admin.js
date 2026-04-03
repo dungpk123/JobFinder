@@ -1,6 +1,10 @@
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
+const multer = require('multer');
 const db = require('../config/db');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
+const { isCloudinaryConfigured, uploadImageFromPath } = require('../config/cloudinary');
 
 const router = express.Router();
 
@@ -21,6 +25,24 @@ const dbRun = (sql, params = []) =>
       resolve({ lastID: this.lastID, changes: this.changes });
     });
   });
+
+const isAbsoluteUrl = (value = '') => /^https?:\/\//i.test(value) || value.startsWith('//');
+const buildAbsoluteUrl = (req, relativePath) => {
+  if (!relativePath) return '';
+  if (isAbsoluteUrl(relativePath)) {
+    return relativePath.startsWith('//') ? `${req.protocol}:${relativePath}` : relativePath;
+  }
+  return `${req.protocol}://${req.get('host')}${relativePath}`;
+};
+
+const parseJsonArray = (text) => {
+  try {
+    const parsed = JSON.parse(text || '[]');
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+};
 
 const getCompanyWithOwner = async (id) => {
   return dbGet(
@@ -48,6 +70,40 @@ const toInt = (v, def) => {
 
 const isMysql = /^mysql:\/\//i.test(process.env.DATABASE_URL || '');
 
+let ensureNguoiDungNgayXoaColumnPromise = null;
+const ensureNguoiDungNgayXoaColumn = async () => {
+  if (ensureNguoiDungNgayXoaColumnPromise) return ensureNguoiDungNgayXoaColumnPromise;
+
+  ensureNguoiDungNgayXoaColumnPromise = (async () => {
+    if (isMysql) {
+      const row = await dbGet(
+        `SELECT COUNT(*) AS c
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'NguoiDung'
+           AND COLUMN_NAME = 'NgayXoa'`
+      );
+      if (Number(row?.c || 0) === 0) {
+        await dbRun('ALTER TABLE NguoiDung ADD COLUMN NgayXoa DATETIME NULL');
+      }
+      return;
+    }
+
+    const columns = await dbAll(`PRAGMA table_info('NguoiDung')`);
+    const hasNgayXoa = columns.some((col) => String(col?.name || '').toLowerCase() === 'ngayxoa');
+    if (!hasNgayXoa) {
+      await dbRun('ALTER TABLE NguoiDung ADD COLUMN NgayXoa TEXT');
+    }
+  })();
+
+  try {
+    await ensureNguoiDungNgayXoaColumnPromise;
+  } catch (err) {
+    ensureNguoiDungNgayXoaColumnPromise = null;
+    throw err;
+  }
+};
+
 let ensureCvTemplateTablePromise = null;
 const ensureCvTemplateTable = async () => {
   if (ensureCvTemplateTablePromise) return ensureCvTemplateTablePromise;
@@ -59,6 +115,7 @@ const ensureCvTemplateTable = async () => {
         TenTemplate VARCHAR(255) NOT NULL,
         Slug VARCHAR(191) NOT NULL UNIQUE,
         MoTa TEXT NULL,
+        ThumbnailUrl TEXT NULL,
         HtmlContent LONGTEXT NOT NULL,
         TrangThai TINYINT DEFAULT 1,
         NguoiTao INT NULL,
@@ -74,6 +131,7 @@ const ensureCvTemplateTable = async () => {
         TenTemplate TEXT NOT NULL,
         Slug TEXT NOT NULL UNIQUE,
         MoTa TEXT,
+        ThumbnailUrl TEXT,
         HtmlContent TEXT NOT NULL,
         TrangThai INTEGER DEFAULT 1,
         NguoiTao INTEGER,
@@ -84,6 +142,27 @@ const ensureCvTemplateTable = async () => {
     `;
 
     await dbRun(isMysql ? mysqlSql : sqliteSql);
+
+    if (isMysql) {
+      const row = await dbGet(
+        `SELECT COUNT(*) AS c
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'CvTemplate'
+           AND COLUMN_NAME = 'ThumbnailUrl'`
+      );
+
+      if (Number(row?.c || 0) === 0) {
+        await dbRun('ALTER TABLE CvTemplate ADD COLUMN ThumbnailUrl TEXT NULL');
+      }
+      return;
+    }
+
+    const columns = await dbAll(`PRAGMA table_info('CvTemplate')`);
+    const hasThumbnailUrl = columns.some((col) => String(col?.name || '').toLowerCase() === 'thumbnailurl');
+    if (!hasThumbnailUrl) {
+      await dbRun('ALTER TABLE CvTemplate ADD COLUMN ThumbnailUrl TEXT');
+    }
   })();
 
   try {
@@ -104,6 +183,75 @@ const normalizeSlug = (value) => String(value || '')
   .replace(/\s+/g, '-')
   .replace(/-+/g, '-')
   .replace(/^-|-$/g, '');
+
+const mapUserRow = (row) => {
+  if (!row) return null;
+  return {
+    MaNguoiDung: row.MaNguoiDung,
+    Email: row.Email,
+    HoTen: row.HoTen,
+    SoDienThoai: row.SoDienThoai,
+    VaiTro: row.VaiTro,
+    TrangThai: row.TrangThai,
+    NgayTao: row.NgayTao,
+    NgayCapNhat: row.NgayCapNhat,
+    NgayXoa: row.NgayXoa || null,
+    IsSuperAdmin: Number(row.IsSuperAdmin || 0)
+  };
+};
+
+const getUserById = (id) => dbGet(
+  `SELECT
+      MaNguoiDung,
+      Email,
+      HoTen,
+      SoDienThoai,
+      CASE WHEN IFNULL(IsSuperAdmin, 0) = 1 THEN 'Siêu quản trị viên' ELSE VaiTro END AS VaiTro,
+      TrangThai,
+      NgayTao,
+      NgayCapNhat,
+      NgayXoa,
+      IFNULL(IsSuperAdmin, 0) AS IsSuperAdmin
+   FROM NguoiDung
+   WHERE MaNguoiDung = ?`,
+  [id]
+).then(mapUserRow);
+
+const cvTemplateThumbnailTmpDir = path.join(__dirname, '../public/images/template-thumbnails');
+fs.mkdirSync(cvTemplateThumbnailTmpDir, { recursive: true });
+
+const cvTemplateThumbnailStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, cvTemplateThumbnailTmpDir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname || '').toLowerCase() || '.jpg';
+    cb(null, `cv_template_thumb_${Date.now()}_${Math.round(Math.random() * 1e6)}${ext}`);
+  }
+});
+
+const uploadCvTemplateThumbnail = multer({
+  storage: cvTemplateThumbnailStorage,
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!String(file?.mimetype || '').startsWith('image/')) {
+      return cb(new Error('Chỉ chấp nhận file ảnh cho thumbnail.'));
+    }
+    return cb(null, true);
+  }
+});
+
+const handleCvTemplateThumbnailUpload = (req, res, next) => {
+  uploadCvTemplateThumbnail.single('thumbnail')(req, res, (err) => {
+    if (!err) return next();
+
+    if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({ success: false, error: 'Kích thước ảnh không vượt quá 2MB.' });
+    }
+
+    return res.status(400).json({ success: false, error: err.message || 'Không thể tải ảnh lên.' });
+  });
+};
 
 router.use(authenticateToken, authorizeRole(['Quản trị', 'Siêu quản trị viên']));
 
@@ -151,20 +299,127 @@ router.get('/overview', async (req, res) => {
 
 router.get('/users', async (req, res) => {
   try {
+    await ensureNguoiDungNgayXoaColumn();
+
     const limit = Math.min(Math.max(toInt(req.query.limit, 50), 1), 200);
     const offset = Math.max(toInt(req.query.offset, 0), 0);
 
     const rows = await dbAll(
             `SELECT MaNguoiDung, Email, HoTen, SoDienThoai,
               CASE WHEN IFNULL(IsSuperAdmin, 0) = 1 THEN 'Siêu quản trị viên' ELSE VaiTro END AS VaiTro,
-              TrangThai, NgayTao, IFNULL(IsSuperAdmin, 0) AS IsSuperAdmin
+              TrangThai, NgayTao, NgayCapNhat, NgayXoa, IFNULL(IsSuperAdmin, 0) AS IsSuperAdmin
        FROM NguoiDung
        ORDER BY MaNguoiDung DESC
        LIMIT ? OFFSET ?`,
       [limit, offset]
     );
 
-    return res.json({ success: true, users: rows });
+    return res.json({ success: true, users: rows.map(mapUserRow) });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || 'Server error' });
+  }
+});
+
+router.get('/users/:id/detail', async (req, res) => {
+  try {
+    await ensureNguoiDungNgayXoaColumn();
+
+    const id = toInt(req.params.id, NaN);
+    if (!Number.isFinite(id)) return res.status(400).json({ success: false, error: 'id không hợp lệ' });
+
+    const row = await dbGet(
+      `SELECT
+          nd.MaNguoiDung,
+          nd.Email,
+          nd.HoTen,
+          nd.SoDienThoai,
+          nd.DiaChi,
+          CASE WHEN IFNULL(nd.IsSuperAdmin, 0) = 1 THEN 'Siêu quản trị viên' ELSE nd.VaiTro END AS VaiTro,
+          nd.TrangThai,
+          nd.NgayTao,
+          nd.NgayCapNhat,
+          nd.NgayXoa,
+          IFNULL(nd.IsSuperAdmin, 0) AS IsSuperAdmin,
+          hsv.NgaySinh,
+          hsv.GioiTinh,
+          hsv.ThanhPho AS UngVienThanhPho,
+          hsv.QuanHuyen AS UngVienQuanHuyen,
+          hsv.DiaChi AS UngVienDiaChi,
+          hsv.ChucDanh,
+          hsv.TrinhDoHocVan,
+          hsv.SoNamKinhNghiem,
+          hsv.LinkCaNhan,
+          hsv.GioiThieuBanThan,
+          hsv.AnhDaiDien,
+          hsv.EducationListJson,
+          hsv.WorkListJson,
+          hsv.LanguageListJson,
+          ntd.MaNhaTuyenDung,
+          COALESCE(ntd.TenCongTy, c.TenCongTy) AS TenCongTy,
+          COALESCE(ntd.MaSoThue, c.MaSoThue) AS MaSoThue,
+          COALESCE(ntd.Website, c.Website) AS Website,
+          COALESCE(ntd.DiaChi, c.DiaChi) AS DiaChiCongTy,
+          COALESCE(ntd.ThanhPho, c.ThanhPho) AS ThanhPhoCongTy,
+          COALESCE(ntd.MoTa, c.MoTa) AS MoTaCongTy,
+          COALESCE(ntd.Logo, c.Logo) AS LogoCongTy
+       FROM NguoiDung nd
+       LEFT JOIN HoSoUngVien hsv ON hsv.MaNguoiDung = nd.MaNguoiDung
+       LEFT JOIN NhaTuyenDung ntd ON ntd.MaNguoiDung = nd.MaNguoiDung
+       LEFT JOIN CongTy c ON c.NguoiDaiDien = nd.MaNguoiDung
+       WHERE nd.MaNguoiDung = ?`,
+      [id]
+    );
+
+    if (!row) return res.status(404).json({ success: false, error: 'Không tìm thấy người dùng' });
+
+    const avatarUrl = row.AnhDaiDien || row.LogoCongTy || '';
+    const candidateProfile = row.ChucDanh
+      || row.UngVienThanhPho
+      || row.GioiThieuBanThan
+      || row.NgaySinh
+      || row.AnhDaiDien
+      ? {
+        NgaySinh: row.NgaySinh || null,
+        GioiTinh: row.GioiTinh || '',
+        ThanhPho: row.UngVienThanhPho || '',
+        QuanHuyen: row.UngVienQuanHuyen || '',
+        DiaChi: row.UngVienDiaChi || '',
+        ChucDanh: row.ChucDanh || '',
+        TrinhDoHocVan: row.TrinhDoHocVan || '',
+        SoNamKinhNghiem: Number(row.SoNamKinhNghiem || 0),
+        LinkCaNhan: row.LinkCaNhan || '',
+        GioiThieuBanThan: row.GioiThieuBanThan || '',
+        EducationList: parseJsonArray(row.EducationListJson),
+        WorkList: parseJsonArray(row.WorkListJson),
+        LanguageList: parseJsonArray(row.LanguageListJson)
+      }
+      : null;
+
+    const employerProfile = row.TenCongTy
+      || row.Website
+      || row.DiaChiCongTy
+      || row.ThanhPhoCongTy
+      ? {
+        MaNhaTuyenDung: row.MaNhaTuyenDung || null,
+        TenCongTy: row.TenCongTy || '',
+        MaSoThue: row.MaSoThue || '',
+        Website: row.Website || '',
+        DiaChi: row.DiaChiCongTy || '',
+        ThanhPho: row.ThanhPhoCongTy || '',
+        MoTa: row.MoTaCongTy || ''
+      }
+      : null;
+
+    return res.json({
+      success: true,
+      detail: {
+        user: mapUserRow(row),
+        avatarUrl,
+        avatarAbsoluteUrl: buildAbsoluteUrl(req, avatarUrl),
+        candidateProfile,
+        employerProfile
+      }
+    });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || 'Server error' });
   }
@@ -172,6 +427,8 @@ router.get('/users', async (req, res) => {
 
 router.patch('/users/:id', async (req, res) => {
   try {
+    await ensureNguoiDungNgayXoaColumn();
+
     const id = toInt(req.params.id, NaN);
     if (!Number.isFinite(id)) return res.status(400).json({ success: false, error: 'id không hợp lệ' });
 
@@ -205,6 +462,9 @@ router.patch('/users/:id', async (req, res) => {
     if (status != null) {
       fields.push('TrangThai = ?');
       params.push(status);
+      if (status === 1) {
+        fields.push('NgayXoa = NULL');
+      }
     }
 
     if (fields.length === 0) {
@@ -215,14 +475,7 @@ router.patch('/users/:id', async (req, res) => {
 
     await dbRun(`UPDATE NguoiDung SET ${fields.join(', ')} WHERE MaNguoiDung = ?`, [...params, id]);
 
-    const user = await dbGet(
-            `SELECT MaNguoiDung, Email, HoTen, SoDienThoai,
-              CASE WHEN IFNULL(IsSuperAdmin, 0) = 1 THEN 'Siêu quản trị viên' ELSE VaiTro END AS VaiTro,
-              TrangThai, NgayTao, IFNULL(IsSuperAdmin, 0) AS IsSuperAdmin
-       FROM NguoiDung
-       WHERE MaNguoiDung = ?`,
-      [id]
-    );
+    const user = await getUserById(id);
 
     return res.json({ success: true, user });
   } catch (err) {
@@ -232,6 +485,8 @@ router.patch('/users/:id', async (req, res) => {
 
 router.delete('/users/:id', async (req, res) => {
   try {
+    await ensureNguoiDungNgayXoaColumn();
+
     const id = toInt(req.params.id, NaN);
     if (!Number.isFinite(id)) return res.status(400).json({ success: false, error: 'id không hợp lệ' });
 
@@ -249,8 +504,50 @@ router.delete('/users/:id', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Không thể xóa tài khoản quản trị/siêu quản trị' });
     }
 
-    await dbRun('DELETE FROM NguoiDung WHERE MaNguoiDung = ?', [id]);
-    return res.json({ success: true });
+    await dbRun(
+      `UPDATE NguoiDung
+       SET TrangThai = 0,
+           NgayXoa = COALESCE(NgayXoa, datetime("now", "localtime")),
+           NgayCapNhat = datetime("now", "localtime")
+       WHERE MaNguoiDung = ?`,
+      [id]
+    );
+
+    const user = await getUserById(id);
+    return res.json({ success: true, user });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || 'Server error' });
+  }
+});
+
+router.post('/users/:id/restore', async (req, res) => {
+  try {
+    await ensureNguoiDungNgayXoaColumn();
+
+    const id = toInt(req.params.id, NaN);
+    if (!Number.isFinite(id)) return res.status(400).json({ success: false, error: 'id không hợp lệ' });
+
+    const target = await dbGet(
+      'SELECT MaNguoiDung, VaiTro, IFNULL(IsSuperAdmin, 0) AS IsSuperAdmin FROM NguoiDung WHERE MaNguoiDung = ?',
+      [id]
+    );
+    if (!target) return res.status(404).json({ success: false, error: 'Không tìm thấy người dùng' });
+
+    if (Number(target.IsSuperAdmin) === 1 || target.VaiTro === 'Quản trị') {
+      return res.status(400).json({ success: false, error: 'Không thể thao tác với tài khoản quản trị/siêu quản trị' });
+    }
+
+    await dbRun(
+      `UPDATE NguoiDung
+       SET TrangThai = 1,
+           NgayXoa = NULL,
+           NgayCapNhat = datetime("now", "localtime")
+       WHERE MaNguoiDung = ?`,
+      [id]
+    );
+
+    const user = await getUserById(id);
+    return res.json({ success: true, user });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || 'Server error' });
   }
@@ -482,6 +779,7 @@ router.get('/templates', async (req, res) => {
           TenTemplate,
           Slug,
           MoTa,
+          ThumbnailUrl,
           TrangThai,
           NgayTao,
           NgayCapNhat
@@ -518,6 +816,7 @@ router.get('/templates/:id', async (req, res) => {
           TenTemplate,
           Slug,
           MoTa,
+          ThumbnailUrl,
           HtmlContent,
           TrangThai,
           NgayTao,
@@ -534,6 +833,42 @@ router.get('/templates/:id', async (req, res) => {
   }
 });
 
+router.post('/templates/upload-thumbnail', handleCvTemplateThumbnailUpload, async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, error: 'Thiếu file thumbnail.' });
+  }
+
+  if (!isCloudinaryConfigured()) {
+    if (req.file?.path) fs.unlink(req.file.path, () => {});
+    return res.status(500).json({
+      success: false,
+      error: 'Cloudinary chưa được cấu hình trên server. Vui lòng cấu hình biến môi trường CLOUDINARY_*.'
+    });
+  }
+
+  try {
+    const uploadResult = await uploadImageFromPath(req.file.path, {
+      folder: 'jobfinder/cv-template-thumbnails',
+      public_id: `cv_template_thumb_${Date.now()}`
+    });
+
+    const thumbnailUrl = uploadResult?.secure_url || uploadResult?.url || '';
+    if (!thumbnailUrl) {
+      throw new Error('Cloudinary không trả về URL thumbnail.');
+    }
+
+    return res.json({
+      success: true,
+      thumbnailUrl,
+      thumbnailAbsoluteUrl: buildAbsoluteUrl(req, thumbnailUrl)
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || 'Không thể upload thumbnail.' });
+  } finally {
+    if (req.file?.path) fs.unlink(req.file.path, () => {});
+  }
+});
+
 router.post('/templates', async (req, res) => {
   try {
     await ensureCvTemplateTable();
@@ -541,11 +876,13 @@ router.post('/templates', async (req, res) => {
     const name = String(req.body?.name || '').trim();
     const slug = normalizeSlug(req.body?.slug || name);
     const description = String(req.body?.description || '').trim();
+    const thumbnailUrl = String(req.body?.thumbnailUrl || req.body?.ThumbnailUrl || '').trim();
     const htmlContent = String(req.body?.htmlContent || '');
     const status = req.body?.status != null ? toInt(req.body.status, null) : 1;
 
     if (!name) return res.status(400).json({ success: false, error: 'Tên template là bắt buộc' });
     if (!slug) return res.status(400).json({ success: false, error: 'Slug không hợp lệ' });
+    if (thumbnailUrl && !isAbsoluteUrl(thumbnailUrl)) return res.status(400).json({ success: false, error: 'Thumbnail URL không hợp lệ' });
     if (!htmlContent.trim()) return res.status(400).json({ success: false, error: 'HTML content là bắt buộc' });
     if (![0, 1].includes(status)) return res.status(400).json({ success: false, error: 'TrangThai không hợp lệ (0/1)' });
 
@@ -556,13 +893,13 @@ router.post('/templates', async (req, res) => {
 
     await dbRun(
       `INSERT INTO CvTemplate (
-        TenTemplate, Slug, MoTa, HtmlContent, TrangThai, NguoiTao, NguoiCapNhat, NgayTao, NgayCapNhat
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, datetime("now", "localtime"), datetime("now", "localtime"))`,
-      [name, slug, description || null, htmlContent, status, req.user?.id || null, req.user?.id || null]
+        TenTemplate, Slug, MoTa, ThumbnailUrl, HtmlContent, TrangThai, NguoiTao, NguoiCapNhat, NgayTao, NgayCapNhat
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime("now", "localtime"), datetime("now", "localtime"))`,
+      [name, slug, description || null, thumbnailUrl || null, htmlContent, status, req.user?.id || null, req.user?.id || null]
     );
 
     const template = await dbGet(
-      `SELECT MaTemplateCV, TenTemplate, Slug, MoTa, HtmlContent, TrangThai, NgayTao, NgayCapNhat
+      `SELECT MaTemplateCV, TenTemplate, Slug, MoTa, ThumbnailUrl, HtmlContent, TrangThai, NgayTao, NgayCapNhat
        FROM CvTemplate
        WHERE lower(Slug) = ?`,
       [slug]
@@ -616,6 +953,15 @@ router.patch('/templates/:id', async (req, res) => {
       params.push(String(req.body.description || '').trim() || null);
     }
 
+    if (req.body?.thumbnailUrl != null || req.body?.ThumbnailUrl != null) {
+      const nextThumbnailUrl = String(req.body?.thumbnailUrl ?? req.body?.ThumbnailUrl ?? '').trim();
+      if (nextThumbnailUrl && !isAbsoluteUrl(nextThumbnailUrl)) {
+        return res.status(400).json({ success: false, error: 'Thumbnail URL không hợp lệ' });
+      }
+      fields.push('ThumbnailUrl = ?');
+      params.push(nextThumbnailUrl || null);
+    }
+
     if (req.body?.htmlContent != null) {
       const htmlContent = String(req.body.htmlContent || '');
       if (!htmlContent.trim()) return res.status(400).json({ success: false, error: 'HTML content là bắt buộc' });
@@ -641,7 +987,7 @@ router.patch('/templates/:id', async (req, res) => {
     await dbRun(`UPDATE CvTemplate SET ${fields.join(', ')} WHERE MaTemplateCV = ?`, [...params, id]);
 
     const template = await dbGet(
-      `SELECT MaTemplateCV, TenTemplate, Slug, MoTa, HtmlContent, TrangThai, NgayTao, NgayCapNhat
+      `SELECT MaTemplateCV, TenTemplate, Slug, MoTa, ThumbnailUrl, HtmlContent, TrangThai, NgayTao, NgayCapNhat
        FROM CvTemplate
        WHERE MaTemplateCV = ?`,
       [id]

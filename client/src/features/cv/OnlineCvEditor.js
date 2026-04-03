@@ -1,13 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useNotification } from '../../components/NotificationProvider';
+import { API_BASE } from '../../config/apiBase';
 import './OnlineCvEditor.css';
-
-const SINGLE_TEMPLATE_KEY = 'live-editor';
-
-const TEMPLATE_OPTIONS = [
-  { key: SINGLE_TEMPLATE_KEY, label: 'Mẫu CV Live Editor (duy nhất)' },
-];
 
 const useQuery = () => {
   const { search } = useLocation();
@@ -189,7 +184,11 @@ const SAMPLE_DATA = {
   projects: `Chiến dịch "Mùa hè sôi động" - Công ty ABC\n• Lên kế hoạch và triển khai chiến dịch marketing tích hợp`,
 };
 
-const normalizeTemplateKey = () => SINGLE_TEMPLATE_KEY;
+const normalizeTemplateKey = (value, fallback = '') => {
+  const v = String(value || '').trim();
+  if (!v) return fallback;
+  return /^[a-z0-9-]{1,120}$/i.test(v) ? v : fallback;
+};
 
 const OnlineCvEditor = () => {
   const navigate = useNavigate();
@@ -206,11 +205,13 @@ const OnlineCvEditor = () => {
 
   const userId = user?.id || user?.MaNguoiDung || user?.maNguoiDung || user?.userId || user?.userID || null;
   const cvId = query.get('cvId') || query.get('cvid') || query.get('id');
+  const requestedTemplateKey = normalizeTemplateKey(query.get('template') || '', '');
   const isNewCv = !cvId;
 
   const suppressLoadErrorsUntilRef = useRef(0);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [templateLoading, setTemplateLoading] = useState(true);
 
   const [title, setTitle] = useState(isNewCv ? SAMPLE_DATA.title : 'CV Online');
   const [summary, setSummary] = useState(isNewCv ? SAMPLE_DATA.summary : '');
@@ -219,7 +220,10 @@ const OnlineCvEditor = () => {
   const [education, setEducation] = useState(isNewCv ? SAMPLE_DATA.education : '');
   const [languages, setLanguages] = useState(isNewCv ? SAMPLE_DATA.languages : '');
   const [projects, setProjects] = useState(isNewCv ? SAMPLE_DATA.projects : '');
-  const [templateKey] = useState(SINGLE_TEMPLATE_KEY);
+  const [templateKey, setTemplateKey] = useState(requestedTemplateKey || '');
+  const [templateOptions, setTemplateOptions] = useState([]);
+  const [selectedTemplateHtml, setSelectedTemplateHtml] = useState('');
+  const [selectedTemplateLabel, setSelectedTemplateLabel] = useState('Đang tải mẫu CV...');
 
   const [profile, setProfile] = useState(null);
   const [activeField, setActiveField] = useState('');
@@ -271,6 +275,68 @@ const OnlineCvEditor = () => {
     window.addEventListener('message', handlePreviewBridge);
     return () => window.removeEventListener('message', handlePreviewBridge);
   }, [updateFieldValue]);
+
+  useEffect(() => {
+    let active = true;
+
+    const loadTemplateOptions = async () => {
+      setTemplateLoading(true);
+
+      try {
+        const res = await fetch(`${API_BASE}/api/cvs/templates?limit=120&offset=0`);
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.success) {
+          throw new Error(data?.error || 'Không tải được danh sách template');
+        }
+
+        if (!active) return;
+
+        const rows = Array.isArray(data?.templates) ? data.templates : [];
+        const mapped = rows
+          .map((row) => ({
+            key: normalizeTemplateKey(row?.Slug || row?.MaTemplateCV, ''),
+            label: String(row?.TenTemplate || `Template #${row?.MaTemplateCV || ''}`).trim(),
+            htmlContent: String(row?.HtmlContent || '')
+          }))
+          .filter((item) => item.key);
+
+        const options = mapped;
+
+        const requested = requestedTemplateKey && options.some((item) => item.key === requestedTemplateKey)
+          ? requestedTemplateKey
+          : null;
+
+        const fallbackKey = options[0]?.key || '';
+        const resolvedKey = requested || fallbackKey;
+        const selected = options.find((item) => item.key === resolvedKey) || null;
+
+        setTemplateOptions(options);
+        setTemplateKey(resolvedKey);
+        setSelectedTemplateHtml(selected?.htmlContent || '');
+        setSelectedTemplateLabel(selected?.label || 'Chưa có mẫu CV khả dụng');
+      } catch (err) {
+        if (!active) return;
+        setTemplateOptions([]);
+        setTemplateKey('');
+        setSelectedTemplateHtml('');
+        setSelectedTemplateLabel('Không tải được mẫu CV');
+      } finally {
+        if (active) setTemplateLoading(false);
+      }
+    };
+
+    loadTemplateOptions();
+    return () => {
+      active = false;
+    };
+  }, [requestedTemplateKey]);
+
+  useEffect(() => {
+    if (!templateOptions.length) return;
+    const selected = templateOptions.find((item) => item.key === templateKey) || templateOptions[0];
+    setSelectedTemplateHtml(selected?.htmlContent || '');
+    setSelectedTemplateLabel(selected?.label || 'Chưa có mẫu CV khả dụng');
+  }, [templateOptions, templateKey]);
 
   const readErrorMessage = async (res, fallback) => {
     try {
@@ -385,6 +451,11 @@ const OnlineCvEditor = () => {
             setEducation(data.cv?.content?.education || '');
             setLanguages(data.cv?.content?.languages || '');
             setProjects(data.cv?.content?.projects || '');
+
+            const savedTemplateKey = normalizeTemplateKey(data.cv?.templateKey || '', '');
+            if (savedTemplateKey) {
+              setTemplateKey(savedTemplateKey);
+            }
             return;
           } catch (e) {
             lastError = e;
@@ -426,126 +497,70 @@ const OnlineCvEditor = () => {
     const link = escapeHtml(pick(p.personalLink, p.LinkCaNhan, p.linkCaNhan, useSample ? 'linkedin.com/in/nguyenvana' : ''));
     const avatarUrl = pick(p.avatarUrl, p.AnhDaiDien, p.anhDaiDien, p.avatar, '');
 
-    const editableBlock = (fieldKey, body, placeholder, multiline = true, className = '') => {
-      const t = String(body || '').replace(/\r/g, '');
-      const safe = escapeHtml(t.trim()).replace(/\n/g, '<br/>');
-      const empty = !String(t || '').trim();
-      const cls = ['cv-live-editable', className, empty ? 'is-empty' : ''].filter(Boolean).join(' ');
-      const safePlaceholder = escapeHtml(String(placeholder || 'Nhập nội dung...'));
+    const managedTemplateHtml = String(selectedTemplateHtml || '').trim();
+    if (managedTemplateHtml) {
+      const tokenMap = {
+        title,
+        summary,
+        skills,
+        experience,
+        education,
+        languages,
+        projects,
+        name,
+        position,
+        email,
+        phone,
+        birthday,
+        address,
+        city,
+        link,
+        avatarUrl
+      };
 
-      return `<div class="${cls}" data-cv-field="${fieldKey}" data-cv-multiline="${multiline ? '1' : '0'}" data-cv-empty="${empty ? '1' : '0'}" data-cv-placeholder="${safePlaceholder}">${empty ? '' : safe}</div>`;
-    };
+      let rendered = managedTemplateHtml;
+      Object.entries(tokenMap).forEach(([key, rawValue]) => {
+        const safe = escapeHtml(String(rawValue || '')).replace(/\n/g, '<br/>');
+        const regex = new RegExp(`\\{\\{\\s*${key}\\s*\\}\\}`, 'gi');
+        rendered = rendered.replace(regex, safe);
+      });
 
-    const contactRow = (label, value) => {
-      const v = String(value || '').trim();
-      if (!v) return '';
-      return `<div class="live-contact-row"><span class="live-contact-label">${label}</span><span class="live-contact-value">${escapeHtml(v)}</span></div>`;
-    };
+      return rendered;
+    }
+
+    if (templateLoading) {
+      return `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f8fafc;font-family:Segoe UI,Tahoma,sans-serif;color:#334155}
+    .loading{padding:24px 30px;border:1px solid #dbeafe;border-radius:16px;background:#ffffff;box-shadow:0 16px 35px rgba(15,23,42,.08);font-weight:600}
+  </style>
+</head>
+<body>
+  <div class="loading">Đang tải mẫu CV...</div>
+</body>
+</html>`;
+    }
 
     return `<!doctype html>
 <html>
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${escapeHtml(title || 'CV Online')}</title>
-<style>
-  :root{--accent:#0f766e; --sidebar:#134e4a; --bg:#ecfeff;}
-  *{box-sizing:border-box;}
-  body{margin:0; padding:26px; background:radial-gradient(circle at 20% 20%, #ccfbf1 0, transparent 48%), radial-gradient(circle at 85% 10%, #e0f2fe 0, transparent 45%), var(--bg); font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color:#0f172a;}
-  .live-shell{max-width:1020px; margin:0 auto; display:grid; grid-template-columns:300px 1fr; border-radius:22px; overflow:hidden; border:1px solid rgba(15,23,42,.12); box-shadow:0 28px 70px rgba(15,23,42,.16); background:#fff;}
-  .live-rail{background:linear-gradient(170deg, var(--sidebar) 0%, #0f766e 45%, #115e59 100%); color:#f8fafc; padding:28px 22px; position:relative; overflow:hidden;}
-  .live-rail::before{content:''; position:absolute; width:220px; height:220px; border-radius:999px; background:rgba(255,255,255,.11); top:-140px; right:-120px;}
-  .live-rail::after{content:''; position:absolute; width:170px; height:170px; border-radius:999px; background:rgba(255,255,255,.08); bottom:-90px; left:-100px;}
-  .live-photo{width:118px; height:118px; border-radius:18px; overflow:hidden; background:rgba(248,250,252,.25); border:2px solid rgba(248,250,252,.35); display:flex; align-items:center; justify-content:center; margin-bottom:16px; position:relative; z-index:1;}
-  .live-photo img{width:100%; height:100%; object-fit:cover; display:block;}
-  .live-photo-ph{font-size:12px; opacity:.9;}
-  .live-name{font-size:28px; line-height:1.08; font-weight:700; margin:0; letter-spacing:.4px; position:relative; z-index:1;}
-  .live-role{margin-top:8px; font-size:13px; letter-spacing:1.3px; text-transform:uppercase; opacity:.92; font-weight:600; position:relative; z-index:1;}
-  .live-contact{margin-top:18px; position:relative; z-index:1;}
-  .live-contact-row{margin-bottom:9px;}
-  .live-contact-label{display:block; font-size:11px; opacity:.78; letter-spacing:.6px; text-transform:uppercase;}
-  .live-contact-value{display:block; font-size:13px; line-height:1.5; font-weight:600; margin-top:2px; word-break:break-word;}
-  .live-tip{margin-top:16px; padding:10px 12px; border-radius:12px; background:rgba(15,23,42,.22); font-size:11px; line-height:1.55; position:relative; z-index:1;}
-  .live-main{padding:28px 30px 32px; background:#fff;}
-  .live-top{padding-bottom:16px; border-bottom:1px solid #e2e8f0;}
-  .live-kicker{font-size:11px; font-weight:700; letter-spacing:1.3px; text-transform:uppercase; color:#0f766e;}
-  .live-top-title{font-size:30px; font-weight:700; color:#0f172a; margin-top:8px; line-height:1.2;}
-  .live-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:18px;}
-  .live-card{border:1px solid #dbe2ea; border-radius:14px; padding:14px 14px 12px; background:#f8fafc;}
-  .live-card.full{grid-column:1/-1;}
-  .live-card h3{margin:0 0 8px; font-size:12px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:#0f766e;}
-  .cv-live-editable{min-height:20px; color:#0f172a; font-size:13.5px; line-height:1.6; word-break:break-word; white-space:pre-wrap;}
-  .cv-live-editable.live-top-title{font-size:30px; line-height:1.2; font-weight:700;}
-  @media (max-width:900px){
-    body{padding:14px;}
-    .live-shell{grid-template-columns:1fr;}
-    .live-main{padding:20px 16px 22px;}
-    .live-grid{grid-template-columns:1fr;}
-  }
-  @media print{
-    body{padding:0; background:#fff;}
-    .live-shell{border:none; border-radius:0; box-shadow:none;}
-  }
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f8fafc;font-family:Segoe UI,Tahoma,sans-serif;color:#334155;padding:24px}
+    .empty{max-width:560px;padding:24px;border:1px dashed #cbd5e1;border-radius:16px;background:#ffffff;text-align:center;box-shadow:0 12px 30px rgba(15,23,42,.06)}
+    h2{margin:0 0 8px;font-size:20px;color:#0f172a}
+    p{margin:0;font-size:14px;line-height:1.6}
+  </style>
 </head>
 <body>
-  <div class="live-shell">
-    <aside class="live-rail">
-      <div class="live-photo">
-        ${avatarUrl ? `<img src="${escapeHtml(avatarUrl)}" alt="avatar" />` : `<div class="live-photo-ph">Ảnh hồ sơ</div>`}
-      </div>
-      <h1 class="live-name">${name}</h1>
-      ${position ? `<div class="live-role">${position}</div>` : ''}
-
-      <div class="live-contact">
-        ${contactRow('Điện thoại', phone)}
-        ${contactRow('Email', email)}
-        ${contactRow('Ngày sinh', birthday)}
-        ${contactRow('Địa chỉ', address || city)}
-        ${contactRow('Liên kết', link)}
-      </div>
-
-      <div class="live-tip">Click trực tiếp vào phần nội dung bên phải để chỉnh sửa tại chỗ. Khi rời ô, nội dung sẽ tự đồng bộ vào form.</div>
-    </aside>
-
-    <main class="live-main">
-      <div class="live-top">
-        <div class="live-kicker">Interactive CV Template</div>
-        ${editableBlock('title', title, 'Nhập tiêu đề CV của bạn', false, 'live-top-title')}
-      </div>
-
-      <div class="live-grid">
-        <section class="live-card full">
-          <h3>Mục tiêu nghề nghiệp</h3>
-          ${editableBlock('summary', summary, 'Mô tả ngắn mục tiêu nghề nghiệp và định hướng phát triển.')}
-        </section>
-
-        <section class="live-card">
-          <h3>Kỹ năng</h3>
-          ${editableBlock('skills', skills, 'Liệt kê các kỹ năng mạnh nhất của bạn.')}
-        </section>
-
-        <section class="live-card">
-          <h3>Ngoại ngữ</h3>
-          ${editableBlock('languages', languages, 'Ví dụ: Tiếng Anh - IELTS 7.0')}
-        </section>
-
-        <section class="live-card full">
-          <h3>Kinh nghiệm làm việc</h3>
-          ${editableBlock('experience', experience, 'Mô tả vị trí, công ty, thời gian và thành tựu chính.')}
-        </section>
-
-        <section class="live-card">
-          <h3>Học vấn</h3>
-          ${editableBlock('education', education, 'Trường, chuyên ngành, thời gian học.')}
-        </section>
-
-        <section class="live-card">
-          <h3>Dự án nổi bật</h3>
-          ${editableBlock('projects', projects, 'Dự án, vai trò, công nghệ và kết quả nổi bật.')}
-        </section>
-      </div>
-    </main>
+  <div class="empty">
+    <h2>Chưa có nội dung mẫu CV</h2>
+    <p>Template được chọn chưa có HTML hoặc đã bị xóa. Vui lòng quay lại trang mẫu CV để chọn mẫu khác.</p>
   </div>
 </body>
 </html>`;
@@ -562,6 +577,11 @@ const OnlineCvEditor = () => {
       notify({ type: 'error', message: 'Vui lòng nhập tiêu đề CV.' });
       return;
     }
+
+      if (!String(selectedTemplateHtml || '').trim()) {
+        notify({ type: 'error', message: 'Template hiện tại không có nội dung HTML. Vui lòng chọn mẫu khác.' });
+        return;
+      }
 
     setSaving(true);
     try {
@@ -600,7 +620,7 @@ const OnlineCvEditor = () => {
 
       const newId = data.cv?.id;
       if (newId && !cvId) {
-        navigate(`/create-cv/online-editor?cvId=${encodeURIComponent(newId)}&template=${SINGLE_TEMPLATE_KEY}`, { replace: true });
+        navigate(`/create-cv/online-editor?cvId=${encodeURIComponent(newId)}&template=${encodeURIComponent(templateKey)}`, { replace: true });
       }
     } catch (err) {
       notify({ type: 'error', message: err.message || 'Không thể lưu CV online' });
@@ -636,7 +656,7 @@ const OnlineCvEditor = () => {
         <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
           <div>
             <h3><i className="bi bi-file-earmark-text me-2"></i>CV Online</h3>
-            <div className="text-muted">Mẫu CV duy nhất hỗ trợ chỉnh sửa trực tiếp ngay trên bản xem trước.</div>
+            <div className="text-muted">Đang chỉnh sửa theo mẫu: <strong>{selectedTemplateLabel}</strong></div>
           </div>
           <div className="cv-editor-actions">
             <button type="button" className="btn btn-outline-secondary" onClick={() => navigate('/create-cv')}>
@@ -667,11 +687,17 @@ const OnlineCvEditor = () => {
                 <label className="cv-editor-label">
                   <i className="bi bi-palette"></i>Mẫu CV
                 </label>
-                <select className="form-select cv-editor-select cv-editor-template-select" value={templateKey} disabled>
-                  {TEMPLATE_OPTIONS.map((opt) => (
+                <select
+                  className="form-select cv-editor-select cv-editor-template-select"
+                  value={templateKey}
+                  onChange={(e) => setTemplateKey(normalizeTemplateKey(e.target.value))}
+                  disabled={templateLoading || !templateOptions.length}
+                >
+                  {templateOptions.map((opt) => (
                     <option key={opt.key} value={opt.key}>{opt.label}</option>
                   ))}
                 </select>
+                {templateLoading ? <small className="text-muted">Đang tải danh sách mẫu CV...</small> : null}
               </div>
 
               <div className={`cv-editor-form-group ${activeField === 'title' ? 'is-linked' : ''}`}>

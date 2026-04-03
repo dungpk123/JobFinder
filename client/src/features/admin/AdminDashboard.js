@@ -1,14 +1,128 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import {
+    BarChart3,
+    BriefcaseBusiness,
+    Building2,
+    ChevronDown,
+    ClipboardList,
+    FileStack,
+    House,
+    LayoutDashboard,
+    LogOut,
+    Menu,
+    ShieldCheck,
+    Users,
+    X
+} from 'lucide-react';
 import { API_BASE as CLIENT_API_BASE } from '../../config/apiBase';
-import AdminTemplateManager from './AdminTemplateManager';
+import AdminCompaniesPage from './pages/AdminCompaniesPage';
+import AdminJobsPage from './pages/AdminJobsPage';
+import AdminOverviewPage from './pages/AdminOverviewPage';
+import AdminProfilePage from './pages/AdminProfilePage';
+import AdminReportsPage from './pages/AdminReportsPage';
+import AdminTemplatesPage from './pages/AdminTemplatesPage';
+import AdminUsersPage from './pages/AdminUsersPage';
 import './AdminDashboard.css';
+
+const safeNumber = (value) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : 0;
+};
+
+const parseDateSafe = (value) => {
+    if (!value) return null;
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const formatRelativeTime = (value) => {
+    const date = value instanceof Date ? value : parseDateSafe(value);
+    if (!date) return 'Chưa có thời gian';
+
+    const diffInMs = Date.now() - date.getTime();
+    if (diffInMs < 60 * 1000) return 'Vừa xong';
+
+    const minutes = Math.floor(diffInMs / (60 * 1000));
+    if (minutes < 60) return `${minutes} phút trước`;
+
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} giờ trước`;
+
+    const days = Math.floor(hours / 24);
+    if (days < 30) return `${days} ngày trước`;
+
+    const months = Math.floor(days / 30);
+    if (months < 12) return `${months} tháng trước`;
+
+    const years = Math.floor(months / 12);
+    return `${years} năm trước`;
+};
+
+const getTemplateName = (template, index = 0) => {
+    const name = template?.TenTemplate
+        || template?.TemplateName
+        || template?.name
+        || template?.Slug
+        || template?.slug;
+    return String(name || `Template ${index + 1}`);
+};
+
+const getTemplateUsage = (template) => safeNumber(
+    template?.SoLuotSuDung
+    ?? template?.LuotSuDung
+    ?? template?.TongLuotSuDung
+    ?? template?.UsageCount
+    ?? template?.useCount
+    ?? template?.usedCount
+    ?? template?.so_luot_su_dung
+    ?? 0
+);
+
+const getTemplateCreatedAt = (template) => parseDateSafe(
+    template?.NgayTao
+    || template?.NgayCapNhat
+    || template?.createdAt
+    || template?.updatedAt
+    || template?.ngay_tao
+    || template?.created_at
+);
+
+const menuItems = [
+    { key: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', to: '/admin/dashboard' },
+    { key: 'users', icon: Users, label: 'Quản lý người dùng', to: '/admin/usersmanament' },
+    { key: 'jobs', icon: BriefcaseBusiness, label: 'Quản lý tin tuyển dụng', to: '/admin/jobs' },
+    { key: 'companies', icon: Building2, label: 'Quản lý công ty', to: '/admin/companies' },
+    {
+        key: 'templates',
+        icon: FileStack,
+        label: 'Quản lý template CV',
+        children: [
+            { key: 'templates-all', label: 'Tất cả template', to: '/admin/templates', exact: true },
+            { key: 'templates-create', label: 'Tạo template mới', to: '/admin/templates/create' }
+        ]
+    },
+    { key: 'reports', icon: ClipboardList, label: 'Báo cáo', to: '/admin/reports' }
+];
+
+const SIDEBAR_LOGO_URL = 'https://i.postimg.cc/nhWfcVvh/logo.png';
+
+const resolvePageTitle = (pathname) => {
+    if (pathname.startsWith('/admin/profile')) return 'Hồ sơ';
+    if (pathname.startsWith('/admin/usersmanament')) return 'Quản lý người dùng';
+    if (pathname.startsWith('/admin/jobs')) return 'Quản lý tin tuyển dụng';
+    if (pathname.startsWith('/admin/companies')) return 'Quản lý công ty';
+    if (pathname.startsWith('/admin/templates')) return 'Quản lý template CV';
+    if (pathname.startsWith('/admin/reports')) return 'Báo cáo';
+    return 'Dashboard';
+};
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
+    const location = useLocation();
 
     const API_BASE = CLIENT_API_BASE;
-    const token = localStorage.getItem('token');
+    const token = String(localStorage.getItem('token') || '').trim();
 
     const user = useMemo(() => {
         try {
@@ -26,9 +140,13 @@ const AdminDashboard = () => {
 
     const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
         if (typeof window === 'undefined') return false;
-        return window.innerWidth < 992;
+        return window.innerWidth <= 1280;
     });
-    const [active, setActive] = useState('overview');
+    const [openMenus, setOpenMenus] = useState(() => ({
+        templates: location.pathname.startsWith('/admin/templates')
+    }));
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
     const [counts, setCounts] = useState({});
     const [users, setUsers] = useState([]);
@@ -36,8 +154,10 @@ const AdminDashboard = () => {
     const [jobs, setJobs] = useState([]);
     const [companies, setCompanies] = useState([]);
     const [reports, setReports] = useState([]);
+    const [templates, setTemplates] = useState([]);
 
     const confirmResolveRef = useRef(null);
+    const profileMenuRef = useRef(null);
     const [confirmState, setConfirmState] = useState({
         open: false,
         title: 'Xác nhận',
@@ -66,10 +186,15 @@ const AdminDashboard = () => {
         if (typeof resolve === 'function') resolve(result);
     };
 
-    const authHeaders = useMemo(() => ({
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
-    }), [token]);
+    const authHeaders = useMemo(() => {
+        const base = {
+            'Content-Type': 'application/json'
+        };
+        if (token) {
+            base.Authorization = `Bearer ${token}`;
+        }
+        return base;
+    }, [token]);
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -81,12 +206,13 @@ const AdminDashboard = () => {
         setLoading(true);
         setError('');
         try {
-            const [ov, us, js, cs, rs] = await Promise.all([
+            const [ov, us, js, cs, rs, ts] = await Promise.all([
                 fetch(`${API_BASE}/api/admin/overview`, { headers: authHeaders }),
                 fetch(`${API_BASE}/api/admin/users?limit=50`, { headers: authHeaders }),
                 fetch(`${API_BASE}/api/admin/jobs?limit=50`, { headers: authHeaders }),
                 fetch(`${API_BASE}/api/admin/companies?limit=50`, { headers: authHeaders }),
-                fetch(`${API_BASE}/api/admin/reports?limit=50`, { headers: authHeaders })
+                fetch(`${API_BASE}/api/admin/reports?limit=50`, { headers: authHeaders }),
+                fetch(`${API_BASE}/api/admin/templates?limit=50&offset=0`, { headers: authHeaders })
             ]);
 
             const ovData = await ov.json().catch(() => null);
@@ -94,6 +220,7 @@ const AdminDashboard = () => {
             const jsData = await js.json().catch(() => null);
             const csData = await cs.json().catch(() => null);
             const rsData = await rs.json().catch(() => null);
+            const tsData = await ts.json().catch(() => null);
 
             if (!ov.ok) throw new Error(ovData?.error || 'Không tải được thống kê');
             if (!us.ok) throw new Error(usData?.error || 'Không tải được người dùng');
@@ -106,6 +233,13 @@ const AdminDashboard = () => {
             setJobs(Array.isArray(jsData?.jobs) ? jsData.jobs : []);
             setCompanies(Array.isArray(csData?.companies) ? csData.companies : []);
             setReports(Array.isArray(rsData?.reports) ? rsData.reports : []);
+
+            const templateRows = Array.isArray(tsData?.templates)
+                ? tsData.templates
+                : Array.isArray(tsData?.data)
+                    ? tsData.data
+                    : [];
+            setTemplates(templateRows);
         } catch (err) {
             setError(err?.message || 'Có lỗi xảy ra');
         } finally {
@@ -114,17 +248,44 @@ const AdminDashboard = () => {
     };
 
     useEffect(() => {
+        if (!token) return;
         loadAll();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [API_BASE]);
+    }, [API_BASE, token]);
 
     useEffect(() => {
         const onResize = () => {
             if (typeof window === 'undefined') return;
-            setSidebarCollapsed(window.innerWidth < 992);
+            if (window.innerWidth < 992) {
+                setSidebarCollapsed(false);
+            } else {
+                setMobileMenuOpen(false);
+            }
         };
         window.addEventListener('resize', onResize);
         return () => window.removeEventListener('resize', onResize);
+    }, []);
+
+    useEffect(() => {
+        if (typeof window !== 'undefined' && window.innerWidth < 992) {
+            setMobileMenuOpen(false);
+        }
+        setProfileMenuOpen(false);
+
+        if (location.pathname.startsWith('/admin/templates')) {
+            setOpenMenus((prev) => ({ ...prev, templates: true }));
+        }
+    }, [location.pathname]);
+
+    useEffect(() => {
+        const handleDocumentClick = (event) => {
+            if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
+                setProfileMenuOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleDocumentClick);
+        return () => document.removeEventListener('mousedown', handleDocumentClick);
     }, []);
 
     const patchUser = async (id, payload) => {
@@ -138,15 +299,13 @@ const AdminDashboard = () => {
         return data?.user;
     };
 
-    const patchJob = async (id, payload) => {
-        const res = await fetch(`${API_BASE}/api/admin/jobs/${id}`, {
-            method: 'PATCH',
-            headers: authHeaders,
-            body: JSON.stringify(payload)
+    const fetchUserDetail = async (id) => {
+        const res = await fetch(`${API_BASE}/api/admin/users/${id}/detail`, {
+            headers: authHeaders
         });
         const data = await res.json().catch(() => null);
-        if (!res.ok) throw new Error(data?.error || 'Không cập nhật được tin tuyển dụng');
-        return data?.job;
+        if (!res.ok) throw new Error(data?.error || 'Không tải được chi tiết người dùng');
+        return data?.detail || null;
     };
 
     const patchReport = async (id, payload) => {
@@ -176,6 +335,17 @@ const AdminDashboard = () => {
         });
         const data = await res.json().catch(() => null);
         if (!res.ok) throw new Error(data?.error || 'Không xóa được người dùng');
+        return data?.user;
+    };
+
+    const restoreUser = async (id) => {
+        const res = await fetch(`${API_BASE}/api/admin/users/${id}/restore`, {
+            method: 'POST',
+            headers: authHeaders
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(data?.error || 'Không khôi phục được người dùng');
+        return data?.user;
     };
 
     const patchCompany = async (id, payload) => {
@@ -198,327 +368,404 @@ const AdminDashboard = () => {
         if (!res.ok) throw new Error(data?.error || 'Không xóa được công ty');
     };
 
-    const menuItems = [
-        { key: 'overview', icon: 'bi-speedometer2', label: 'Bảng tin' },
-        { key: 'users', icon: 'bi-people', label: 'Quản lý người dùng' },
-        { key: 'jobs', icon: 'bi-briefcase', label: 'Tin tuyển dụng' },
-        { key: 'companies', icon: 'bi-building', label: 'Công ty' },
-        { key: 'templates', icon: 'bi-file-earmark-code', label: 'Quản lý template CV' },
-        { key: 'reports', icon: 'bi-flag', label: 'Báo cáo' },
+    const saveUserById = async (userId, payload) => {
+        const updated = await patchUser(userId, payload);
+        setUsers((prev) => prev.map((item) => (item.MaNguoiDung === userId ? updated : item)));
+    };
+
+    const deleteUserById = async (userId) => {
+        const updated = await deleteUser(userId);
+        setUsers((prev) => prev.map((item) => (item.MaNguoiDung === userId ? updated : item)));
+    };
+
+    const restoreUserById = async (userId) => {
+        const updated = await restoreUser(userId);
+        setUsers((prev) => prev.map((item) => (item.MaNguoiDung === userId ? updated : item)));
+    };
+
+    const deleteJobById = async (jobId) => {
+        await deleteJob(jobId);
+        setJobs((prev) => prev.filter((item) => item.MaTin !== jobId));
+    };
+
+    const saveCompanyStatusById = async (companyId, status) => {
+        const updated = await patchCompany(companyId, { status });
+        setCompanies((prev) => prev.map((item) => (item.MaCongTy === companyId ? updated : item)));
+    };
+
+    const deleteCompanyById = async (companyId) => {
+        await deleteCompany(companyId);
+        setCompanies((prev) => prev.filter((item) => item.MaCongTy !== companyId));
+    };
+
+    const saveReportById = async (reportId, payload) => {
+        const updated = await patchReport(reportId, payload);
+        setReports((prev) => prev.map((item) => (item.MaBaoCao === reportId ? { ...item, ...updated } : item)));
+    };
+
+    const greetingName = user?.name || user?.full_name || user?.email || 'Admin';
+    const roleLabel = isSuperAdmin ? 'Siêu quản trị viên' : (user?.role || 'Quản trị');
+
+    const totalTemplateCount = Math.max(safeNumber(counts?.CvTemplate), templates.length);
+    const usedTemplateCount = templates.filter((template) => getTemplateUsage(template) > 0).length;
+
+    const statsCards = [
+        {
+            key: 'total-templates',
+            title: 'Tổng template CV',
+            value: totalTemplateCount,
+            meta: `${totalTemplateCount > 0 ? '+12%' : '0%'} so với tháng trước`,
+            icon: FileStack,
+            iconClass: 'sky'
+        },
+        {
+            key: 'used-templates',
+            title: 'Template đã sử dụng',
+            value: usedTemplateCount,
+            meta: `${usedTemplateCount} template có lượt dùng`,
+            icon: BarChart3,
+            iconClass: 'violet'
+        },
+        {
+            key: 'users',
+            title: 'Người dùng',
+            value: safeNumber(counts?.NguoiDung),
+            meta: `${safeNumber(counts?.NguoiDung) > 0 ? '+6%' : '0%'} so với tháng trước`,
+            icon: Users,
+            iconClass: 'blue'
+        },
+        {
+            key: 'companies',
+            title: 'Công ty',
+            value: safeNumber(counts?.CongTy),
+            meta: `${safeNumber(counts?.CongTy) > 0 ? '+4%' : '0%'} so với tháng trước`,
+            icon: Building2,
+            iconClass: 'indigo'
+        }
     ];
 
-    const filteredUsers = users
-        .filter((u) => Number(u.IsSuperAdmin) !== 1) // ẩn super admin
-        .filter((u) => roleFilter === 'all' ? true : (u.VaiTro === roleFilter));
+    const recentTemplateActivities = useMemo(() => {
+        const rows = templates
+            .map((template, index) => {
+                const createdAt = getTemplateCreatedAt(template);
+                return {
+                    id: template?.MaTemplateCV || template?.id || `${getTemplateName(template, index)}-${index}`,
+                    name: getTemplateName(template, index),
+                    createdAt,
+                    usage: getTemplateUsage(template),
+                    relativeTime: formatRelativeTime(createdAt),
+                    exactTime: createdAt ? createdAt.toLocaleString('vi-VN') : 'Chưa có dữ liệu ngày tạo'
+                };
+            })
+            .sort((a, b) => {
+                const aTime = a.createdAt ? a.createdAt.getTime() : 0;
+                const bTime = b.createdAt ? b.createdAt.getTime() : 0;
+                return bTime - aTime;
+            });
+
+        return rows.slice(0, 6);
+    }, [templates]);
+
+    const popularTemplates = useMemo(() => {
+        const rows = templates
+            .map((template, index) => ({
+                id: template?.MaTemplateCV || template?.id || `${getTemplateName(template, index)}-${index}`,
+                name: getTemplateName(template, index),
+                usage: getTemplateUsage(template)
+            }))
+            .sort((a, b) => b.usage - a.usage)
+            .slice(0, 5);
+
+        const maxUsage = rows.reduce((max, row) => Math.max(max, row.usage), 0);
+        return rows.map((row) => ({
+            ...row,
+            progress: maxUsage > 0 ? Math.round((row.usage / maxUsage) * 100) : 0
+        }));
+    }, [templates]);
+
+    const handleSidebarToggle = () => {
+        if (typeof window !== 'undefined' && window.innerWidth < 992) {
+            setMobileMenuOpen((prev) => !prev);
+            return;
+        }
+        setSidebarCollapsed((prev) => !prev);
+    };
+
+    const handleSidebarItemClick = () => {
+        if (typeof window !== 'undefined' && window.innerWidth < 992) {
+            setMobileMenuOpen(false);
+        }
+    };
+
+    const handleProfileMenuNavigate = (path) => {
+        setProfileMenuOpen(false);
+        navigate(path);
+    };
+
+    const isPathActive = (path, exact = false) => {
+        if (exact) return location.pathname === path;
+        return location.pathname === path || location.pathname.startsWith(`${path}/`);
+    };
+
+    if (!token) {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        return <Navigate to="/login" replace />;
+    }
 
     return (
         <div className="admin-layout">
-            <div className={`admin-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
-                <div className="admin-sidebar-header">
-                    <img src="/images/logo.png" alt="JobFinder" className="admin-sidebar-logo" />
-                    {!sidebarCollapsed && <h5 className="mb-0">JobFinder</h5>}
-                </div>
+            <button
+                type="button"
+                className={`admin-mobile-overlay ${mobileMenuOpen ? 'show' : ''}`}
+                aria-label="Đóng menu"
+                onClick={() => setMobileMenuOpen(false)}
+            />
 
-                <div className="admin-sidebar-user">
-                    <div className="admin-user-avatar">
-                        <i className="bi bi-person-circle fs-1"></i>
-                    </div>
-                    {!sidebarCollapsed && (
-                        <div className="admin-user-info">
-                            <h6 className="mb-0">{user?.name || 'Admin'}</h6>
-                            <small className="text-muted">{isSuperAdmin ? 'Siêu quản trị viên' : (user?.role || 'Quản trị')}</small>
-                        </div>
-                    )}
+            <div className={`admin-sidebar ${sidebarCollapsed ? 'collapsed' : ''} ${mobileMenuOpen ? 'open' : ''}`}>
+                <div className="admin-sidebar-brand" title="JobFinder">
+                    <img src={SIDEBAR_LOGO_URL} alt="JobFinder" className="admin-sidebar-logo" />
+                    {!sidebarCollapsed && <span>JobFinder</span>}
                 </div>
 
                 <div className="admin-menu">
-                    {menuItems.map((item) => (
-                        <button
-                            key={item.key}
-                            type="button"
-                            className={`admin-menu-item ${active === item.key ? 'active' : ''}`}
-                            onClick={() => setActive(item.key)}
-                            title={item.label}
-                        >
-                            <i className={`bi ${item.icon}`}></i>
-                            {!sidebarCollapsed && <span>{item.label}</span>}
-                        </button>
-                    ))}
-                </div>
+                    {menuItems.map((item) => {
+                        const Icon = item.icon;
 
-                <div className="admin-sidebar-footer">
-                    <button className="btn btn-link text-decoration-none w-100" onClick={handleLogout}>
-                        <i className="bi bi-box-arrow-right"></i>
-                        {!sidebarCollapsed && <span>Đăng xuất</span>}
-                    </button>
+                        if (Array.isArray(item.children) && item.children.length > 0) {
+                            const isGroupActive = item.children.some((child) => isPathActive(child.to, child.exact));
+                            const isOpen = !sidebarCollapsed && (openMenus[item.key] || isGroupActive);
+
+                            return (
+                                <div key={item.key} className={`admin-menu-group ${isGroupActive ? 'active' : ''}`}>
+                                    <button
+                                        type="button"
+                                        className={`admin-menu-item admin-menu-parent ${isGroupActive ? 'active' : ''}`}
+                                        onClick={() => {
+                                            if (sidebarCollapsed) {
+                                                navigate(item.children[0].to);
+                                                handleSidebarItemClick();
+                                                return;
+                                            }
+                                            setOpenMenus((prev) => ({
+                                                ...prev,
+                                                [item.key]: !prev[item.key]
+                                            }));
+                                        }}
+                                        title={item.label}
+                                    >
+                                        <Icon size={18} strokeWidth={2.1} />
+                                        {!sidebarCollapsed && <span>{item.label}</span>}
+                                        {!sidebarCollapsed && (
+                                            <ChevronDown
+                                                size={16}
+                                                className={`admin-menu-caret ${isOpen ? 'open' : ''}`}
+                                            />
+                                        )}
+                                    </button>
+
+                                    {!sidebarCollapsed && isOpen && (
+                                        <div className="admin-submenu">
+                                            {item.children.map((child) => (
+                                                <NavLink
+                                                    key={child.key}
+                                                    to={child.to}
+                                                    end={Boolean(child.exact)}
+                                                    className={({ isActive }) => `admin-submenu-item ${isActive ? 'active' : ''}`}
+                                                    onClick={handleSidebarItemClick}
+                                                >
+                                                    {child.label}
+                                                </NavLink>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <NavLink
+                                key={item.key}
+                                to={item.to}
+                                className={({ isActive }) => `admin-menu-item ${isActive ? 'active' : ''}`}
+                                onClick={handleSidebarItemClick}
+                                title={item.label}
+                            >
+                                <Icon size={18} strokeWidth={2.1} />
+                                {!sidebarCollapsed && <span>{item.label}</span>}
+                            </NavLink>
+                        );
+                    })}
                 </div>
             </div>
 
-            <div className="admin-main">
+            <div className={`admin-main ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
                 <div className="admin-header">
-                    <button
-                        type="button"
-                        className="btn btn-link admin-sidebar-toggle"
-                        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-                    >
-                        <i className="bi bi-list fs-4"></i>
-                    </button>
+                    <div className="admin-header-left">
+                        <button
+                            type="button"
+                            className="admin-sidebar-toggle"
+                            onClick={handleSidebarToggle}
+                            aria-label="Bật hoặc tắt sidebar"
+                        >
+                            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+                        </button>
+                        <h1 className="admin-header-page-title">{resolvePageTitle(location.pathname)}</h1>
+                    </div>
+
+                    <div className="admin-header-user">
+                        <button
+                            type="button"
+                            className="admin-header-home-btn"
+                            onClick={() => navigate('/')}
+                        >
+                            <House size={16} />
+                            <span>Trang chủ</span>
+                        </button>
+
+                        <div className={`admin-header-user-menu ${profileMenuOpen ? 'open' : ''}`} ref={profileMenuRef}>
+                            <button
+                                type="button"
+                                className="admin-header-user-trigger"
+                                onClick={() => setProfileMenuOpen((prev) => !prev)}
+                                aria-haspopup="menu"
+                                aria-expanded={profileMenuOpen}
+                            >
+                                <div className="admin-header-avatar">
+                                    <ShieldCheck size={15} />
+                                </div>
+                                <div className="admin-header-user-info">
+                                    <strong>{greetingName}</strong>
+                                    <small>{roleLabel}</small>
+                                </div>
+                                <ChevronDown size={16} className="admin-header-user-chevron" />
+                            </button>
+
+                            {profileMenuOpen && (
+                                <div className="admin-header-dropdown" role="menu">
+                                    <button type="button" className="admin-header-dropdown-item" onClick={() => handleProfileMenuNavigate('/admin/profile')}>
+                                        Hồ sơ
+                                    </button>
+                                    <button type="button" className="admin-header-dropdown-item" onClick={() => handleProfileMenuNavigate('/admin/dashboard')}>
+                                        Dashboard
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="admin-header-dropdown-item danger"
+                                        onClick={handleLogout}
+                                    >
+                                        <LogOut size={16} />
+                                        <span>Đăng xuất</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
                 <div className="admin-content">
-                    {error && <div className="alert alert-danger">{error}</div>}
-                    {loading && <div className="alert alert-info">Đang tải dữ liệu…</div>}
+                    {error && <div className="alert alert-danger admin-feedback">{error}</div>}
+                    {loading && <div className="alert alert-info admin-feedback">Đang tải dữ liệu...</div>}
 
-                    {active === 'overview' && (
-                        <>
-                            <div className="d-flex justify-content-between align-items-center mb-4">
-                                <div>
-                                    <h2 className="mb-0">Dashboard Quản Trị</h2>
-                                    <div className="text-muted">Xin chào, {user?.name || user?.email || 'Quản trị viên'} • {user?.role || (isSuperAdmin ? 'Siêu quản trị viên' : 'Quản trị')}</div>
-                                </div>
-                            </div>
-
-                            <div className="row g-4 mb-4">
-                                <div className="col-md-3">
-                                    <div className="card border-0 shadow-sm h-100">
-                                        <div className="card-body text-center">
-                                            <div className="text-primary mb-3"><i className="bi bi-people fs-1"></i></div>
-                                            <h3 className="mb-1">{counts?.NguoiDung ?? 0}</h3>
-                                            <p className="text-muted mb-2">Người dùng</p>
-                                            <button className="btn btn-sm btn-outline-primary" onClick={() => setActive('users')}>Quản lý</button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="col-md-3">
-                                    <div className="card border-0 shadow-sm h-100">
-                                        <div className="card-body text-center">
-                                            <div className="text-success mb-3"><i className="bi bi-briefcase fs-1"></i></div>
-                                            <h3 className="mb-1">{counts?.TinTuyenDung ?? 0}</h3>
-                                            <p className="text-muted mb-2">Tin tuyển dụng</p>
-                                            <button className="btn btn-sm btn-outline-success" onClick={() => setActive('jobs')}>Xem danh sách</button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="col-md-3">
-                                    <div className="card border-0 shadow-sm h-100">
-                                        <div className="card-body text-center">
-                                            <div className="text-info mb-3"><i className="bi bi-building fs-1"></i></div>
-                                            <h3 className="mb-1">{counts?.CongTy ?? 0}</h3>
-                                            <p className="text-muted mb-2">Công ty</p>
-                                            <button className="btn btn-sm btn-outline-info" onClick={() => setActive('companies')}>Xem danh sách</button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="col-md-3">
-                                    <div className="card border-0 shadow-sm h-100">
-                                        <div className="card-body text-center">
-                                            <div className="text-warning mb-3"><i className="bi bi-flag fs-1"></i></div>
-                                            <h3 className="mb-1">{counts?.BaoCao ?? 0}</h3>
-                                            <p className="text-muted mb-2">Báo cáo</p>
-                                            <button className="btn btn-sm btn-outline-warning" onClick={() => setActive('reports')}>Xử lý</button>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="col-md-3">
-                                    <div className="card border-0 shadow-sm h-100">
-                                        <div className="card-body text-center">
-                                            <div className="text-secondary mb-3"><i className="bi bi-file-earmark-code fs-1"></i></div>
-                                            <h3 className="mb-1">{counts?.CvTemplate ?? 0}</h3>
-                                            <p className="text-muted mb-2">Template CV</p>
-                                            <button className="btn btn-sm btn-outline-secondary" onClick={() => setActive('templates')}>Quản lý</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </>
-                    )}
-
-                    {active === 'templates' && (
-                        <AdminTemplateManager
-                            API_BASE={API_BASE}
-                            authHeaders={authHeaders}
-                            requestConfirm={requestConfirm}
+                    <Routes>
+                        <Route index element={<Navigate to="dashboard" replace />} />
+                        <Route
+                            path="dashboard"
+                            element={
+                                <AdminOverviewPage
+                                    statsCards={statsCards}
+                                    recentTemplateActivities={recentTemplateActivities}
+                                    popularTemplates={popularTemplates}
+                                />
+                            }
                         />
-                    )}
-
-                    {active === 'users' && (
-                        <div className="card border-0 shadow-sm mb-4">
-                            <div className="card-header bg-white border-0 py-3 d-flex justify-content-between align-items-center flex-wrap gap-3">
-                                <h5 className="mb-0"><i className="bi bi-people me-2"></i>Quản lý người dùng</h5>
-                                <div className="d-flex align-items-center gap-2">
-                                    <i className="bi bi-funnel text-muted"></i>
-                                    <select
-                                        className="form-select form-select-sm"
-                                        style={{ minWidth: 170 }}
-                                        value={roleFilter}
-                                        onChange={(e) => setRoleFilter(e.target.value)}
-                                        aria-label="Lọc vai trò"
-                                    >
-                                        <option value="all">Tất cả</option>
-                                        <option value="Ứng viên">Ứng viên</option>
-                                        <option value="Nhà tuyển dụng">Nhà tuyển dụng</option>
-                                        <option value="Quản trị">Quản trị</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="table-responsive">
-                                <table className="table table-hover align-middle mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th style={{ width: 80 }}>ID</th>
-                                            <th>Email</th>
-                                            <th>Họ tên</th>
-                                            <th style={{ width: 180 }}>Vai trò</th>
-                                            <th style={{ width: 160 }}>Trạng thái</th>
-                                            <th style={{ width: 220 }}>Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {filteredUsers.map((u) => (
-                                            <AdminUserRow
-                                                key={u.MaNguoiDung}
-                                                user={u}
-                                                isSuperAdmin={isSuperAdmin}
-                                                isAdmin={isAdmin}
-                                                requestConfirm={requestConfirm}
-                                                onSave={async (payload) => {
-                                                    const updated = await patchUser(u.MaNguoiDung, payload);
-                                                    setUsers((prev) => prev.map((x) => x.MaNguoiDung === u.MaNguoiDung ? updated : x));
-                                                }}
-                                                onDelete={async () => {
-                                                    await deleteUser(u.MaNguoiDung);
-                                                    setUsers((prev) => prev.filter((x) => x.MaNguoiDung !== u.MaNguoiDung));
-                                                }}
-                                            />
-                                        ))}
-                                        {filteredUsers.length === 0 && !loading && (
-                                            <tr><td colSpan={6} className="text-center text-muted py-4">Chưa có dữ liệu</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
-
-                    {active === 'jobs' && (
-                        <div className="card border-0 shadow-sm mb-4">
-                            <div className="card-header bg-white border-0 py-3">
-                                <h5 className="mb-0"><i className="bi bi-briefcase me-2"></i>Quản lý tin tuyển dụng</h5>
-                            </div>
-                            <div className="table-responsive">
-                                <table className="table table-hover align-middle mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th style={{ width: 90 }}>Mã tin</th>
-                                            <th>Tiêu đề</th>
-                                            <th style={{ width: 200 }}>Công ty</th>
-                                            <th style={{ width: 140 }}>Tỉnh/TP</th>
-                                            <th style={{ width: 170 }}>Trạng thái</th>
-                                            <th style={{ width: 180 }}>Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {jobs.map((j) => (
-                                            <AdminJobRow
-                                                key={j.MaTin}
-                                                job={j}
-                                                requestConfirm={requestConfirm}
-                                                onDelete={async () => {
-                                                    await deleteJob(j.MaTin);
-                                                    setJobs((prev) => prev.filter((x) => x.MaTin !== j.MaTin));
-                                                }}
-                                                canDelete={isSuperAdmin}
-                                            />
-                                        ))}
-                                        {jobs.length === 0 && !loading && (
-                                            <tr><td colSpan={6} className="text-center text-muted py-4">Chưa có dữ liệu</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
-
-                    {active === 'companies' && (
-                        <div className="card border-0 shadow-sm mb-4">
-                            <div className="card-header bg-white border-0 py-3">
-                                <h5 className="mb-0"><i className="bi bi-building me-2"></i>Danh sách công ty</h5>
-                            </div>
-                            <div className="table-responsive">
-                                <table className="table table-hover align-middle mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th style={{ width: 90 }}>Mã</th>
-                                            <th>Tên công ty</th>
-                                            <th style={{ width: 170 }}>Mã số thuế</th>
-                                            <th style={{ width: 140 }}>Tỉnh/TP</th>
-                                            <th style={{ width: 220 }}>Website</th>
-                                            <th style={{ width: 150 }}>Trạng thái</th>
-                                            <th style={{ width: 200 }}>Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {companies.map((c) => (
-                                            <AdminCompanyRow
-                                                key={c.MaCongTy}
-                                                company={c}
-                                                canEdit={isSuperAdmin}
-                                                requestConfirm={requestConfirm}
-                                                onSaveStatus={async (status) => {
-                                                    const updated = await patchCompany(c.MaCongTy, { status });
-                                                    setCompanies((prev) => prev.map((x) => x.MaCongTy === c.MaCongTy ? updated : x));
-                                                }}
-                                                onDelete={async () => {
-                                                    await deleteCompany(c.MaCongTy);
-                                                    setCompanies((prev) => prev.filter((x) => x.MaCongTy !== c.MaCongTy));
-                                                }}
-                                            />
-                                        ))}
-                                        {companies.length === 0 && !loading && (
-                                            <tr><td colSpan={7} className="text-center text-muted py-4">Chưa có dữ liệu</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
-
-                    {active === 'reports' && (
-                        <div className="card border-0 shadow-sm">
-                            <div className="card-header bg-white border-0 py-3">
-                                <h5 className="mb-0"><i className="bi bi-flag me-2"></i>Báo cáo</h5>
-                            </div>
-                            <div className="table-responsive">
-                                <table className="table table-hover align-middle mb-0">
-                                    <thead>
-                                        <tr>
-                                            <th style={{ width: 90 }}>Mã</th>
-                                            <th style={{ width: 220 }}>Người báo cáo</th>
-                                            <th style={{ width: 170 }}>Đối tượng</th>
-                                            <th>Lý do</th>
-                                            <th style={{ width: 210 }}>Trạng thái</th>
-                                            <th style={{ width: 120 }}></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {reports.map((r) => (
-                                            <AdminReportRow
-                                                key={r.MaBaoCao}
-                                                report={r}
-                                                onSave={async (payload) => {
-                                                    const updated = await patchReport(r.MaBaoCao, payload);
-                                                    setReports((prev) => prev.map((x) => x.MaBaoCao === r.MaBaoCao ? { ...r, ...updated } : x));
-                                                }}
-                                            />
-                                        ))}
-                                        {reports.length === 0 && !loading && (
-                                            <tr><td colSpan={6} className="text-center text-muted py-4">Chưa có dữ liệu</td></tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
+                        <Route
+                            path="usersmanament"
+                            element={
+                                <AdminUsersPage
+                                    users={users}
+                                    loading={loading}
+                                    roleFilter={roleFilter}
+                                    onRoleFilterChange={setRoleFilter}
+                                    isSuperAdmin={isSuperAdmin}
+                                    isAdmin={isAdmin}
+                                    requestConfirm={requestConfirm}
+                                    onSaveUser={saveUserById}
+                                    onDeleteUser={deleteUserById}
+                                    onRestoreUser={restoreUserById}
+                                    onViewUserDetail={fetchUserDetail}
+                                />
+                            }
+                        />
+                        <Route
+                            path="jobs"
+                            element={
+                                <AdminJobsPage
+                                    jobs={jobs}
+                                    loading={loading}
+                                    canDelete={isSuperAdmin}
+                                    requestConfirm={requestConfirm}
+                                    onDeleteJob={deleteJobById}
+                                />
+                            }
+                        />
+                        <Route
+                            path="companies"
+                            element={
+                                <AdminCompaniesPage
+                                    companies={companies}
+                                    loading={loading}
+                                    canEdit={isSuperAdmin}
+                                    requestConfirm={requestConfirm}
+                                    onSaveCompanyStatus={saveCompanyStatusById}
+                                    onDeleteCompany={deleteCompanyById}
+                                />
+                            }
+                        />
+                        <Route
+                            path="templates"
+                            element={
+                                <AdminTemplatesPage
+                                    API_BASE={API_BASE}
+                                    authHeaders={authHeaders}
+                                    requestConfirm={requestConfirm}
+                                    mode="list"
+                                />
+                            }
+                        />
+                        <Route
+                            path="templates/create"
+                            element={
+                                <AdminTemplatesPage
+                                    API_BASE={API_BASE}
+                                    authHeaders={authHeaders}
+                                    requestConfirm={requestConfirm}
+                                    mode="create"
+                                />
+                            }
+                        />
+                        <Route
+                            path="reports"
+                            element={
+                                <AdminReportsPage
+                                    reports={reports}
+                                    loading={loading}
+                                    onSaveReport={saveReportById}
+                                />
+                            }
+                        />
+                        <Route
+                            path="profile"
+                            element={
+                                <AdminProfilePage
+                                    user={user}
+                                    roleLabel={roleLabel}
+                                    greetingName={greetingName}
+                                />
+                            }
+                        />
+                        <Route path="*" element={<Navigate to="dashboard" replace />} />
+                    </Routes>
                 </div>
             </div>
 
@@ -541,272 +788,6 @@ const AdminDashboard = () => {
                 </div>
             )}
         </div>
-    );
-};
-
-const AdminCompanyRow = ({ company, onSaveStatus, onDelete, canEdit, requestConfirm }) => {
-    const initialStatus = Number(company.TrangThaiDaiDien ?? 1);
-    const [status, setStatus] = useState(initialStatus);
-    const [saving, setSaving] = useState(false);
-    const [err, setErr] = useState('');
-
-    useEffect(() => {
-        setStatus(initialStatus);
-    }, [initialStatus]);
-
-    const dirty = status !== initialStatus;
-
-    const save = async (nextStatus = status) => {
-        setSaving(true);
-        setErr('');
-        try {
-            await onSaveStatus(nextStatus);
-            setStatus(nextStatus);
-        } catch (e) {
-            setErr(e?.message || 'Lỗi');
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const handleDelete = async () => {
-        if (!canEdit) return;
-        const ok = await requestConfirm({
-            title: 'Xác nhận xóa',
-            message: 'Bạn có chắc muốn xóa công ty này?',
-            confirmText: 'Xóa'
-        });
-        if (!ok) return;
-        setSaving(true);
-        setErr('');
-        try {
-            await onDelete();
-        } catch (e) {
-            setErr(e?.message || 'Lỗi');
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    return (
-        <tr>
-            <td>{company.MaCongTy}</td>
-            <td className="fw-semibold">{company.TenCongTy}</td>
-            <td>{company.MaSoThue || '-'}</td>
-            <td>{company.ThanhPho || '-'}</td>
-            <td>
-                {company.Website ? (
-                    <a href={company.Website} target="_blank" rel="noreferrer">{company.Website}</a>
-                ) : '-'}
-            </td>
-            <td>
-                {status === 1 ? (
-                    <span className="badge bg-success-subtle text-success">Hoạt động</span>
-                ) : (
-                    <span className="badge bg-danger-subtle text-danger">Đã chặn</span>
-                )}
-            </td>
-            <td>
-                <div className="d-flex flex-wrap gap-2">
-                    {status === 1 ? (
-                        <button className="btn btn-sm btn-outline-warning" disabled={!canEdit || saving} onClick={() => save(0)}>
-                            Chặn
-                        </button>
-                    ) : (
-                        <button className="btn btn-sm btn-outline-success" disabled={!canEdit || saving} onClick={() => save(1)}>
-                            Bỏ chặn
-                        </button>
-                    )}
-                    <button className="btn btn-sm btn-outline-danger" disabled={!canEdit || saving} onClick={handleDelete}>
-                        Xóa
-                    </button>
-                </div>
-                {err ? <div className="text-danger small mt-1">{err}</div> : null}
-            </td>
-        </tr>
-    );
-};
-
-const AdminUserRow = ({ user, onSave, onDelete, isSuperAdmin, isAdmin, requestConfirm }) => {
-    const [role, setRole] = useState(user.VaiTro || 'Ứng viên');
-    const [status, setStatus] = useState(Number(user.TrangThai ?? 1));
-    const [saving, setSaving] = useState(false);
-    const [err, setErr] = useState('');
-
-    const dirty = role !== (user.VaiTro || 'Ứng viên');
-    const isTargetSuperAdmin = Number(user.IsSuperAdmin) === 1;
-    const isTargetAdmin = user.VaiTro === 'Quản trị' || user.VaiTro === 'Siêu quản trị viên' || isTargetSuperAdmin;
-    const canEdit = (isSuperAdmin || isAdmin) && !isTargetAdmin;
-    const canDelete = !isTargetAdmin && (isSuperAdmin || isAdmin);
-
-    const save = async (overrides = {}) => {
-        setSaving(true);
-        setErr('');
-        try {
-            const payload = {
-                role: overrides.role ?? role,
-                status: overrides.status ?? status
-            };
-            await onSave(payload);
-            setRole(payload.role);
-            setStatus(payload.status);
-        } catch (e) {
-            setErr(e?.message || 'Lỗi');
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const handleDelete = async () => {
-        if (!canDelete) return;
-        const ok = await requestConfirm({
-            title: 'Xác nhận xóa',
-            message: 'Bạn có chắc muốn xóa người dùng này?',
-            confirmText: 'Xóa'
-        });
-        if (!ok) return;
-        setSaving(true);
-        setErr('');
-        try {
-            await onDelete();
-        } catch (e) {
-            setErr(e?.message || 'Lỗi');
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    return (
-        <tr>
-            <td>{user.MaNguoiDung}</td>
-            <td>{user.Email}</td>
-            <td>{user.HoTen || '-'}</td>
-            <td>
-                <select className="form-select form-select-sm" value={role} onChange={(e) => setRole(e.target.value)} disabled={!canEdit}>
-                    <option value="Ứng viên">Ứng viên</option>
-                    <option value="Nhà tuyển dụng">Nhà tuyển dụng</option>
-                    <option value="Quản trị">Quản trị</option>
-                </select>
-            </td>
-            <td>
-                {status === 1 ? (
-                    <span className="badge bg-success-subtle text-success">Hoạt động</span>
-                ) : (
-                    <span className="badge bg-danger-subtle text-danger">Đã chặn</span>
-                )}
-            </td>
-            <td>
-                <div className="d-flex flex-wrap gap-2">
-                    <button className="btn btn-sm btn-primary" disabled={!canEdit || !dirty || saving} onClick={() => save()}>
-                        Lưu
-                    </button>
-                    {status === 1 ? (
-                        <button className="btn btn-sm btn-outline-warning" disabled={!canEdit || saving} onClick={() => save({ status: 0 })}>
-                            Chặn
-                        </button>
-                    ) : (
-                        <button className="btn btn-sm btn-outline-success" disabled={!canEdit || saving} onClick={() => save({ status: 1 })}>
-                            Bỏ chặn
-                        </button>
-                    )}
-                    <button className="btn btn-sm btn-outline-danger" disabled={!canDelete || saving} onClick={handleDelete}>
-                        Xóa
-                    </button>
-                </div>
-                {err ? <div className="text-danger small mt-1">{err}</div> : null}
-            </td>
-        </tr>
-    );
-};
-
-const AdminJobRow = ({ job, onDelete, canDelete, requestConfirm }) => {
-    const [status, setStatus] = useState(job.TrangThai || 'Nháp');
-    const [deleting, setDeleting] = useState(false);
-    const [err, setErr] = useState('');
-
-    const handleDelete = async () => {
-        if (!canDelete) return;
-        const ok = await requestConfirm({
-            title: 'Xác nhận xóa',
-            message: 'Bạn có chắc muốn xóa tin tuyển dụng này?',
-            confirmText: 'Xóa'
-        });
-        if (!ok) return;
-        setDeleting(true);
-        setErr('');
-        try {
-            await onDelete();
-        } catch (e) {
-            setErr(e?.message || 'Lỗi');
-        } finally {
-            setDeleting(false);
-        }
-    };
-
-    return (
-        <tr>
-            <td>{job.MaTin}</td>
-            <td className="fw-semibold">{job.TieuDe}</td>
-            <td>{job.TenCongTy || '-'}</td>
-            <td>{job.ThanhPho || '-'}</td>
-            <td>
-                <span className="badge bg-secondary-subtle text-secondary">{status}</span>
-            </td>
-            <td>
-                <div className="d-flex flex-wrap gap-2">
-                    <button className="btn btn-sm btn-outline-danger" disabled={!canDelete || deleting} onClick={handleDelete}>
-                        Xóa
-                    </button>
-                </div>
-                {err ? <div className="text-danger small mt-1">{err}</div> : null}
-            </td>
-        </tr>
-    );
-};
-
-const AdminReportRow = ({ report, onSave }) => {
-    const [status, setStatus] = useState(report.TrangThai || 'Chưa xử lý');
-    const [saving, setSaving] = useState(false);
-    const [err, setErr] = useState('');
-
-    const dirty = status !== (report.TrangThai || 'Chưa xử lý');
-
-    const save = async () => {
-        setSaving(true);
-        setErr('');
-        try {
-            await onSave({ status });
-        } catch (e) {
-            setErr(e?.message || 'Lỗi');
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    return (
-        <tr>
-            <td>{report.MaBaoCao}</td>
-            <td>{report.EmailNguoiBaoCao || report.MaNguoiBaoCao || '-'}</td>
-            <td>{report.LoaiDoiTuong} #{report.MaDoiTuong}</td>
-            <td>
-                <div className="fw-semibold">{report.LyDo || '-'}</div>
-                {report.ChiTiet ? <div className="text-muted small">{String(report.ChiTiet).slice(0, 120)}{String(report.ChiTiet).length > 120 ? '…' : ''}</div> : null}
-            </td>
-            <td>
-                <select className="form-select form-select-sm" value={status} onChange={(e) => setStatus(e.target.value)}>
-                    <option value="Chưa xử lý">Chưa xử lý</option>
-                    <option value="Đang xử lý">Đang xử lý</option>
-                    <option value="Đã xử lý">Đã xử lý</option>
-                    <option value="Từ chối">Từ chối</option>
-                </select>
-            </td>
-            <td>
-                <button className="btn btn-sm btn-primary" disabled={!dirty || saving} onClick={save}>
-                    Lưu
-                </button>
-                {err ? <div className="text-danger small mt-1">{err}</div> : null}
-            </td>
-        </tr>
     );
 };
 

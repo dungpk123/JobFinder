@@ -2,9 +2,11 @@ const express = require('express');
 const { authenticateToken, authorizeRole } = require('../middleware/auth');
 const jwt = require('jsonwebtoken');
 const https = require('https');
+const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const db = require('../config/db');
+const { isCloudinaryConfigured, uploadImageFromPath } = require('../config/cloudinary');
 const { jobs: mockJobs } = require('../data/mockJobs');
 const router = express.Router();
 
@@ -27,16 +29,14 @@ const levelOptions = [
 ];
 const jobFieldOptions = ['CNTT', 'Marketing', 'Bán hàng', 'Hành chính', 'Kỹ thuật', 'Tài chính', 'Sản xuất', 'Dịch vụ', 'Khác'];
 
-const BASE_PATH = (() => {
-    const basePath = process.env.BASE_PATH || '/';
-    let normalized = basePath;
-    if (!normalized.startsWith('/')) normalized = '/' + normalized;
-    if (normalized.length > 1 && normalized.endsWith('/')) normalized = normalized.slice(0, -1);
-    return normalized;
-})();
-const PUBLIC_PREFIX = BASE_PATH === '/' ? '' : BASE_PATH;
-const buildCompanyLogoRelativePath = (filename) => `${PUBLIC_PREFIX}/images/company-logos/${filename}`;
-const buildAbsoluteUrl = (req, relativePath) => (relativePath ? `${req.protocol}://${req.get('host')}${relativePath}` : '');
+const isAbsoluteUrl = (value = '') => /^https?:\/\//i.test(value) || value.startsWith('//');
+const buildAbsoluteUrl = (req, relativePath) => {
+    if (!relativePath) return '';
+    if (isAbsoluteUrl(relativePath)) {
+        return relativePath.startsWith('//') ? `${req.protocol}:${relativePath}` : relativePath;
+    }
+    return `${req.protocol}://${req.get('host')}${relativePath}`;
+};
 
 const normalizeLogoField = (req, row) => {
     if (!row) return row;
@@ -370,9 +370,28 @@ router.post('/company', authenticateToken, authorizeRole(['Nhà tuyển dụng']
 // Employer: upload company logo
 router.post('/company/logo', authenticateToken, authorizeRole(['Nhà tuyển dụng']), uploadCompanyLogo.single('logo'), async (req, res) => {
     if (!req.file) return res.status(400).json({ success: false, error: 'Thiếu file logo.' });
+
+    if (!isCloudinaryConfigured()) {
+        if (req.file?.path) {
+            fs.unlink(req.file.path, () => {});
+        }
+        return res.status(500).json({
+            success: false,
+            error: 'Cloudinary chưa được cấu hình trên server. Vui lòng cấu hình biến môi trường CLOUDINARY_*.'
+        });
+    }
+
     try {
         const userId = req.user.id;
-        const logoUrl = buildCompanyLogoRelativePath(req.file.filename);
+        const uploadResult = await uploadImageFromPath(req.file.path, {
+            folder: 'jobfinder/company-logos',
+            public_id: `company_logo_${userId}_${Date.now()}`
+        });
+
+        const logoUrl = uploadResult?.secure_url || uploadResult?.url || '';
+        if (!logoUrl) {
+            throw new Error('Cloudinary không trả về URL logo.');
+        }
 
         const companyId = await getOrCreateCompanyId(userId);
         await getOrCreateEmployerId(userId);
@@ -390,6 +409,10 @@ router.post('/company/logo', authenticateToken, authorizeRole(['Nhà tuyển d�
         return res.json({ success: true, logoUrl, logoAbsoluteUrl: buildAbsoluteUrl(req, logoUrl) });
     } catch (err) {
         return res.status(500).json({ success: false, error: err.message });
+    } finally {
+        if (req.file?.path) {
+            fs.unlink(req.file.path, () => {});
+        }
     }
 });
 

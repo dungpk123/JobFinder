@@ -3,8 +3,11 @@ import { Navigate } from 'react-router-dom';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
     const userStr = localStorage.getItem('user');
+    const token = String(localStorage.getItem('token') || '').trim();
     
-    if (!userStr) {
+    if (!userStr || !token) {
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
         // Chưa đăng nhập -> chuyển về login
         return <Navigate to="/login" replace />;
     }
@@ -16,7 +19,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
         switch(user.role) {
             case 'Quản trị':
             case 'Siêu quản trị viên':
-                return <Navigate to="/admin" replace />;
+                return <Navigate to="/admin/dashboard" replace />;
             case 'Nhà tuyển dụng':
                 return <Navigate to="/employer" replace />;
             case 'Ứng viên':

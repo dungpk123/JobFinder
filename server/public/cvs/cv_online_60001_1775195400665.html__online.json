@@ -1,0 +1,12 @@
+{
+  "title": "CV Ứng Viên Chuyên Nghiệp",
+  "summary": "Tôi là người có tinh thần trách nhiệm, ham học hỏi và chủ động trong công việc. Có khả năng làm việc nhóm tốt, thích nghi nhanh với môi trường mới và luôn sẵn sàng tiếp thu kiến thức để phát triển bản thân.",
+  "templateKey": "cv-chuyen-nghiep",
+  "content": {
+    "skills": "• Quản lý dự án và làm việc nhóm\n• Giao tiếp và thuyết trình\n• Tin học văn phòng: Word, Excel, PowerPoint\n• Kỹ năng giải quyết vấn đề\n• Tư duy sáng tạo và phân tích",
+    "experience": "Nhân viên Marketing - Công ty ABC\n01/2022 - Hiện tại\n• Xây dựng và triển khai chiến dịch marketing trên mạng xã hội\n• Phân tích dữ liệu khách hàng và đề xuất giải pháp tối ưu",
+    "projects": "Chiến dịch \"Mùa hè sôi động\" - Công ty ABC\n• Lên kế hoạch và triển khai chiến dịch marketing tích hợp",
+    "education": "Đại học Kinh tế TP.HCM\n09/2018 - 06/2022\nChuyên ngành: Quản trị Marketing",
+    "languages": "• Tiếng Việt: Bản ngữ\n• Tiếng Anh: Thành thạo (IELTS 7.0)"
+  }
+}

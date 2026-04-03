@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CV Editor</title>
+  <meta name="description" content="CV editor thuần HTML, CSS, JavaScript với chỉnh sửa trực tiếp và in PDF." />
+
+  <script>
+    window.tailwind = window.tailwind || {};
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif']
+          },
+          boxShadow: {
+            soft: '0 16px 50px rgba(15, 23, 42, 0.12)'
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --paper-width: 794px;
+      --paper-height: 1123px;
+      --accent: #0f766e;
+      --accent-2: #14b8a6;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --panel: #f8fafc;
+      --panel-strong: #eef6f5;
+      --hover: rgba(20, 184, 166, 0.09);
+      --focus: rgba(15, 118, 110, 0.14);
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(20, 184, 166, 0.18), transparent 30%),
+        radial-gradient(circle at top right, rgba(59, 130, 246, 0.12), transparent 24%),
+        linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+    }
+
+    /* Toolbar */
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      background: rgba(255, 255, 255, 0.78);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .toolbar-inner {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 14px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .toolbar-title {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .toolbar-title h1 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .toolbar-title p {
+      margin: 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .toolbar-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .action-btn {
+      appearance: none;
+      border: 1px solid transparent;
+      border-radius: 14px;
+      padding: 11px 16px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      line-height: 1;
+      user-select: none;
+    }
+
+    .action-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
+    }
+
+    .action-btn-primary {
+      color: #fff;
+      background: linear-gradient(135deg, #0f766e, #14b8a6);
+    }
+
+    .action-btn-secondary {
+      color: var(--ink);
+      background: #fff;
+      border-color: rgba(148, 163, 184, 0.35);
+    }
+
+    .action-btn-danger {
+      color: #0f172a;
+      background: #fff;
+      border-color: rgba(148, 163, 184, 0.35);
+    }
+
+    .shell {
+      padding: 22px 18px 40px;
+    }
+
+    .stage {
+      max-width: 1180px;
+      margin: 0 auto;
+      overflow-x: auto;
+      padding-bottom: 6px;
+    }
+
+    /* A4 paper */
+    .cv-page {
+      width: var(--paper-width);
+      min-height: var(--paper-height);
+      background: #ffffff;
+      border-radius: 28px;
+      box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
+      overflow: hidden;
+      position: relative;
+      border: 1px solid rgba(148, 163, 184, 0.18);
+    }
+
+    .cv-top-accent {
+      height: 12px;
+      background: linear-gradient(90deg, #0f766e 0%, #14b8a6 45%, #38bdf8 100%);
+    }
+
+    .cv-content {
+      padding: 28px 30px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      min-height: calc(var(--paper-height) - 12px);
+    }
+
+    .cv-header {
+      display: grid;
+      grid-template-columns: 148px 1fr;
+      gap: 24px;
+      align-items: center;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      background:
+        linear-gradient(135deg, rgba(15, 118, 110, 0.08), rgba(20, 184, 166, 0.05)),
+        #ffffff;
+    }
+
+    .avatar-wrap {
+      position: relative;
+      width: 148px;
+      height: 148px;
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+      cursor: pointer;
+      background: linear-gradient(135deg, #dbeafe, #ccfbf1);
+      flex-shrink: 0;
+    }
+
+    .avatar-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .avatar-overlay {
+      position: absolute;
+      inset: auto 0 0 0;
+      padding: 10px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      text-align: center;
+      color: #fff;
+      background: linear-gradient(180deg, transparent, rgba(15, 23, 42, 0.78));
+      letter-spacing: 0.02em;
+    }
+
+    .header-copy {
+      min-width: 0;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      border-radius: 999px;
+      padding: 6px 11px;
+      background: rgba(15, 118, 110, 0.08);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .header-name {
+      margin: 10px 0 0;
+      font-size: 34px;
+      line-height: 1.08;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: var(--ink);
+    }
+
+    .header-position {
+      margin: 8px 0 0;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.01em;
+    }
+
+    .contact-strip {
+      margin-top: 15px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .contact-chip {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 10px 12px;
+      background: rgba(255, 255, 255, 0.86);
+    }
+
+    .contact-label {
+      display: block;
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+
+    .contact-value {
+      display: block;
+      font-size: 13px;
+      color: var(--ink);
+      line-height: 1.45;
+    }
+
+    .cv-body {
+      display: grid;
+      grid-template-columns: 246px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--panel);
+      padding: 18px;
+    }
+
+    .panel + .panel {
+      margin-top: 16px;
+    }
+
+    .panel-title {
+      margin: 0 0 14px;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .panel-title::before {
+      content: '';
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 0 0 5px rgba(20, 184, 166, 0.08);
+      flex-shrink: 0;
+    }
+
+    .objective {
+      font-size: 14px;
+      line-height: 1.7;
+      color: #0f172a;
+      white-space: pre-wrap;
+    }
+
+    .skills-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .skill-tag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 92px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(15, 118, 110, 0.16);
+      background: rgba(255, 255, 255, 0.85);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .muted-text {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .main-column {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .section-card {
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: #fff;
+      padding: 18px;
+    }
+
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .section-title {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title::before {
+      content: '';
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 0 0 5px rgba(20, 184, 166, 0.08);
+      flex-shrink: 0;
+    }
+
+    .experience-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .experience-item {
+      border-radius: 18px;
+      border: 1px solid #dbe4ea;
+      background: linear-gradient(180deg, #fff, #fbfdff);
+      padding: 14px 14px 12px;
+    }
+
+    .job-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: start;
+      margin-bottom: 8px;
+    }
+
+    .job-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .job-company {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-top: 4px;
+    }
+
+    .job-time {
+      font-size: 12px;
+      font-weight: 800;
+      color: #475569;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.04);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      white-space: nowrap;
+    }
+
+    .job-desc {
+      font-size: 13px;
+      line-height: 1.65;
+      color: #334155;
+      white-space: pre-wrap;
+    }
+
+    .education-box {
+      border-radius: 18px;
+      border: 1px solid #dbe4ea;
+      background: rgba(248, 250, 252, 0.8);
+      padding: 14px;
+    }
+
+    .education-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--ink);
+    }
+
+    .education-time {
+      margin-top: 4px;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    .education-desc {
+      margin-top: 8px;
+      font-size: 13px;
+      line-height: 1.65;
+      color: #334155;
+      white-space: pre-wrap;
+    }
+
+    .extras-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    /* Editable surface */
+    [contenteditable="true"][data-editable="true"] {
+      outline: none;
+      cursor: text;
+      transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+      border-radius: 12px;
+      padding: 2px 4px;
+      margin: -2px -4px;
+      white-space: pre-wrap;
+    }
+
+    [contenteditable="true"][data-editable="true"]:hover {
+      background: var(--hover);
+      box-shadow: inset 0 0 0 1px rgba(20, 184, 166, 0.14);
+    }
+
+    [contenteditable="true"][data-editable="true"].is-editing,
+    [contenteditable="true"][data-editable="true"]:focus {
+      background: var(--focus);
+      box-shadow:
+        0 0 0 2px rgba(15, 118, 110, 0.18),
+        inset 0 0 0 1px rgba(15, 118, 110, 0.08);
+      transform: translateY(-1px);
+    }
+
+    [contenteditable="true"][data-editable="true"]:empty::before {
+      content: attr(data-placeholder);
+      color: #94a3b8;
+    }
+
+    [data-single-line="true"] {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-height: 1.2em;
+      display: block;
+    }
+
+    .note {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--muted);
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .note-badge {
+      padding: 5px 9px;
+      border-radius: 999px;
+      background: rgba(15, 118, 110, 0.08);
+      color: var(--accent);
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    /* Print */
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    @media print {
+      body {
+        background: #fff !important;
+      }
+
+      .toolbar,
+      .no-print {
+        display: none !important;
+      }
+
+      .shell {
+        padding: 0;
+      }
+
+      .stage {
+        max-width: none;
+        padding: 0;
+        overflow: visible;
+      }
+
+      .cv-page {
+        width: 210mm;
+        min-height: 297mm;
+        border-radius: 0;
+        box-shadow: none;
+        border: none;
+      }
+
+      .cv-content {
+        padding: 16mm 12mm 14mm;
+      }
+
+      .cv-header,
+      .panel,
+      .section-card,
+      .experience-item,
+      .education-box {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      [contenteditable="true"][data-editable="true"] {
+        background: transparent !important;
+        box-shadow: none !important;
+        transform: none !important;
+      }
+    }
+
+    /* Responsive fallback: keep the paper fixed, allow horizontal scrolling on smaller screens. */
+    @media (max-width: 900px) {
+      .toolbar-inner {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .cv-page {
+        transform: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar no-print">
+    <div class="toolbar-inner">
+      <div class="toolbar-title">
+        <h1>CV Editor thuần HTML</h1>
+        <p>Click trực tiếp vào chữ để sửa. Lưu tạm bằng localStorage, in đẹp theo chuẩn A4.</p>
+      </div>
+      <div class="toolbar-actions">
+        <button id="printBtn" type="button" class="action-btn action-btn-primary">
+          <span>In / Xuất PDF</span>
+        </button>
+        <button id="resetBtn" type="button" class="action-btn action-btn-secondary">
+          <span>Reset về mặc định</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="shell">
+    <div class="stage">
+      <article class="cv-page" id="cvPage">
+        <div class="cv-top-accent"></div>
+        <div class="cv-content">
+          <header class="cv-header">
+            <button id="avatarButton" type="button" class="avatar-wrap no-print" aria-label="Đổi ảnh đại diện">
+              <img id="avatarImage" alt="Ảnh đại diện" />
+              <div class="avatar-overlay">Click để đổi ảnh</div>
+            </button>
+            <input id="avatarInput" type="file" accept="image/*" hidden />
+
+            <div class="header-copy">
+              <div class="eyebrow editable" contenteditable="true" data-editable="true" data-field="eyebrow" data-placeholder="CV / Resume" data-single-line="true">CV / Resume</div>
+              <h1 class="header-name editable" contenteditable="true" data-editable="true" data-field="name" data-placeholder="Họ và tên" data-single-line="true">Nguyễn Văn A</h1>
+              <div class="header-position editable" contenteditable="true" data-editable="true" data-field="position" data-placeholder="Vị trí ứng tuyển" data-single-line="true">Frontend Developer / UI Builder</div>
+
+              <div class="contact-strip">
+                <div class="contact-chip">
+                  <span class="contact-label">Số điện thoại</span>
+                  <span class="contact-value editable" contenteditable="true" data-editable="true" data-field="phone" data-placeholder="Nhập số điện thoại" data-single-line="true">0987 654 321</span>
+                </div>
+                <div class="contact-chip">
+                  <span class="contact-label">Email</span>
+                  <span class="contact-value editable" contenteditable="true" data-editable="true" data-field="email" data-placeholder="Nhập email" data-single-line="true">nguyenvana@email.com</span>
+                </div>
+                <div class="contact-chip">
+                  <span class="contact-label">Địa chỉ</span>
+                  <span class="contact-value editable" contenteditable="true" data-editable="true" data-field="address" data-placeholder="Nhập địa chỉ" data-single-line="true">TP. Hồ Chí Minh</span>
+                </div>
+                <div class="contact-chip">
+                  <span class="contact-label">LinkedIn</span>
+                  <span class="contact-value editable" contenteditable="true" data-editable="true" data-field="linkedin" data-placeholder="LinkedIn (nếu có)" data-single-line="true">linkedin.com/in/nguyenvana</span>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <div class="cv-body">
+            <aside>
+              <section class="panel">
+                <h2 class="panel-title editable" contenteditable="true" data-editable="true" data-field="objectiveTitle" data-placeholder="Mục tiêu nghề nghiệp" data-single-line="true">Mục tiêu nghề nghiệp</h2>
+                <div class="objective editable" contenteditable="true" data-editable="true" data-field="objective" data-placeholder="Viết ngắn gọn về định hướng nghề nghiệp...">Tôi là ứng viên có tư duy học hỏi nhanh, yêu thích xây dựng giao diện sạch đẹp, tối ưu trải nghiệm người dùng và thích làm việc với sản phẩm thực tế. Mục tiêu của tôi là phát triển thành một Frontend Developer vững về kỹ thuật và tốt về tư duy sản phẩm.</div>
+                <div class="note no-print">
+                  <span class="note-badge">Tip</span>
+                  <span>Click vào từng dòng để sửa trực tiếp.</span>
+                </div>
+              </section>
+
+              <section class="panel">
+                <h2 class="panel-title editable" contenteditable="true" data-editable="true" data-field="skillsTitle" data-placeholder="Kỹ năng" data-single-line="true">Kỹ năng</h2>
+                <div class="skills-grid">
+                  <span class="skill-tag editable" contenteditable="true" data-editable="true" data-field="skill1" data-placeholder="Skill 1" data-single-line="true">HTML / CSS</span>
+                  <span class="skill-tag editable" contenteditable="true" data-editable="true" data-field="skill2" data-placeholder="Skill 2" data-single-line="true">JavaScript</span>
+                  <span class="skill-tag editable" contenteditable="true" data-editable="true" data-field="skill3" data-placeholder="Skill 3" data-single-line="true">React</span>
+                  <span class="skill-tag editable" contenteditable="true" data-editable="true" data-field="skill4" data-placeholder="Skill 4" data-single-line="true">Tailwind CSS</span>
+                  <span class="skill-tag editable" contenteditable="true" data-editable="true" data-field="skill5" data-placeholder="Skill 5" data-single-line="true">Git / GitHub</span>
+                  <span class="skill-tag editable" contenteditable="true" data-editable="true" data-field="skill6" data-placeholder="Skill 6" data-single-line="true">Giao tiếp</span>
+                </div>
+              </section>
+
+              <section class="panel">
+                <h2 class="panel-title editable" contenteditable="true" data-editable="true" data-field="extrasTitle" data-placeholder="Sở thích / Chứng chỉ" data-single-line="true">Sở thích / Chứng chỉ</h2>
+                <div class="extras-grid">
+                  <div class="muted-text editable" contenteditable="true" data-editable="true" data-field="extras" data-placeholder="Thêm chứng chỉ hoặc sở thích...">• Chứng chỉ Google UX Design\n• Sở thích: đọc sách, du lịch, nhiếp ảnh</div>
+                </div>
+              </section>
+            </aside>
+
+            <main class="main-column">
+              <section class="section-card">
+                <div class="section-head">
+                  <h2 class="section-title editable" contenteditable="true" data-editable="true" data-field="experienceTitle" data-placeholder="Kinh nghiệm làm việc" data-single-line="true">Kinh nghiệm làm việc</h2>
+                </div>
+
+                <div class="experience-list">
+                  <article class="experience-item">
+                    <div class="job-row">
+                      <div>
+                        <div class="job-title editable" contenteditable="true" data-editable="true" data-field="exp1_role" data-placeholder="Chức vụ" data-single-line="true">Frontend Developer</div>
+                        <div class="job-company editable" contenteditable="true" data-editable="true" data-field="exp1_company" data-placeholder="Công ty / thời gian" data-single-line="true">Công ty ABC • 2023 - Hiện tại</div>
+                      </div>
+                      <div class="job-time editable" contenteditable="true" data-editable="true" data-field="exp1_time" data-placeholder="Thời gian" data-single-line="true">Full-time</div>
+                    </div>
+                    <div class="job-desc editable" contenteditable="true" data-editable="true" data-field="exp1_desc" data-placeholder="Mô tả công việc...">Xây dựng và duy trì giao diện web cho sản phẩm nội bộ, tối ưu tốc độ tải trang và xử lý các luồng dữ liệu từ API.</div>
+                  </article>
+
+                  <article class="experience-item">
+                    <div class="job-row">
+                      <div>
+                        <div class="job-title editable" contenteditable="true" data-editable="true" data-field="exp2_role" data-placeholder="Chức vụ" data-single-line="true">Web Developer Intern</div>
+                        <div class="job-company editable" contenteditable="true" data-editable="true" data-field="exp2_company" data-placeholder="Công ty / thời gian" data-single-line="true">Công ty XYZ • 2022 - 2023</div>
+                      </div>
+                      <div class="job-time editable" contenteditable="true" data-editable="true" data-field="exp2_time" data-placeholder="Thời gian" data-single-line="true">6 tháng</div>
+                    </div>
+                    <div class="job-desc editable" contenteditable="true" data-editable="true" data-field="exp2_desc" data-placeholder="Mô tả công việc...">Hỗ trợ team phát triển giao diện, chỉnh sửa component, tham gia test và tối ưu trải nghiệm người dùng trên mobile.</div>
+                  </article>
+
+                  <article class="experience-item">
+                    <div class="job-row">
+                      <div>
+                        <div class="job-title editable" contenteditable="true" data-editable="true" data-field="exp3_role" data-placeholder="Chức vụ" data-single-line="true">Freelance Project</div>
+                        <div class="job-company editable" contenteditable="true" data-editable="true" data-field="exp3_company" data-placeholder="Dự án / thời gian" data-single-line="true">Dự án cá nhân • 2021 - 2022</div>
+                      </div>
+                      <div class="job-time editable" contenteditable="true" data-editable="true" data-field="exp3_time" data-placeholder="Thời gian" data-single-line="true">Part-time</div>
+                    </div>
+                    <div class="job-desc editable" contenteditable="true" data-editable="true" data-field="exp3_desc" data-placeholder="Mô tả công việc...">Thiết kế và xây dựng một số landing page mẫu, thực hành tối ưu bố cục, màu sắc và khả năng in ấn chuẩn A4.</div>
+                  </article>
+                </div>
+              </section>
+
+              <section class="section-card">
+                <div class="section-head">
+                  <h2 class="section-title editable" contenteditable="true" data-editable="true" data-field="educationTitle" data-placeholder="Học vấn" data-single-line="true">Học vấn</h2>
+                </div>
+
+                <div class="education-box">
+                  <div class="education-title editable" contenteditable="true" data-editable="true" data-field="edu_school" data-placeholder="Tên trường" data-single-line="true">Đại học Công nghệ</div>
+                  <div class="education-time editable" contenteditable="true" data-editable="true" data-field="edu_time" data-placeholder="Thời gian" data-single-line="true">2019 - 2023</div>
+                  <div class="education-desc editable" contenteditable="true" data-editable="true" data-field="edu_desc" data-placeholder="Ngành học / GPA / ghi chú...">Chuyên ngành Công nghệ Thông tin. GPA 3.4/4.0. Tập trung vào UI/UX cơ bản, phát triển web và các dự án thực hành.</div>
+                </div>
+              </section>
+            </main>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const STORAGE_KEY = 'cv-editor-simple-v1';
+      const avatarImage = document.getElementById('avatarImage');
+      const avatarButton = document.getElementById('avatarButton');
+      const avatarInput = document.getElementById('avatarInput');
+      const printBtn = document.getElementById('printBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      const editableNodes = Array.from(document.querySelectorAll('[data-editable="true"]'));
+
+      function createDefaultAvatar() {
+        const svg = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" fill="none">
+            <defs>
+              <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#0f766e" />
+                <stop offset="100%" stop-color="#38bdf8" />
+              </linearGradient>
+            </defs>
+            <rect width="300" height="300" rx="42" fill="url(#g)"/>
+            <circle cx="150" cy="114" r="54" fill="rgba(255,255,255,0.92)"/>
+            <path d="M63 246c18-45 58-66 87-66s69 21 87 66" fill="rgba(255,255,255,0.92)"/>
+            <path d="M118 202c10-17 22-25 32-25s22 8 32 25" stroke="#0f766e" stroke-width="12" stroke-linecap="round"/>
+            <text x="150" y="286" text-anchor="middle" fill="rgba(255,255,255,0.9)" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700">Avatar</text>
+          </svg>`;
+        return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
+      }
+
+      const DEFAULT_STATE = {
+        eyebrow: 'CV / Resume',
+        name: 'Nguyễn Văn A',
+        position: 'Frontend Developer / UI Builder',
+        phone: '0987 654 321',
+        email: 'nguyenvana@email.com',
+        address: 'TP. Hồ Chí Minh',
+        linkedin: 'linkedin.com/in/nguyenvana',
+        objectiveTitle: 'Mục tiêu nghề nghiệp',
+        objective: 'Tôi là ứng viên có tư duy học hỏi nhanh, yêu thích xây dựng giao diện sạch đẹp, tối ưu trải nghiệm người dùng và thích làm việc với sản phẩm thực tế. Mục tiêu của tôi là phát triển thành một Frontend Developer vững về kỹ thuật và tốt về tư duy sản phẩm.',
+        skillsTitle: 'Kỹ năng',
+        skill1: 'HTML / CSS',
+        skill2: 'JavaScript',
+        skill3: 'React',
+        skill4: 'Tailwind CSS',
+        skill5: 'Git / GitHub',
+        skill6: 'Giao tiếp',
+        extrasTitle: 'Sở thích / Chứng chỉ',
+        extras: '• Chứng chỉ Google UX Design\n• Sở thích: đọc sách, du lịch, nhiếp ảnh',
+        experienceTitle: 'Kinh nghiệm làm việc',
+        exp1_role: 'Frontend Developer',
+        exp1_company: 'Công ty ABC • 2023 - Hiện tại',
+        exp1_time: 'Full-time',
+        exp1_desc: 'Xây dựng và duy trì giao diện web cho sản phẩm nội bộ, tối ưu tốc độ tải trang và xử lý các luồng dữ liệu từ API.',
+        exp2_role: 'Web Developer Intern',
+        exp2_company: 'Công ty XYZ • 2022 - 2023',
+        exp2_time: '6 tháng',
+        exp2_desc: 'Hỗ trợ team phát triển giao diện, chỉnh sửa component, tham gia test và tối ưu trải nghiệm người dùng trên mobile.',
+        exp3_role: 'Freelance Project',
+        exp3_company: 'Dự án cá nhân • 2021 - 2022',
+        exp3_time: 'Part-time',
+        exp3_desc: 'Thiết kế và xây dựng một số landing page mẫu, thực hành tối ưu bố cục, màu sắc và khả năng in ấn chuẩn A4.',
+        educationTitle: 'Học vấn',
+        edu_school: 'Đại học Công nghệ',
+        edu_time: '2019 - 2023',
+        edu_desc: 'Chuyên ngành Công nghệ Thông tin. GPA 3.4/4.0. Tập trung vào UI/UX cơ bản, phát triển web và các dự án thực hành.',
+        avatar: createDefaultAvatar()
+      };
+
+      let state = loadState();
+      let saveTimer = null;
+
+      function loadState() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+          if (parsed && typeof parsed === 'object') {
+            return { ...DEFAULT_STATE, ...parsed };
+          }
+        } catch (error) {
+          console.warn('Không đọc được dữ liệu đã lưu:', error);
+        }
+        return { ...DEFAULT_STATE };
+      }
+
+      function saveState(nextState) {
+        state = { ...state, ...nextState };
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        } catch (error) {
+          console.warn('Không lưu được trạng thái CV:', error);
+        }
+      }
+
+      function scheduleSave() {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+          saveState(readCurrentState());
+        }, 120);
+      }
+
+      function normalizeText(value, singleLine) {
+        const raw = String(value || '')
+          .replace(/\u00a0/g, ' ')
+          .replace(/\r/g, '');
+        return singleLine ? raw.replace(/\n+/g, ' ').trim() : raw.trimEnd();
+      }
+
+      function readFieldValue(node) {
+        const singleLine = node.dataset.singleLine === 'true';
+        return normalizeText(node.innerText, singleLine);
+      }
+
+      function readCurrentState() {
+        const next = { avatar: avatarImage.src };
+        editableNodes.forEach((node) => {
+          const field = node.dataset.field;
+          if (!field) return;
+          next[field] = readFieldValue(node);
+        });
+        return next;
+      }
+
+      function applyState(nextState) {
+        const merged = { ...DEFAULT_STATE, ...(nextState || {}) };
+
+        editableNodes.forEach((node) => {
+          const field = node.dataset.field;
+          if (!field) return;
+          const value = merged[field] ?? '';
+          node.textContent = value;
+        });
+
+        avatarImage.src = merged.avatar || DEFAULT_STATE.avatar;
+        document.title = `${merged.name || DEFAULT_STATE.name} - CV Editor`;
+      }
+
+      function setEditingState(node, isEditing) {
+        node.classList.toggle('is-editing', isEditing);
+      }
+
+      function wireEditable(node) {
+        node.addEventListener('focus', () => setEditingState(node, true));
+        node.addEventListener('blur', () => {
+          setEditingState(node, false);
+          scheduleSave();
+        });
+        node.addEventListener('input', scheduleSave);
+        node.addEventListener('keydown', (event) => {
+          if (node.dataset.singleLine === 'true' && event.key === 'Enter') {
+            event.preventDefault();
+            node.blur();
+          }
+        });
+      }
+
+      function resetToDefault() {
+        const confirmed = window.confirm('Bạn muốn reset CV về nội dung mặc định không?');
+        if (!confirmed) return;
+        state = { ...DEFAULT_STATE };
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch (error) {
+          console.warn('Không xóa được localStorage:', error);
+        }
+        applyState(state);
+      }
+
+      function setAvatarFromSource(source) {
+        avatarImage.src = source;
+        scheduleSave();
+      }
+
+      function pickAvatarUrlOrFile() {
+        const wantUrl = window.confirm('OK: nhập URL ảnh đại diện. Cancel: chọn file ảnh từ máy.');
+        if (wantUrl) {
+          const current = avatarImage.src && !avatarImage.src.startsWith('data:image/svg+xml') ? avatarImage.src : '';
+          const url = window.prompt('Nhập URL ảnh đại diện:', current);
+          if (url && url.trim()) {
+            setAvatarFromSource(url.trim());
+          }
+          return;
+        }
+        avatarInput.value = '';
+        avatarInput.click();
+      }
+
+      editableNodes.forEach(wireEditable);
+      applyState(state);
+
+      avatarButton.addEventListener('click', pickAvatarUrlOrFile);
+
+      avatarInput.addEventListener('change', () => {
+        const file = avatarInput.files && avatarInput.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === 'string') {
+            setAvatarFromSource(reader.result);
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+
+      printBtn.addEventListener('click', () => window.print());
+      resetBtn.addEventListener('click', resetToDefault);
+
+      window.addEventListener('beforeunload', () => {
+        saveState(readCurrentState());
+      });
+
+      window.addEventListener('keydown', (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'p') {
+          event.preventDefault();
+          window.print();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
