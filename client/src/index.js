@@ -8,6 +8,7 @@ import App from './App';
 import { NotificationProvider } from './components/NotificationProvider';
 import { API_BASE } from './config/apiBase';
 import reportWebVitals from './reportWebVitals';
+import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 
 if (API_BASE && typeof window !== 'undefined' && typeof window.fetch === 'function') {
   const nativeFetch = window.fetch.bind(window);
@@ -18,6 +19,25 @@ if (API_BASE && typeof window !== 'undefined' && typeof window.fetch === 'functi
     }
     return nativeFetch(input, init);
   };
+}
+
+if (typeof window !== 'undefined') {
+  window.__jobfinderDeferredPrompt = window.__jobfinderDeferredPrompt || null;
+
+  if (!window.__jobfinderPwaBridgeInitialized) {
+    window.__jobfinderPwaBridgeInitialized = true;
+
+    window.addEventListener('beforeinstallprompt', (event) => {
+      event.preventDefault();
+      window.__jobfinderDeferredPrompt = event;
+      window.dispatchEvent(new Event('jobfinder:pwa-prompt-ready'));
+    });
+
+    window.addEventListener('appinstalled', () => {
+      window.__jobfinderDeferredPrompt = null;
+      localStorage.setItem('jobfinder-pwa-installed', 'true');
+    });
+  }
 }
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
@@ -33,3 +53,13 @@ root.render(
 // to log results (for example: reportWebVitals(console.log))
 // or send to an analytics endpoint. Learn more: https://bit.ly/CRA-vitals
 reportWebVitals();
+
+serviceWorkerRegistration.register({
+  onUpdate: (registration) => {
+    window.dispatchEvent(
+      new CustomEvent('pwa:update-available', {
+        detail: { registration },
+      }),
+    );
+  },
+});

@@ -4,7 +4,7 @@ import { useNotification } from '../../components/NotificationProvider';
 
 const CvUploadPage = () => {
   const navigate = useNavigate();
-  const { notify } = useNotification();
+  const { notify, requestConfirm } = useNotification();
 
   const user = useMemo(() => {
     try {
@@ -95,7 +95,13 @@ const CvUploadPage = () => {
     if (!cv?.id) return;
     if (!userId) return;
 
-    const ok = window.confirm('Bạn có chắc muốn xóa CV này?');
+    const ok = await requestConfirm({
+      title: 'Xóa CV',
+      message: 'Bạn có chắc muốn xóa CV này?',
+      confirmText: 'Xóa',
+      cancelText: 'Hủy',
+      type: 'warning'
+    });
     if (!ok) return;
 
     try {

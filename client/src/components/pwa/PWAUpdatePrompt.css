@@ -1,0 +1,62 @@
+.pwa-update-prompt {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 1200;
+  width: min(380px, calc(100vw - 24px));
+  border-radius: 14px;
+  border: 1px solid #d5e1ff;
+  background: #ffffff;
+  box-shadow: 0 16px 30px rgba(26, 45, 90, 0.18);
+  padding: 12px;
+}
+
+.pwa-update-prompt__content {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: #1d2f52;
+  margin-bottom: 10px;
+}
+
+.pwa-update-prompt__content strong {
+  font-size: 0.95rem;
+}
+
+.pwa-update-prompt__content span {
+  font-size: 0.86rem;
+  color: #566b98;
+}
+
+.pwa-update-prompt__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.pwa-update-prompt__actions button {
+  border: none;
+  border-radius: 9px;
+  padding: 8px 12px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #ffffff;
+  background: linear-gradient(135deg, #2f6fff 0%, #5a4cff 100%);
+}
+
+.pwa-update-prompt__actions .is-secondary {
+  background: #eaf0ff;
+  color: #3a5388;
+}
+
+@media (max-width: 767.98px) {
+  .pwa-update-prompt {
+    right: 12px;
+    left: 12px;
+    width: auto;
+    bottom: 12px;
+  }
+
+  .pwa-update-prompt__actions {
+    flex-direction: column;
+  }
+}

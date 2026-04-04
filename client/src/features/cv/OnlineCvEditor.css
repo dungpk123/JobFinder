@@ -28,50 +28,61 @@
 
 .cv-editor-actions {
   display: flex;
-  gap: 12px;
+  gap: 14px;
   flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .cv-editor-actions .btn {
-  border-radius: 10px;
-  font-weight: 600;
-  padding: 10px 20px;
-  font-size: 14.5px;
-  transition: all 0.2s ease;
+  border-radius: 14px;
+  font-weight: 800;
+  min-height: 52px;
+  padding: 0 24px;
+  font-size: 1rem;
+  letter-spacing: 0.01em;
+  transition: all 0.2s ease, box-shadow 0.2s ease;
   border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .cv-editor-actions .btn-outline-secondary {
   background: white;
-  border: 2px solid #e2e8f0;
-  color: #475569;
+  border: 2px solid #d6e2f0;
+  color: #2f4d6f;
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
 }
 
 .cv-editor-actions .btn-outline-secondary:hover {
-  background: #f8fafc;
-  border-color: #cbd5e1;
+  background: #f6fbff;
+  border-color: #b7cde4;
+  box-shadow: 0 8px 16px rgba(15, 23, 42, 0.09);
   transform: translateY(-1px);
 }
 
 .cv-editor-actions .btn-outline-primary {
   background: white;
-  border: 2px solid #3b82f6;
-  color: #3b82f6;
+  border: 2px solid #4f8cff;
+  color: #2d73ee;
+  box-shadow: 0 4px 11px rgba(37, 99, 235, 0.12);
 }
 
 .cv-editor-actions .btn-outline-primary:hover {
-  background: #3b82f6;
+  background: #2f7df8;
+  border-color: #2f7df8;
   color: white;
   transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(47, 125, 248, 0.31);
 }
 
 .cv-editor-actions .btn-success {
-  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  background: linear-gradient(135deg, #0cb57f 0%, #05a869 100%);
+  box-shadow: 0 8px 18px rgba(5, 168, 105, 0.34);
 }
 
 .cv-editor-actions .btn-success:hover {
-  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+  box-shadow: 0 12px 22px rgba(5, 168, 105, 0.44);
   transform: translateY(-2px);
 }
 
@@ -181,6 +192,10 @@
   top: 20px;
 }
 
+.cv-editor-preview-card.is-full {
+  position: static;
+}
+
 .cv-editor-preview-header {
   padding: 20px 24px;
   border-bottom: 2px solid #f1f5f9;
@@ -205,10 +220,12 @@
 .cv-editor-preview-body {
   padding: 20px;
   background: #f8fafc;
+  display: flex;
+  justify-content: center;
 }
 
 .cv-editor-preview-iframe {
-  width: 100%;
+  width: min(100%, 980px);
   height: calc(100vh - 280px);
   min-height: 800px;
   border: 2px solid #e2e8f0;
@@ -240,16 +257,20 @@
     position: static;
     margin-top: 24px;
   }
-  
+
   .cv-editor-preview-iframe {
     height: 600px;
     min-height: 600px;
   }
-  
+
   .cv-editor-header {
     padding: 20px;
   }
-  
+
+  .cv-editor-actions {
+    justify-content: flex-start;
+  }
+
   .cv-editor-form-card .card-body {
     padding: 20px;
   }
@@ -262,21 +283,13 @@
   
   .cv-editor-actions {
     width: 100%;
+    gap: 10px;
   }
-  
+
   .cv-editor-actions .btn {
-    flex: 1;
+    flex: 1 1 100%;
     min-width: auto;
   }
-}
-
-/* Template Select Special Styling */
-.cv-editor-template-select {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%233b82f6' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  background-size: 16px;
-  padding-right: 40px;
 }
 
 /* Smooth Animations */

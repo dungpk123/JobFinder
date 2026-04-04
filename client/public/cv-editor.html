@@ -623,9 +623,6 @@
         <button id="printBtn" type="button" class="action-btn action-btn-primary">
           <span>In / Xuất PDF</span>
         </button>
-        <button id="resetBtn" type="button" class="action-btn action-btn-secondary">
-          <span>Reset về mặc định</span>
-        </button>
       </div>
     </div>
   </div>
@@ -766,7 +763,6 @@
       const avatarButton = document.getElementById('avatarButton');
       const avatarInput = document.getElementById('avatarInput');
       const printBtn = document.getElementById('printBtn');
-      const resetBtn = document.getElementById('resetBtn');
       const editableNodes = Array.from(document.querySelectorAll('[data-editable="true"]'));
 
       function createDefaultAvatar() {
@@ -912,18 +908,6 @@
         });
       }
 
-      function resetToDefault() {
-        const confirmed = window.confirm('Bạn muốn reset CV về nội dung mặc định không?');
-        if (!confirmed) return;
-        state = { ...DEFAULT_STATE };
-        try {
-          localStorage.removeItem(STORAGE_KEY);
-        } catch (error) {
-          console.warn('Không xóa được localStorage:', error);
-        }
-        applyState(state);
-      }
-
       function setAvatarFromSource(source) {
         avatarImage.src = source;
         scheduleSave();
@@ -962,7 +946,6 @@
       });
 
       printBtn.addEventListener('click', () => window.print());
-      resetBtn.addEventListener('click', resetToDefault);
 
       window.addEventListener('beforeunload', () => {
         saveState(readCurrentState());

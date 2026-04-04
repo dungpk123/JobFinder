@@ -1,30 +1,15 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<!doctype html>
+<html lang="vi"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CV Editor</title>
-  <meta name="description" content="CV editor thuần HTML, CSS, JavaScript với chỉnh sửa trực tiếp và in PDF." />
+  <meta name="description" content="CV editor thuần HTML, CSS, JavaScript với chỉnh sửa trực tiếp và in PDF.">
 
-  <script>
-    window.tailwind = window.tailwind || {};
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif']
-          },
-          boxShadow: {
-            soft: '0 16px 50px rgba(15, 23, 42, 0.12)'
-          }
-        }
-      }
-    };
-  </script>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
 
   <style>
     :root {
@@ -613,22 +598,7 @@
   </style>
 </head>
 <body>
-  <div class="toolbar no-print">
-    <div class="toolbar-inner">
-      <div class="toolbar-title">
-        <h1>CV Editor thuần HTML</h1>
-        <p>Click trực tiếp vào chữ để sửa. Lưu tạm bằng localStorage, in đẹp theo chuẩn A4.</p>
-      </div>
-      <div class="toolbar-actions">
-        <button id="printBtn" type="button" class="action-btn action-btn-primary">
-          <span>In / Xuất PDF</span>
-        </button>
-        <button id="resetBtn" type="button" class="action-btn action-btn-secondary">
-          <span>Reset về mặc định</span>
-        </button>
-      </div>
-    </div>
-  </div>
+  
 
   <div class="shell">
     <div class="stage">
@@ -637,10 +607,10 @@
         <div class="cv-content">
           <header class="cv-header">
             <button id="avatarButton" type="button" class="avatar-wrap no-print" aria-label="Đổi ảnh đại diện">
-              <img id="avatarImage" alt="Ảnh đại diện" />
+              <img id="avatarImage" alt="Ảnh đại diện">
               <div class="avatar-overlay">Click để đổi ảnh</div>
             </button>
-            <input id="avatarInput" type="file" accept="image/*" hidden />
+            <input id="avatarInput" type="file" accept="image/*" hidden="">
 
             <div class="header-copy">
               <div class="eyebrow editable" contenteditable="true" data-editable="true" data-field="eyebrow" data-placeholder="CV / Resume" data-single-line="true">CV / Resume</div>
@@ -673,10 +643,7 @@
               <section class="panel">
                 <h2 class="panel-title editable" contenteditable="true" data-editable="true" data-field="objectiveTitle" data-placeholder="Mục tiêu nghề nghiệp" data-single-line="true">Mục tiêu nghề nghiệp</h2>
                 <div class="objective editable" contenteditable="true" data-editable="true" data-field="objective" data-placeholder="Viết ngắn gọn về định hướng nghề nghiệp...">Tôi là ứng viên có tư duy học hỏi nhanh, yêu thích xây dựng giao diện sạch đẹp, tối ưu trải nghiệm người dùng và thích làm việc với sản phẩm thực tế. Mục tiêu của tôi là phát triển thành một Frontend Developer vững về kỹ thuật và tốt về tư duy sản phẩm.</div>
-                <div class="note no-print">
-                  <span class="note-badge">Tip</span>
-                  <span>Click vào từng dòng để sửa trực tiếp.</span>
-                </div>
+                
               </section>
 
               <section class="panel">
@@ -759,222 +726,7 @@
     </div>
   </div>
 
-  <script>
-    (function () {
-      const STORAGE_KEY = 'cv-editor-simple-v1';
-      const avatarImage = document.getElementById('avatarImage');
-      const avatarButton = document.getElementById('avatarButton');
-      const avatarInput = document.getElementById('avatarInput');
-      const printBtn = document.getElementById('printBtn');
-      const resetBtn = document.getElementById('resetBtn');
-      const editableNodes = Array.from(document.querySelectorAll('[data-editable="true"]'));
+  
 
-      function createDefaultAvatar() {
-        const svg = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300" fill="none">
-            <defs>
-              <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#0f766e" />
-                <stop offset="100%" stop-color="#38bdf8" />
-              </linearGradient>
-            </defs>
-            <rect width="300" height="300" rx="42" fill="url(#g)"/>
-            <circle cx="150" cy="114" r="54" fill="rgba(255,255,255,0.92)"/>
-            <path d="M63 246c18-45 58-66 87-66s69 21 87 66" fill="rgba(255,255,255,0.92)"/>
-            <path d="M118 202c10-17 22-25 32-25s22 8 32 25" stroke="#0f766e" stroke-width="12" stroke-linecap="round"/>
-            <text x="150" y="286" text-anchor="middle" fill="rgba(255,255,255,0.9)" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="700">Avatar</text>
-          </svg>`;
-        return 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg);
-      }
 
-      const DEFAULT_STATE = {
-        eyebrow: 'CV / Resume',
-        name: 'Nguyễn Văn A',
-        position: 'Frontend Developer / UI Builder',
-        phone: '0987 654 321',
-        email: 'nguyenvana@email.com',
-        address: 'TP. Hồ Chí Minh',
-        linkedin: 'linkedin.com/in/nguyenvana',
-        objectiveTitle: 'Mục tiêu nghề nghiệp',
-        objective: 'Tôi là ứng viên có tư duy học hỏi nhanh, yêu thích xây dựng giao diện sạch đẹp, tối ưu trải nghiệm người dùng và thích làm việc với sản phẩm thực tế. Mục tiêu của tôi là phát triển thành một Frontend Developer vững về kỹ thuật và tốt về tư duy sản phẩm.',
-        skillsTitle: 'Kỹ năng',
-        skill1: 'HTML / CSS',
-        skill2: 'JavaScript',
-        skill3: 'React',
-        skill4: 'Tailwind CSS',
-        skill5: 'Git / GitHub',
-        skill6: 'Giao tiếp',
-        extrasTitle: 'Sở thích / Chứng chỉ',
-        extras: '• Chứng chỉ Google UX Design\n• Sở thích: đọc sách, du lịch, nhiếp ảnh',
-        experienceTitle: 'Kinh nghiệm làm việc',
-        exp1_role: 'Frontend Developer',
-        exp1_company: 'Công ty ABC • 2023 - Hiện tại',
-        exp1_time: 'Full-time',
-        exp1_desc: 'Xây dựng và duy trì giao diện web cho sản phẩm nội bộ, tối ưu tốc độ tải trang và xử lý các luồng dữ liệu từ API.',
-        exp2_role: 'Web Developer Intern',
-        exp2_company: 'Công ty XYZ • 2022 - 2023',
-        exp2_time: '6 tháng',
-        exp2_desc: 'Hỗ trợ team phát triển giao diện, chỉnh sửa component, tham gia test và tối ưu trải nghiệm người dùng trên mobile.',
-        exp3_role: 'Freelance Project',
-        exp3_company: 'Dự án cá nhân • 2021 - 2022',
-        exp3_time: 'Part-time',
-        exp3_desc: 'Thiết kế và xây dựng một số landing page mẫu, thực hành tối ưu bố cục, màu sắc và khả năng in ấn chuẩn A4.',
-        educationTitle: 'Học vấn',
-        edu_school: 'Đại học Công nghệ',
-        edu_time: '2019 - 2023',
-        edu_desc: 'Chuyên ngành Công nghệ Thông tin. GPA 3.4/4.0. Tập trung vào UI/UX cơ bản, phát triển web và các dự án thực hành.',
-        avatar: createDefaultAvatar()
-      };
-
-      let state = loadState();
-      let saveTimer = null;
-
-      function loadState() {
-        try {
-          const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
-          if (parsed && typeof parsed === 'object') {
-            return { ...DEFAULT_STATE, ...parsed };
-          }
-        } catch (error) {
-          console.warn('Không đọc được dữ liệu đã lưu:', error);
-        }
-        return { ...DEFAULT_STATE };
-      }
-
-      function saveState(nextState) {
-        state = { ...state, ...nextState };
-        try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        } catch (error) {
-          console.warn('Không lưu được trạng thái CV:', error);
-        }
-      }
-
-      function scheduleSave() {
-        clearTimeout(saveTimer);
-        saveTimer = setTimeout(() => {
-          saveState(readCurrentState());
-        }, 120);
-      }
-
-      function normalizeText(value, singleLine) {
-        const raw = String(value || '')
-          .replace(/\u00a0/g, ' ')
-          .replace(/\r/g, '');
-        return singleLine ? raw.replace(/\n+/g, ' ').trim() : raw.trimEnd();
-      }
-
-      function readFieldValue(node) {
-        const singleLine = node.dataset.singleLine === 'true';
-        return normalizeText(node.innerText, singleLine);
-      }
-
-      function readCurrentState() {
-        const next = { avatar: avatarImage.src };
-        editableNodes.forEach((node) => {
-          const field = node.dataset.field;
-          if (!field) return;
-          next[field] = readFieldValue(node);
-        });
-        return next;
-      }
-
-      function applyState(nextState) {
-        const merged = { ...DEFAULT_STATE, ...(nextState || {}) };
-
-        editableNodes.forEach((node) => {
-          const field = node.dataset.field;
-          if (!field) return;
-          const value = merged[field] ?? '';
-          node.textContent = value;
-        });
-
-        avatarImage.src = merged.avatar || DEFAULT_STATE.avatar;
-        document.title = `${merged.name || DEFAULT_STATE.name} - CV Editor`;
-      }
-
-      function setEditingState(node, isEditing) {
-        node.classList.toggle('is-editing', isEditing);
-      }
-
-      function wireEditable(node) {
-        node.addEventListener('focus', () => setEditingState(node, true));
-        node.addEventListener('blur', () => {
-          setEditingState(node, false);
-          scheduleSave();
-        });
-        node.addEventListener('input', scheduleSave);
-        node.addEventListener('keydown', (event) => {
-          if (node.dataset.singleLine === 'true' && event.key === 'Enter') {
-            event.preventDefault();
-            node.blur();
-          }
-        });
-      }
-
-      function resetToDefault() {
-        const confirmed = window.confirm('Bạn muốn reset CV về nội dung mặc định không?');
-        if (!confirmed) return;
-        state = { ...DEFAULT_STATE };
-        try {
-          localStorage.removeItem(STORAGE_KEY);
-        } catch (error) {
-          console.warn('Không xóa được localStorage:', error);
-        }
-        applyState(state);
-      }
-
-      function setAvatarFromSource(source) {
-        avatarImage.src = source;
-        scheduleSave();
-      }
-
-      function pickAvatarUrlOrFile() {
-        const wantUrl = window.confirm('OK: nhập URL ảnh đại diện. Cancel: chọn file ảnh từ máy.');
-        if (wantUrl) {
-          const current = avatarImage.src && !avatarImage.src.startsWith('data:image/svg+xml') ? avatarImage.src : '';
-          const url = window.prompt('Nhập URL ảnh đại diện:', current);
-          if (url && url.trim()) {
-            setAvatarFromSource(url.trim());
-          }
-          return;
-        }
-        avatarInput.value = '';
-        avatarInput.click();
-      }
-
-      editableNodes.forEach(wireEditable);
-      applyState(state);
-
-      avatarButton.addEventListener('click', pickAvatarUrlOrFile);
-
-      avatarInput.addEventListener('change', () => {
-        const file = avatarInput.files && avatarInput.files[0];
-        if (!file) return;
-
-        const reader = new FileReader();
-        reader.onload = () => {
-          if (typeof reader.result === 'string') {
-            setAvatarFromSource(reader.result);
-          }
-        };
-        reader.readAsDataURL(file);
-      });
-
-      printBtn.addEventListener('click', () => window.print());
-      resetBtn.addEventListener('click', resetToDefault);
-
-      window.addEventListener('beforeunload', () => {
-        saveState(readCurrentState());
-      });
-
-      window.addEventListener('keydown', (event) => {
-        if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'p') {
-          event.preventDefault();
-          window.print();
-        }
-      });
-    })();
-  </script>
-</body>
-</html>
+</body></html>

@@ -1,0 +1,134 @@
+.account-install-prompt {
+  position: fixed;
+  left: 50%;
+  bottom: 26px;
+  transform: translateX(-50%);
+  width: min(92vw, 520px);
+  border: 1px solid #d8e7f4;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 22px 45px rgba(14, 37, 62, 0.28);
+  padding: 14px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  z-index: 2100;
+}
+
+.account-install-prompt__icon-wrap {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  border: 1px solid #d7e7f4;
+  background: #f5faff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.account-install-prompt__icon {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+}
+
+.account-install-prompt__text {
+  min-width: 0;
+}
+
+.account-install-prompt__text h4 {
+  margin: 0;
+  color: #173655;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.account-install-prompt__text p {
+  margin: 5px 0 0;
+  color: #56728d;
+  font-size: 0.92rem;
+  line-height: 1.38;
+}
+
+.account-install-prompt__text small {
+  margin-top: 5px;
+  color: #1c78bf;
+  font-size: 0.77rem;
+  display: block;
+}
+
+.account-install-prompt__actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.account-install-prompt__actions button {
+  border-radius: 11px;
+  height: 36px;
+  border: 1px solid transparent;
+  padding: 0 12px;
+  font-size: 0.84rem;
+  font-weight: 800;
+  white-space: nowrap;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.account-install-prompt__actions button.install {
+  color: #ffffff;
+  background: linear-gradient(132deg, #1f78c3 0%, #2194d6 100%);
+}
+
+.account-install-prompt__actions button.install:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 18px rgba(31, 120, 195, 0.35);
+}
+
+.account-install-prompt__actions button.later {
+  color: #335b7f;
+  border-color: #c9dced;
+  background: #f8fbff;
+}
+
+.account-install-prompt__actions button.later:hover {
+  transform: translateY(-1px);
+  border-color: #94b8d8;
+  background: #eef6ff;
+}
+
+@media (max-width: 680px) {
+  .account-install-prompt {
+    width: calc(100vw - 18px);
+    bottom: 14px;
+    border-radius: 14px;
+    padding: 11px;
+    grid-template-columns: auto 1fr;
+    gap: 10px;
+  }
+
+  .account-install-prompt__icon-wrap {
+    width: 48px;
+    height: 48px;
+    border-radius: 13px;
+  }
+
+  .account-install-prompt__icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .account-install-prompt__text h4 {
+    font-size: 0.98rem;
+  }
+
+  .account-install-prompt__text p {
+    font-size: 0.85rem;
+  }
+
+  .account-install-prompt__actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
+}

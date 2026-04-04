@@ -37,6 +37,8 @@ import AIAssistantWidget from './components/AIAssistantWidget';
 import CareerGuide from './features/career-guide/CareerGuide';
 import CareerGuideDetail from './features/career-guide/CareerGuideDetail';
 import CareerGuideManage from './features/career-guide/CareerGuideManage';
+import PWAUpdatePrompt from './components/pwa/PWAUpdatePrompt';
+import AccountInstallPrompt from './components/pwa/AccountInstallPrompt';
 import { API_BASE } from './config/apiBase';
 import './App.css';
 
@@ -140,6 +142,8 @@ function AppContent() {
 
       {showPublicChrome && <Footer />}
       {showPublicChrome && <AIAssistantWidget />}
+      <AccountInstallPrompt />
+      <PWAUpdatePrompt />
     </div>
   );
 }

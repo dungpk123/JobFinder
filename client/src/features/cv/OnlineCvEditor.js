@@ -16,6 +16,8 @@ const escapeHtml = (s = '') => String(s)
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&#039;');
 
+const stripScriptsFromHtml = (html = '') => String(html).replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+
 const injectPreviewEditorScript = (html) => {
   if (!html || typeof html !== 'string') return html;
   if (html.includes('__cv_live_editor_hook__')) return html;
@@ -26,16 +28,36 @@ const injectPreviewEditorScript = (html) => {
   if (window.__cvLiveEditorHooked) return;
   window.__cvLiveEditorHooked = true;
 
+  function post(type, payload) {
+    window.parent.postMessage(Object.assign({ __cv_editor: true, type: type }, payload || {}), '*');
+  }
+
   var style = document.createElement('style');
   style.id = '__cv_live_editor_style__';
   style.textContent =
-    '[data-cv-field]{outline:2px dashed transparent;outline-offset:2px;cursor:text;transition:outline .15s ease, background .15s ease;}' +
-    '[data-cv-field]:hover{outline-color:#0f766e!important;background:rgba(15,118,110,.08)!important;}' +
-    '[data-cv-field].cv-editing{outline-color:#115e59!important;background:rgba(15,118,110,.14)!important;}' +
-    '[data-cv-field][data-cv-empty="1"]:not(.cv-editing)::before{content:attr(data-cv-placeholder);color:#94a3b8;font-style:italic;}';
+    'body{padding-left:16px!important;padding-right:16px!important;box-sizing:border-box;}' +
+    '@media print{body{padding-left:0!important;padding-right:0!important;}}' +
+    '.toolbar,.toolbar.no-print,#resetBtn{display:none!important;}' +
+    '.shell{padding-top:0!important;padding-bottom:0!important;}' +
+    '.stage{max-width:none!important;display:flex!important;justify-content:center!important;overflow:auto!important;padding:0!important;}' +
+    '.cv-page{margin-left:auto!important;margin-right:auto!important;}' +
+    '.note,.note-badge{display:none!important;}' +
+    '.contact-strip{grid-template-columns:repeat(2,minmax(0,1fr))!important;}' +
+    '.contact-chip{min-width:0!important;}' +
+    '.contact-value{overflow-wrap:anywhere;word-break:break-word;}' +
+    '[data-cv-field],[data-editable="true"]{outline:2px dashed transparent;outline-offset:2px;cursor:text;transition:outline .15s ease, background .15s ease;}' +
+    '[data-cv-field]:hover,[data-editable="true"]:hover{outline-color:#0f766e!important;background:rgba(15,118,110,.08)!important;}' +
+    '[data-cv-field].cv-editing,[data-editable="true"].cv-editing{outline-color:#115e59!important;background:rgba(15,118,110,.14)!important;}' +
+    '[data-cv-field][data-cv-empty="1"]:not(.cv-editing)::before,[data-editable="true"][data-cv-empty="1"]:not(.cv-editing)::before{content:attr(data-cv-placeholder);color:#94a3b8;font-style:italic;}' +
+    '.cv-live-add-slot{display:flex;justify-content:center;align-items:center;margin:10px 0 16px;}' +
+    '.cv-live-add-section-btn{width:34px;height:34px;border:2px solid #fdba74;border-radius:999px;background:#fff7ed;color:#f97316;font-size:28px;line-height:1;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;}' +
+    '.cv-live-add-section-btn:hover{background:#fff1e5;transform:translateY(-1px);}' +
+    '.cv-live-custom-section{position:relative;}' +
+    '.cv-live-remove-section-btn{margin-top:10px;border:1px solid #f2c2cc;background:#fff3f6;color:#9f1d35;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer;}';
   document.head.appendChild(style);
 
   var active = null;
+  var customSectionCount = 0;
 
   function asElement(target) {
     if (!target) return null;
@@ -43,10 +65,22 @@ const injectPreviewEditorScript = (html) => {
     return target.parentElement || null;
   }
 
+  function getFieldKey(node) {
+    if (!node) return '';
+    return node.getAttribute('data-cv-field') || node.getAttribute('data-field') || '';
+  }
+
+  function isSingleLine(node) {
+    if (!node) return false;
+    if (node.getAttribute('data-single-line') === 'true') return true;
+    if (node.getAttribute('data-cv-single-line') === '1') return true;
+    return node.getAttribute('data-cv-multiline') !== '1';
+  }
+
   function getFieldNode(target) {
     var el = asElement(target);
     if (!el || !el.closest) return null;
-    return el.closest('[data-cv-field]');
+    return el.closest('[data-cv-field], [data-editable="true"]');
   }
 
   function normalizeValue(text) {
@@ -60,10 +94,227 @@ const injectPreviewEditorScript = (html) => {
     if (!node) return;
     var raw = normalizeValue(node.innerText || '');
     node.setAttribute('data-cv-empty', raw.trim() ? '0' : '1');
+    if (!node.getAttribute('data-cv-placeholder')) {
+      var fallbackPlaceholder = node.getAttribute('data-placeholder') || 'Nhập nội dung';
+      node.setAttribute('data-cv-placeholder', fallbackPlaceholder);
+    }
   }
 
-  function post(type, payload) {
-    window.parent.postMessage(Object.assign({ __cv_editor: true, type: type }, payload || {}), '*');
+  function markEditable(node, field, placeholder, singleLine) {
+    if (!node) return;
+    node.setAttribute('contenteditable', 'true');
+    node.setAttribute('data-editable', 'true');
+    node.setAttribute('spellcheck', 'false');
+
+    if (field && !node.getAttribute('data-field') && !node.getAttribute('data-cv-field')) {
+      node.setAttribute('data-field', field);
+    }
+
+    if (placeholder && !node.getAttribute('data-placeholder')) {
+      node.setAttribute('data-placeholder', placeholder);
+    }
+
+    if (singleLine && !node.getAttribute('data-single-line')) {
+      node.setAttribute('data-single-line', 'true');
+    }
+
+    setEmptyState(node);
+  }
+
+  function normalizeForMatch(text) {
+    return String(text || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\\s+/g, ' ')
+      .trim();
+  }
+
+  function findContactValueByLabel(tokens) {
+    var chips = Array.prototype.slice.call(document.querySelectorAll('.contact-chip,.contact-item,.contact-card,.contact-row'));
+
+    for (var i = 0; i < chips.length; i += 1) {
+      var chip = chips[i];
+      var labelNode = chip.querySelector('.contact-label,[data-contact-label],label,strong,.label') || chip.firstElementChild;
+      var labelText = normalizeForMatch(labelNode ? labelNode.textContent : chip.textContent);
+
+      var matched = tokens.some(function (token) {
+        return labelText.indexOf(token) >= 0;
+      });
+
+      if (!matched) continue;
+
+      var valueNode = chip.querySelector('.contact-value,[data-field],[data-cv-field],a,span,p,div:last-child');
+      if (valueNode && valueNode !== labelNode) return valueNode;
+    }
+
+    return null;
+  }
+
+  function ensureContactEditable() {
+    var defs = [
+      {
+        selector: '.contact-value,[data-field="phone"],[data-cv-field="phone"]',
+        field: 'phone',
+        placeholder: 'Nhập số điện thoại',
+        labelTokens: ['so dien thoai', 'dien thoai', 'phone']
+      },
+      {
+        selector: '[data-field="email"],[data-cv-field="email"]',
+        field: 'email',
+        placeholder: 'Nhập email',
+        labelTokens: ['email', 'e-mail', 'mail']
+      },
+      {
+        selector: '[data-field="address"],[data-cv-field="address"]',
+        field: 'address',
+        placeholder: 'Nhập địa chỉ',
+        labelTokens: ['dia chi', 'address', 'noi o']
+      },
+      {
+        selector: '[data-field="linkedin"],[data-cv-field="linkedin"]',
+        field: 'linkedin',
+        placeholder: 'LinkedIn (nếu có)',
+        labelTokens: ['linkedin', 'linked in']
+      }
+    ];
+
+    defs.forEach(function (def) {
+      document.querySelectorAll(def.selector).forEach(function (node) {
+        markEditable(node, def.field, def.placeholder, true);
+      });
+
+      var fallbackNode = findContactValueByLabel(def.labelTokens || []);
+      if (fallbackNode) {
+        markEditable(fallbackNode, def.field, def.placeholder, true);
+      }
+    });
+
+    document.querySelectorAll('a[data-field],a[data-cv-field],.contact-chip a').forEach(function (anchor) {
+      anchor.addEventListener('click', function (event) {
+        event.preventDefault();
+      });
+    });
+  }
+
+  function centerCvLayout() {
+    var root = document.querySelector('#cvPage')
+      || document.querySelector('.cv-page')
+      || document.querySelector('.resume-page')
+      || document.querySelector('.shell')
+      || document.querySelector('.stage');
+
+    if (!root) {
+      var candidates = Array.prototype.slice.call(document.body.children || []);
+      root = candidates.find(function (node) {
+        var tag = String(node.tagName || '').toLowerCase();
+        return tag && tag !== 'script' && tag !== 'style' && !node.classList.contains('cv-live-add-section-btn') && !node.classList.contains('cv-live-add-slot');
+      }) || null;
+    }
+
+    if (!root) return;
+    root.style.marginLeft = 'auto';
+    root.style.marginRight = 'auto';
+  }
+
+  function emitFieldUpdate(node) {
+    var field = getFieldKey(node);
+    if (!field) return;
+    post('CV_FIELD_UPDATE', {
+      field: field,
+      value: normalizeValue(node.innerText || '')
+    });
+  }
+
+  function findInsertContainer() {
+    return document.querySelector('.main-column')
+      || document.querySelector('.cv-body main')
+      || document.querySelector('main')
+      || document.querySelector('.cv-body')
+      || document.querySelector('.cv-content')
+      || document.body;
+  }
+
+  function createCustomSection() {
+    var container = findInsertContainer();
+    if (!container) return;
+
+    customSectionCount += 1;
+
+    var section = document.createElement('section');
+    section.className = 'section-card cv-live-custom-section';
+    section.setAttribute('data-cv-custom', '1');
+
+    var head = document.createElement('div');
+    head.className = 'section-head';
+
+    var title = document.createElement('h2');
+    title.className = 'section-title';
+    title.textContent = 'Thông tin bổ sung';
+    markEditable(title, 'custom_title_' + customSectionCount, 'Tiêu đề nội dung', true);
+    head.appendChild(title);
+
+    var content = document.createElement('div');
+    content.className = 'job-desc';
+    content.textContent = 'Nhập nội dung bạn muốn thêm tại đây...';
+    markEditable(content, 'custom_content_' + customSectionCount, 'Nhập nội dung thêm', false);
+
+    var removeBtn = document.createElement('button');
+    removeBtn.type = 'button';
+    removeBtn.className = 'cv-live-remove-section-btn no-print';
+    removeBtn.textContent = 'Xóa mục này';
+    removeBtn.addEventListener('click', function (event) {
+      event.preventDefault();
+      section.remove();
+    });
+
+    section.appendChild(head);
+    section.appendChild(content);
+    section.appendChild(removeBtn);
+
+    if (container.firstElementChild) {
+      container.insertBefore(section, container.firstElementChild);
+    } else {
+      container.appendChild(section);
+    }
+
+    emitFieldUpdate(title);
+    emitFieldUpdate(content);
+    section.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    window.setTimeout(function () {
+      title.focus();
+    }, 0);
+  }
+
+  function ensureAddButton() {
+    if (document.querySelector('.cv-live-add-section-btn')) return;
+
+    var slot = document.querySelector('.cv-live-add-slot');
+    if (!slot) {
+      slot = document.createElement('div');
+      slot.className = 'cv-live-add-slot no-print';
+      slot.setAttribute('data-cv-runtime', '1');
+
+      var anchor = document.querySelector('.cv-body');
+      if (anchor && anchor.parentNode) {
+        anchor.parentNode.insertBefore(slot, anchor);
+      } else {
+        document.body.appendChild(slot);
+      }
+    }
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cv-live-add-section-btn no-print';
+    btn.setAttribute('aria-label', 'Thêm nội dung mới');
+    btn.setAttribute('data-cv-runtime', '1');
+    btn.textContent = '+';
+    btn.addEventListener('click', function (event) {
+      event.preventDefault();
+      event.stopPropagation();
+      createCustomSection();
+    });
+    slot.appendChild(btn);
   }
 
   function placeCaretAtEnd(node) {
@@ -80,15 +331,11 @@ const injectPreviewEditorScript = (html) => {
 
   function deactivate(node, shouldEmit) {
     if (!node) return;
-    node.removeAttribute('contenteditable');
     node.classList.remove('cv-editing');
     setEmptyState(node);
 
     if (shouldEmit) {
-      post('CV_FIELD_UPDATE', {
-        field: node.getAttribute('data-cv-field') || '',
-        value: normalizeValue(node.innerText || '')
-      });
+      emitFieldUpdate(node);
     }
   }
 
@@ -97,13 +344,27 @@ const injectPreviewEditorScript = (html) => {
     if (active && active !== node) deactivate(active, true);
     active = node;
     node.setAttribute('contenteditable', 'true');
+    if (!node.getAttribute('data-editable')) {
+      node.setAttribute('data-editable', 'true');
+    }
     node.classList.add('cv-editing');
     node.focus();
     placeCaretAtEnd(node);
   }
 
-  document.querySelectorAll('[data-cv-field]').forEach(function (node) {
+  ensureContactEditable();
+  centerCvLayout();
+  ensureAddButton();
+
+  document.querySelectorAll('.note, .note-badge').forEach(function (node) {
+    node.remove();
+  });
+
+  document.querySelectorAll('[data-cv-field], [data-editable="true"]').forEach(function (node) {
     setEmptyState(node);
+    if (!node.getAttribute('contenteditable')) {
+      node.setAttribute('contenteditable', 'true');
+    }
   });
 
   document.addEventListener('click', function (event) {
@@ -117,21 +378,16 @@ const injectPreviewEditorScript = (html) => {
       return;
     }
 
-    event.preventDefault();
-    event.stopPropagation();
-
-    if (active !== node || node.getAttribute('contenteditable') !== 'true') {
+    if (active !== node) {
       activate(node);
     }
 
-    post('CV_FIELD_FOCUS', { field: node.getAttribute('data-cv-field') || '' });
+    post('CV_FIELD_FOCUS', { field: getFieldKey(node) });
   }, true);
 
   document.addEventListener('dblclick', function (event) {
     var node = getFieldNode(event.target);
     if (!node) return;
-    event.preventDefault();
-    event.stopPropagation();
     activate(node);
   }, true);
 
@@ -158,12 +414,17 @@ const injectPreviewEditorScript = (html) => {
       return;
     }
 
-    var multiline = active.getAttribute('data-cv-multiline') === '1';
-    if (!multiline && event.key === 'Enter') {
+    if (isSingleLine(active) && event.key === 'Enter') {
       event.preventDefault();
       deactivate(active, true);
       active = null;
     }
+  }, true);
+
+  document.addEventListener('input', function (event) {
+    var node = getFieldNode(event.target);
+    if (!node) return;
+    setEmptyState(node);
   }, true);
 })();
 </script>`;
@@ -209,6 +470,7 @@ const OnlineCvEditor = () => {
   const isNewCv = !cvId;
 
   const suppressLoadErrorsUntilRef = useRef(0);
+  const previewFrameRef = useRef(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [templateLoading, setTemplateLoading] = useState(true);
@@ -223,19 +485,9 @@ const OnlineCvEditor = () => {
   const [templateKey, setTemplateKey] = useState(requestedTemplateKey || '');
   const [templateOptions, setTemplateOptions] = useState([]);
   const [selectedTemplateHtml, setSelectedTemplateHtml] = useState('');
-  const [selectedTemplateLabel, setSelectedTemplateLabel] = useState('Đang tải mẫu CV...');
+  const [persistedEditedHtml, setPersistedEditedHtml] = useState('');
 
   const [profile, setProfile] = useState(null);
-  const [activeField, setActiveField] = useState('');
-  const linkedFieldRefs = useRef({});
-
-  const bindLinkedFieldRef = useCallback((fieldKey) => (node) => {
-    if (node) {
-      linkedFieldRefs.current[fieldKey] = node;
-      return;
-    }
-    delete linkedFieldRefs.current[fieldKey];
-  }, []);
 
   const updateFieldValue = useCallback((field, rawValue) => {
     const value = String(rawValue || '').replace(/\r/g, '');
@@ -255,15 +507,6 @@ const OnlineCvEditor = () => {
     const handlePreviewBridge = (event) => {
       const data = event?.data;
       if (!data || data.__cv_editor !== true) return;
-
-      if (data.type === 'CV_FIELD_FOCUS') {
-        const field = String(data.field || '').trim();
-        if (!field) return;
-        setActiveField(field);
-        const input = linkedFieldRefs.current[field];
-        if (input) input.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return;
-      }
 
       if (data.type === 'CV_FIELD_UPDATE') {
         const field = String(data.field || '').trim();
@@ -313,13 +556,11 @@ const OnlineCvEditor = () => {
         setTemplateOptions(options);
         setTemplateKey(resolvedKey);
         setSelectedTemplateHtml(selected?.htmlContent || '');
-        setSelectedTemplateLabel(selected?.label || 'Chưa có mẫu CV khả dụng');
       } catch (err) {
         if (!active) return;
         setTemplateOptions([]);
         setTemplateKey('');
         setSelectedTemplateHtml('');
-        setSelectedTemplateLabel('Không tải được mẫu CV');
       } finally {
         if (active) setTemplateLoading(false);
       }
@@ -335,7 +576,6 @@ const OnlineCvEditor = () => {
     if (!templateOptions.length) return;
     const selected = templateOptions.find((item) => item.key === templateKey) || templateOptions[0];
     setSelectedTemplateHtml(selected?.htmlContent || '');
-    setSelectedTemplateLabel(selected?.label || 'Chưa có mẫu CV khả dụng');
   }, [templateOptions, templateKey]);
 
   const readErrorMessage = async (res, fallback) => {
@@ -452,6 +692,11 @@ const OnlineCvEditor = () => {
             setLanguages(data.cv?.content?.languages || '');
             setProjects(data.cv?.content?.projects || '');
 
+            const savedHtml = String(data.cv?.html || '').trim();
+            if (savedHtml) {
+              setPersistedEditedHtml(savedHtml);
+            }
+
             const savedTemplateKey = normalizeTemplateKey(data.cv?.templateKey || '', '');
             if (savedTemplateKey) {
               setTemplateKey(savedTemplateKey);
@@ -497,7 +742,7 @@ const OnlineCvEditor = () => {
     const link = escapeHtml(pick(p.personalLink, p.LinkCaNhan, p.linkCaNhan, useSample ? 'linkedin.com/in/nguyenvana' : ''));
     const avatarUrl = pick(p.avatarUrl, p.AnhDaiDien, p.anhDaiDien, p.avatar, '');
 
-    const managedTemplateHtml = String(selectedTemplateHtml || '').trim();
+    const managedTemplateHtml = stripScriptsFromHtml(String(persistedEditedHtml || selectedTemplateHtml || '').trim());
     if (managedTemplateHtml) {
       const tokenMap = {
         title,
@@ -578,10 +823,13 @@ const OnlineCvEditor = () => {
       return;
     }
 
-      if (!String(selectedTemplateHtml || '').trim()) {
-        notify({ type: 'error', message: 'Template hiện tại không có nội dung HTML. Vui lòng chọn mẫu khác.' });
-        return;
-      }
+    if (!String(persistedEditedHtml || selectedTemplateHtml || '').trim()) {
+      notify({ type: 'error', message: 'Template hiện tại không có nội dung HTML. Vui lòng chọn mẫu khác.' });
+      return;
+    }
+
+    const liveHtml = serializeLivePreviewHtml({ stripToolbar: true });
+    const htmlToSave = liveHtml || buildHtml();
 
     setSaving(true);
     try {
@@ -597,7 +845,7 @@ const OnlineCvEditor = () => {
           education: String(education || ''),
           languages: String(languages || ''),
         },
-        html: buildHtml(),
+        html: htmlToSave,
         cvId: cvId || null,
       };
 
@@ -616,6 +864,7 @@ const OnlineCvEditor = () => {
       if (!data.success) throw new Error(data.error || 'Không thể lưu CV online');
 
       notify({ type: 'success', message: 'Đã lưu CV online.' });
+      setPersistedEditedHtml(htmlToSave);
       suppressLoadErrorsUntilRef.current = Date.now() + 8000;
 
       const newId = data.cv?.id;
@@ -630,15 +879,59 @@ const OnlineCvEditor = () => {
   };
 
   const onPrint = () => {
-    const html = buildHtml();
+    const liveHtml = serializeLivePreviewHtml({ stripToolbar: true });
+    const html = liveHtml || buildHtml();
+
+    if (!html) {
+      notify({ type: 'warning', message: 'Không thể tải nội dung CV để in.' });
+      return;
+    }
+
     const w = window.open('', '_blank');
-    if (!w) return;
+    if (!w) {
+      notify({ type: 'warning', message: 'Trình duyệt đã chặn cửa sổ in. Vui lòng cho phép pop-up và thử lại.' });
+      return;
+    }
+
     w.document.open();
     w.document.write(html);
     w.document.close();
-    w.focus();
-    setTimeout(() => w.print(), 300);
+
+    const triggerPrint = () => {
+      try {
+        w.focus();
+        w.print();
+      } catch (_) {
+        notify({ type: 'error', message: 'Không thể mở hộp thoại in PDF. Vui lòng thử lại.' });
+      }
+    };
+
+    if (w.document.readyState === 'complete') {
+      setTimeout(triggerPrint, 180);
+      return;
+    }
+
+    w.addEventListener('load', () => setTimeout(triggerPrint, 180), { once: true });
   };
+
+  const serializeLivePreviewHtml = useCallback(({ stripToolbar = false } = {}) => {
+    const iframeDoc = previewFrameRef.current?.contentDocument;
+    const root = iframeDoc?.documentElement;
+    if (!root) return '';
+
+    const clone = root.cloneNode(true);
+    clone.querySelector('#__cv_live_editor_style__')?.remove();
+    clone.querySelector('#__cv_live_editor_hook__')?.remove();
+    clone.querySelectorAll('script').forEach((node) => node.remove());
+    clone.querySelectorAll('.cv-live-add-slot, .cv-live-add-section-btn, .cv-live-remove-section-btn, [data-cv-runtime="1"]').forEach((node) => node.remove());
+    clone.querySelectorAll('.note, .note-badge').forEach((node) => node.remove());
+
+    if (stripToolbar) {
+      clone.querySelectorAll('.toolbar, #resetBtn').forEach((node) => node.remove());
+    }
+
+    return `<!doctype html>\n${clone.outerHTML}`;
+  }, []);
 
   const previewHtml = injectPreviewEditorScript(buildHtml());
 
@@ -656,7 +949,7 @@ const OnlineCvEditor = () => {
         <div className="d-flex justify-content-between align-items-center flex-wrap gap-3">
           <div>
             <h3><i className="bi bi-file-earmark-text me-2"></i>CV Online</h3>
-            <div className="text-muted">Đang chỉnh sửa theo mẫu: <strong>{selectedTemplateLabel}</strong></div>
+            <div className="text-muted">Bạn có thể chỉnh trực tiếp mọi nội dung hiển thị trong CV.</div>
           </div>
           <div className="cv-editor-actions">
             <button type="button" className="btn btn-outline-secondary" onClick={() => navigate('/create-cv')}>
@@ -680,136 +973,16 @@ const OnlineCvEditor = () => {
       ) : null}
 
       <div className="row g-4">
-        <div className="col-lg-4">
-          <div className="cv-editor-form-card">
-            <div className="card-body">
-              <div className="cv-editor-form-group">
-                <label className="cv-editor-label">
-                  <i className="bi bi-palette"></i>Mẫu CV
-                </label>
-                <select
-                  className="form-select cv-editor-select cv-editor-template-select"
-                  value={templateKey}
-                  onChange={(e) => setTemplateKey(normalizeTemplateKey(e.target.value))}
-                  disabled={templateLoading || !templateOptions.length}
-                >
-                  {templateOptions.map((opt) => (
-                    <option key={opt.key} value={opt.key}>{opt.label}</option>
-                  ))}
-                </select>
-                {templateLoading ? <small className="text-muted">Đang tải danh sách mẫu CV...</small> : null}
-              </div>
-
-              <div className={`cv-editor-form-group ${activeField === 'title' ? 'is-linked' : ''}`}>
-                <label className="cv-editor-label"><i className="bi bi-type"></i>Tiêu đề CV</label>
-                <input
-                  ref={bindLinkedFieldRef('title')}
-                  className="form-control cv-editor-input"
-                  value={title}
-                  onFocus={() => setActiveField('title')}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Ví dụ: Lập trình viên Frontend"
-                />
-              </div>
-
-              <div className={`cv-editor-form-group ${activeField === 'summary' ? 'is-linked' : ''}`}>
-                <label className="cv-editor-label"><i className="bi bi-person-badge"></i>Tóm tắt / Mục tiêu nghề nghiệp</label>
-                <textarea
-                  ref={bindLinkedFieldRef('summary')}
-                  className="form-control cv-editor-textarea"
-                  rows={3}
-                  value={summary}
-                  onFocus={() => setActiveField('summary')}
-                  onChange={(e) => setSummary(e.target.value)}
-                  placeholder="Giới thiệu ngắn gọn về bản thân và mục tiêu nghề nghiệp..."
-                />
-              </div>
-
-              <div className={`cv-editor-form-group ${activeField === 'skills' ? 'is-linked' : ''}`}>
-                <label className="cv-editor-label"><i className="bi bi-star"></i>Kỹ năng</label>
-                <textarea
-                  ref={bindLinkedFieldRef('skills')}
-                  className="form-control cv-editor-textarea"
-                  rows={4}
-                  value={skills}
-                  onFocus={() => setActiveField('skills')}
-                  onChange={(e) => setSkills(e.target.value)}
-                  placeholder="Ví dụ: React, Node.js, SQL..."
-                />
-              </div>
-
-              <div className={`cv-editor-form-group ${activeField === 'experience' ? 'is-linked' : ''}`}>
-                <label className="cv-editor-label"><i className="bi bi-briefcase"></i>Kinh nghiệm làm việc</label>
-                <textarea
-                  ref={bindLinkedFieldRef('experience')}
-                  className="form-control cv-editor-textarea"
-                  rows={5}
-                  value={experience}
-                  onFocus={() => setActiveField('experience')}
-                  onChange={(e) => setExperience(e.target.value)}
-                  placeholder="Vị trí | Công ty | Thời gian | Mô tả công việc"
-                />
-              </div>
-
-              <div className={`cv-editor-form-group ${activeField === 'projects' ? 'is-linked' : ''}`}>
-                <label className="cv-editor-label"><i className="bi bi-kanban"></i>Dự án đã làm</label>
-                <textarea
-                  ref={bindLinkedFieldRef('projects')}
-                  className="form-control cv-editor-textarea"
-                  rows={5}
-                  value={projects}
-                  onFocus={() => setActiveField('projects')}
-                  onChange={(e) => setProjects(e.target.value)}
-                  placeholder="Tên dự án | Vai trò | Công nghệ | Kết quả"
-                />
-              </div>
-
-              <div className={`cv-editor-form-group ${activeField === 'education' ? 'is-linked' : ''}`}>
-                <label className="cv-editor-label"><i className="bi bi-mortarboard"></i>Học vấn</label>
-                <textarea
-                  ref={bindLinkedFieldRef('education')}
-                  className="form-control cv-editor-textarea"
-                  rows={4}
-                  value={education}
-                  onFocus={() => setActiveField('education')}
-                  onChange={(e) => setEducation(e.target.value)}
-                  placeholder="Trường | Bằng cấp | Thời gian"
-                />
-              </div>
-
-              <div className={`cv-editor-form-group ${activeField === 'languages' ? 'is-linked' : ''}`}>
-                <label className="cv-editor-label"><i className="bi bi-translate"></i>Ngoại ngữ</label>
-                <textarea
-                  ref={bindLinkedFieldRef('languages')}
-                  className="form-control cv-editor-textarea"
-                  rows={3}
-                  value={languages}
-                  onFocus={() => setActiveField('languages')}
-                  onChange={(e) => setLanguages(e.target.value)}
-                  placeholder="Ví dụ: Tiếng Anh (IELTS 7.0)"
-                />
-              </div>
-
-              <div className="cv-editor-hint">
-                <i className="bi bi-info-circle"></i>
-                <span>Click trực tiếp vào nội dung trong phần xem trước để sửa tại chỗ, dữ liệu sẽ tự đồng bộ về form.</span>
-              </div>
-              <div className="cv-editor-hint">
-                <i className="bi bi-person-vcard"></i>
-                <span>Tên, email, số điện thoại và thành phố lấy từ Hồ sơ cá nhân (trang Profile).</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-lg-8">
-          <div className="cv-editor-preview-card">
+        <div className="col-12">
+          <div className="cv-editor-preview-card is-full">
             <div className="cv-editor-preview-header">
               <i className="bi bi-eye"></i>
               <div className="fw-semibold">Xem trước CV</div>
             </div>
+
             <div className="cv-editor-preview-body">
               <iframe
+                ref={previewFrameRef}
                 title="CV Preview"
                 className="cv-editor-preview-iframe"
                 srcDoc={previewHtml}

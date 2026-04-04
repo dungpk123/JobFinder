@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useNotification } from '../../components/NotificationProvider';
 import './CvManagementPage.css';
@@ -42,7 +42,7 @@ const normalizeCv = (cv, index) => {
 
 const CvManagementPage = () => {
   const navigate = useNavigate();
-  const { notify } = useNotification();
+  const { notify, requestConfirm } = useNotification();
 
   const user = useMemo(() => {
     try {
@@ -56,9 +56,11 @@ const CvManagementPage = () => {
 
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState('');
+  const [uploading, setUploading] = useState(false);
   const [rawCvs, setRawCvs] = useState([]);
   const [query, setQuery] = useState('');
   const [viewFilter, setViewFilter] = useState('all');
+  const fileInputRef = useRef(null);
 
   const cvs = useMemo(() => {
     return rawCvs
@@ -115,7 +117,13 @@ const CvManagementPage = () => {
   const handleDelete = async (cvId) => {
     if (!userId || !cvId) return;
 
-    const ok = window.confirm('Bạn có chắc muốn xóa CV này không?');
+    const ok = await requestConfirm({
+      title: 'Xóa CV',
+      message: 'Bạn có chắc muốn xóa CV này không?',
+      confirmText: 'Xóa',
+      cancelText: 'Hủy',
+      type: 'warning'
+    });
     if (!ok) return;
 
     setDeletingId(String(cvId));
@@ -138,6 +146,49 @@ const CvManagementPage = () => {
     }
   };
 
+  const handleOpenFilePicker = () => {
+    if (!userId) {
+      notify({ type: 'warning', message: 'Vui lòng đăng nhập để tải CV lên.' });
+      return;
+    }
+
+    if (uploading) return;
+    fileInputRef.current?.click();
+  };
+
+  const handleUploadFile = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !userId) return;
+
+    const formData = new FormData();
+    formData.append('userId', String(userId));
+    formData.append('cvFile', file);
+    formData.append('cvTitle', file.name.replace(/\.[^/.]+$/, '') || file.name);
+    formData.append('summary', '');
+
+    setUploading(true);
+    try {
+      const response = await fetch('/api/cvs', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || 'Không thể tải CV lên');
+      }
+
+      notify({ type: 'success', message: 'Tải CV lên thành công.' });
+      await loadCvs();
+      setViewFilter('all');
+    } catch (error) {
+      notify({ type: 'error', message: error.message || 'Không thể tải CV lên' });
+    } finally {
+      setUploading(false);
+    }
+  };
+
   useEffect(() => {
     loadCvs();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -153,13 +204,6 @@ const CvManagementPage = () => {
             <p>
               Theo dõi các CV đã tạo, chỉnh sửa CV online nhanh chóng và tái sử dụng cho mọi cơ hội tuyển dụng.
             </p>
-          </div>
-
-          <div className="cv-management-hero-actions">
-            <Link to="/create-cv" className="cv-management-primary-btn">Khám phá Mẫu CV</Link>
-            <button type="button" className="cv-management-secondary-btn" onClick={loadCvs}>
-              Làm mới danh sách
-            </button>
           </div>
 
           <div className="cv-management-stats">
@@ -187,11 +231,29 @@ const CvManagementPage = () => {
 
             <div className="cv-management-board-actions">
               <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                onChange={handleUploadFile}
+                className="cv-management-hidden-file-input"
+              />
+
+              <input
                 type="text"
                 placeholder="Tìm theo tên CV..."
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
               />
+
+              <button
+                type="button"
+                className="cv-management-upload-btn"
+                disabled={!userId || uploading}
+                onClick={handleOpenFilePicker}
+              >
+                {uploading ? 'Đang tải...' : 'Tải CV lên'}
+              </button>
+
               <button type="button" onClick={() => navigate('/create-cv')}>Tạo CV mới</button>
             </div>
           </div>
@@ -235,7 +297,7 @@ const CvManagementPage = () => {
               {filteredCvs.map((cv) => (
                 <article key={cv.id} className="cv-management-item">
                   <div className="cv-management-item-head">
-                    <div>
+                    <div className="cv-management-item-main">
                       <h3>{cv.name}</h3>
                       <div className="cv-management-meta">
                         <span>{cv.typeLabel}</span>
@@ -244,39 +306,52 @@ const CvManagementPage = () => {
                       </div>
                     </div>
 
-                    <span className={`cv-management-type ${cv.isOnlineCv ? 'online' : 'file'}`}>
-                      {cv.isOnlineCv ? 'Online' : 'Tài liệu'}
-                    </span>
-                  </div>
+                    <div className="cv-management-item-actions icon-only">
+                      {cv.fileUrl ? (
+                        <a
+                          href={cv.fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="cv-action-icon view"
+                          title="Xem CV"
+                          aria-label={`Xem CV ${cv.name}`}
+                        >
+                          <i className="bi bi-eye"></i>
+                        </a>
+                      ) : (
+                        <button
+                          type="button"
+                          className="cv-action-icon view"
+                          disabled
+                          title="Chưa có tệp"
+                          aria-label="Chưa có tệp"
+                        >
+                          <i className="bi bi-eye-slash"></i>
+                        </button>
+                      )}
 
-                  <div className="cv-management-item-actions">
-                    {cv.fileUrl ? (
-                      <a href={cv.fileUrl} target="_blank" rel="noreferrer" className="cv-action-btn view">
-                        Xem CV
-                      </a>
-                    ) : (
-                      <button type="button" className="cv-action-btn view" disabled>
-                        Chưa có tệp
+                      <button
+                        type="button"
+                        className="cv-action-icon edit"
+                        disabled={!cv.isOnlineCv}
+                        onClick={() => navigate(`/create-cv/online-editor?cvId=${encodeURIComponent(cv.id)}`)}
+                        title="Chỉnh sửa CV"
+                        aria-label={`Chỉnh sửa ${cv.name}`}
+                      >
+                        <i className="bi bi-pencil-square"></i>
                       </button>
-                    )}
 
-                    <button
-                      type="button"
-                      className="cv-action-btn edit"
-                      disabled={!cv.isOnlineCv}
-                      onClick={() => navigate(`/create-cv/online-editor?cvId=${encodeURIComponent(cv.id)}`)}
-                    >
-                      Chỉnh sửa
-                    </button>
-
-                    <button
-                      type="button"
-                      className="cv-action-btn delete"
-                      disabled={deletingId === String(cv.id)}
-                      onClick={() => handleDelete(cv.id)}
-                    >
-                      {deletingId === String(cv.id) ? 'Đang xóa...' : 'Xóa'}
-                    </button>
+                      <button
+                        type="button"
+                        className="cv-action-icon delete"
+                        disabled={deletingId === String(cv.id)}
+                        onClick={() => handleDelete(cv.id)}
+                        title={deletingId === String(cv.id) ? 'Đang xóa...' : 'Xóa CV'}
+                        aria-label={deletingId === String(cv.id) ? 'Đang xóa' : `Xóa ${cv.name}`}
+                      >
+                        <i className={`bi ${deletingId === String(cv.id) ? 'bi-arrow-repeat' : 'bi-trash'}`}></i>
+                      </button>
+                    </div>
                   </div>
                 </article>
               ))}

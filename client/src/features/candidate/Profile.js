@@ -1,6 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useNotification } from '../../components/NotificationProvider';
+import ProfileSidebar from './profile/ProfileSidebar';
+import ProfileMainContent from './profile/ProfileMainContent';
+import { PROFILE_TAB_SETTINGS, normalizeProfileTab } from './profile/profileNavigation';
 
 const Profile = ({ initialTab = 'overview' }) => {
     const location = useLocation();
@@ -17,7 +20,7 @@ const Profile = ({ initialTab = 'overview' }) => {
     }, []);
     const userId = user?.id || user?.MaNguoiDung || user?.maNguoiDung || user?.userId || user?.userID;
 
-    const [activeTab, setActiveTab] = useState(initialTab);
+    const [activeTab, setActiveTab] = useState(() => normalizeProfileTab(initialTab));
     const [showEditModal, setShowEditModal] = useState(false);
     const [showIntroModal, setShowIntroModal] = useState(false);
     const [introHtml, setIntroHtml] = useState('');
@@ -120,7 +123,7 @@ const Profile = ({ initialTab = 'overview' }) => {
 
     useEffect(() => {
         const tabFromQuery = new URLSearchParams(location.search).get('tab');
-        setActiveTab(tabFromQuery || initialTab || 'overview');
+        setActiveTab(normalizeProfileTab(tabFromQuery || initialTab || 'overview'));
     }, [initialTab, location.search]);
     const editorRef = useRef(null);
     const workEditorRef = useRef(null);
@@ -684,484 +687,29 @@ const Profile = ({ initialTab = 'overview' }) => {
         <div className="container-fluid" style={{ backgroundColor: '#f5f5f5', minHeight: '100vh', paddingTop: '110px' }}>
             <div className="container">
                 <div className="row">
-                    {/* Sidebar */}
-                    <div className="col-md-3">
-                        <div className="bg-white rounded shadow-sm p-3 mb-3">
-                            <div className="text-center mb-3">
-                                <i className="bi bi-emoji-smile text-danger fs-3"></i>
-                                <span className="ms-2 text-danger fw-semibold">Xin chào</span>
-                            </div>
-                            <h5 className="fw-bold text-center mb-4">{user?.name || 'Người dùng'}</h5>
+                    <ProfileSidebar
+                        activeTab={activeTab}
+                        onChangeTab={setActiveTab}
+                        userName={user?.name || 'Người dùng'}
+                    />
 
-                            <ul className="list-unstyled">
-                                <li className="mb-2">
-                                    <button
-                                        className={`btn w-100 text-start d-flex align-items-center gap-2 ${activeTab === 'overview' ? 'bg-danger bg-opacity-10 text-danger' : 'btn-light'}`}
-                                        onClick={() => setActiveTab('overview')}
-                                    >
-                                        <i className="bi bi-grid"></i>
-                                        <span className="fw-semibold">Tổng quan</span>
-                                    </button>
-                                </li>
-                                <li className="mb-2">
-                                    <button
-                                        className={`btn w-100 text-start d-flex align-items-center gap-2 ${activeTab === 'cv' ? 'bg-danger bg-opacity-10 text-danger' : 'btn-light'}`}
-                                        onClick={() => setActiveTab('cv')}
-                                    >
-                                        <i className="bi bi-file-earmark-text"></i>
-                                        <span className="fw-semibold">Hồ sơ đính kèm</span>
-                                    </button>
-                                </li>
-                                <li className="mb-2">
-                                    <button
-                                        className={`btn w-100 text-start d-flex align-items-center gap-2 ${activeTab === 'itviec' ? 'bg-danger bg-opacity-10 text-danger' : 'btn-light'}`}
-                                        onClick={() => setActiveTab('itviec')}
-                                    >
-                                        <i className="bi bi-person"></i>
-                                        <span className="fw-semibold">Hồ sơ ITviec</span>
-                                    </button>
-                                </li>
-                                <li className="mb-2">
-                                    <button
-                                        className={`btn w-100 text-start d-flex align-items-center gap-2 ${activeTab === 'jobs' ? 'bg-danger bg-opacity-10 text-danger' : 'btn-light'}`}
-                                        onClick={() => setActiveTab('jobs')}
-                                    >
-                                        <i className="bi bi-briefcase"></i>
-                                        <span className="fw-semibold">Việc làm của tôi</span>
-                                    </button>
-                                </li>
-                                <li className="mb-2">
-                                    <button
-                                        className={`btn w-100 text-start d-flex align-items-center gap-2 ${activeTab === 'invitations' ? 'bg-danger bg-opacity-10 text-danger' : 'btn-light'}`}
-                                        onClick={() => setActiveTab('invitations')}
-                                    >
-                                        <i className="bi bi-envelope"></i>
-                                        <span className="fw-semibold">Lời mời công việc</span>
-                                        <span className="badge bg-primary ms-auto">0</span>
-                                    </button>
-                                </li>
-                                <li className="mb-2">
-                                    <button
-                                        className={`btn w-100 text-start d-flex align-items-center gap-2 ${activeTab === 'email' ? 'bg-danger bg-opacity-10 text-danger' : 'btn-light'}`}
-                                        onClick={() => setActiveTab('email')}
-                                    >
-                                        <i className="bi bi-envelope-at"></i>
-                                        <span className="fw-semibold">Đăng ký nhận email</span>
-                                    </button>
-                                </li>
-                                <li className="mb-2">
-                                    <button
-                                        className={`btn w-100 text-start d-flex align-items-center gap-2 ${activeTab === 'notifications' ? 'bg-danger bg-opacity-10 text-danger' : 'btn-light'}`}
-                                        onClick={() => setActiveTab('notifications')}
-                                    >
-                                        <i className="bi bi-bell"></i>
-                                        <span className="fw-semibold">Thông báo</span>
-                                    </button>
-                                </li>
-                                <li className="mb-2">
-                                    <button
-                                        className={`btn w-100 text-start d-flex align-items-center gap-2 ${activeTab === 'settings' ? 'bg-danger bg-opacity-10 text-danger' : 'btn-light'}`}
-                                        onClick={() => setActiveTab('settings')}
-                                    >
-                                        <i className="bi bi-gear"></i>
-                                        <span className="fw-semibold">Cài đặt</span>
-                                    </button>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    {/* Main Content */}
-                    <div className="col-md-9">
-                        {activeTab === 'overview' && (
-                            <>
-                                {/* Profile Header */}
-                                <div className="bg-white rounded shadow-sm p-4 mb-3">
-                                    <div className="d-flex align-items-start gap-4">
-                                        <img
-                                            src={user.avatar || user.AnhDaiDien || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
-                                            alt="avatar"
-                                            className="rounded-circle"
-                                            style={{ width: 80, height: 80, objectFit: 'cover' }}
-                                            onError={e => { e.target.onerror = null; e.target.src = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; }}
-                                        />
-                                        <div className="flex-grow-1">
-                                            <h3 className="fw-bold mb-2">{user?.name || 'Người dùng'}</h3>
-                                            <div className="d-flex align-items-center gap-3 text-muted mb-2">
-                                                <div>
-                                                    <i className="bi bi-briefcase me-2"></i>
-                                                    <span>{profileSummary.position || 'Chưa cập nhật chức danh'}</span>
-                                                </div>
-                                            </div>
-                                            <div className="d-flex align-items-center gap-2 text-muted">
-                                                <i className="bi bi-envelope me-1"></i>
-                                                <span>{user.email || 'ntdungpk123@gmail.com'}</span>
-                                            </div>
-                                            <button
-                                                onClick={() => setActiveTab('itviec')}
-                                                className="btn btn-link text-primary text-decoration-none mt-2 p-0"
-                                            >
-                                                Cập nhật hồ sơ <i className="bi bi-chevron-right"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* CV Status */}
-                                <div className="bg-white rounded shadow-sm p-4 mb-3">
-                                    <div className="d-flex align-items-center justify-content-between mb-3">
-                                        <h5 className="fw-bold mb-0">Hồ sơ đính kèm của bạn</h5>
-                                        <button
-                                            type="button"
-                                            className="btn btn-sm btn-outline-primary"
-                                            onClick={() => setActiveTab('cv')}
-                                        >
-                                            Quản lý hồ sơ đính kèm
-                                        </button>
-                                    </div>
-                                    {cvList.length === 0 ? (
-                                        <div className="text-center py-5">
-                                            <i className="bi bi-file-earmark-text text-secondary" style={{ fontSize: '4rem' }}></i>
-                                            <p className="text-muted mt-3">
-                                                Bạn chưa đính kèm CV. Tải lên CV của bạn để tối ưu hóa quá trình tìm việc.
-                                            </p>
-                                            <button className="btn btn-primary mt-2" onClick={() => setActiveTab('cv')}>
-                                                Tải lên CV <i className="bi bi-chevron-right"></i>
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <div className="list-group">
-                                            {cvList.map((cv) => (
-                                                <div key={cv.id} className="list-group-item d-flex justify-content-between align-items-center">
-                                                    <div className="d-flex align-items-center gap-3">
-                                                        <i className="bi bi-file-earmark-pdf text-danger fs-2"></i>
-                                                        <div>
-                                                            <div className="fw-semibold">{cv.name}</div>
-                                                            <div className="text-muted small">{cv.size} • Tải lên ngày {cv.uploadDate}</div>
-                                                        </div>
-                                                    </div>
-                                                    <button className="btn btn-sm btn-outline-primary" onClick={() => {
-                                                        setSelectedCv(cv);
-                                                        setShowCvPreview(true);
-                                                    }}>
-                                                        Xem
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </>
-                        )}
-
-                        {activeTab === 'cv' && (
-                            <div className="bg-white rounded shadow-sm p-4">
-                                <div className="d-flex justify-content-between align-items-center mb-3">
-                                    <h5 className="fw-bold mb-0">Hồ sơ đính kèm</h5>
-                                    <button 
-                                        className="btn btn-primary"
-                                        onClick={() => fileInputRef.current?.click()}
-                                        disabled={isCvUploading}
-                                    >
-                                        <i className="bi bi-upload me-2"></i>
-                                        {isCvUploading ? 'Đang tải...' : 'Tải lên CV'}
-                                    </button>
-                                    <input
-                                        ref={fileInputRef}
-                                        type="file"
-                                        accept=".pdf,.doc,.docx"
-                                        style={{ display: 'none' }}
-                                        onChange={handleCvUpload}
-                                    />
-                                </div>
-
-                                {cvList.length === 0 ? (
-                                    <div className="text-center py-5">
-                                        <i className="bi bi-file-earmark-text text-secondary" style={{ fontSize: '4rem' }}></i>
-                                        <p className="text-muted mt-3">
-                                            Bạn chưa có hồ sơ đính kèm nào
-                                        </p>
-                                        <p className="text-muted small">
-                                            Chấp nhận file: PDF, DOC, DOCX (tối đa 5MB)
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <div className="list-group">
-                                        {cvList.map((cv) => (
-                                            <div key={cv.id} className="list-group-item d-flex justify-content-between align-items-center">
-                                                <div className="d-flex align-items-center gap-3">
-                                                    <i className="bi bi-file-earmark-pdf text-danger fs-2"></i>
-                                                    <div>
-                                                        <div className="fw-semibold">{cv.name}</div>
-                                                        <div className="text-muted small">{cv.size} • Tải lên ngày {cv.uploadDate}</div>
-                                                    </div>
-                                                </div>
-                                                <div className="d-flex gap-2">
-                                                    <button 
-                                                        className="btn btn-sm btn-outline-primary"
-                                                        onClick={() => handlePreviewCv(cv)}
-                                                        title="Xem trước"
-                                                    >
-                                                        <i className="bi bi-eye"></i>
-                                                    </button>
-                                                    <button 
-                                                        className="btn btn-sm btn-outline-danger"
-                                                        onClick={() => confirmDeleteCv(cv)}
-                                                        title="Xóa"
-                                                    >
-                                                        <i className="bi bi-trash"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {activeTab === 'itviec' && (
-                            <div className="bg-white rounded shadow-sm p-4">
-                                {/* Profile Header with Edit Button */}
-                                <div className="d-flex align-items-start justify-content-between mb-4">
-                                    <div className="d-flex align-items-start gap-3">
-                                        <img
-                                            src={user.avatar || user.AnhDaiDien || "https://cdn-icons-png.flaticon.com/512/149/149071.png"}
-                                            alt="avatar"
-                                            className="rounded-circle"
-                                            style={{ width: 80, height: 80, objectFit: 'cover' }}
-                                            onError={e => { e.target.onerror = null; e.target.src = "https://cdn-icons-png.flaticon.com/512/149/149071.png"; }}
-                                        />
-                                        <div>
-                                            <h3 className="fw-bold mb-2">{user?.name || 'Người dùng'}</h3>
-                                            <p className="text-muted mb-0">{profileSummary.position || 'Cập nhật chức danh'}</p>
-                                        </div>
-                                    </div>
-                                    <button
-                                        className="btn btn-link text-danger p-0"
-                                        onClick={() => setShowEditModal(true)}
-                                    >
-                                        <i className="bi bi-pencil-square fs-5"></i>
-                                    </button>
-                                </div>
-
-                                {/* Contact Information Grid */}
-                                <div className="row g-3 mb-4">
-                                    <div className="col-md-6">
-                                        <div className="d-flex align-items-center gap-2 text-muted">
-                                            <i className="bi bi-envelope"></i>
-                                            <span>{user.email || 'ntdungpk123@gmail.com'}</span>
-                                        </div>
-                                    </div>
-                                    <div className="col-md-6">
-                                        <div className="d-flex align-items-center gap-2 text-muted">
-                                            <i className="bi bi-telephone"></i>
-                                            <span>{profileSummary.phone || 'Chưa cập nhật số điện thoại'}</span>
-                                        </div>
-                                    </div>
-                                    <div className="col-md-6">
-                                        <div className="d-flex align-items-center gap-2 text-muted">
-                                            <i className="bi bi-gift"></i>
-                                            <span>{profileSummary.birthday || 'Chưa cập nhật ngày sinh'}</span>
-                                        </div>
-                                    </div>
-                                    <div className="col-md-6">
-                                        <div className="d-flex align-items-center gap-2 text-muted">
-                                            <i className="bi bi-gender-ambiguous"></i>
-                                            <span>{profileSummary.gender || 'Chưa cập nhật giới tính'}</span>
-                                        </div>
-                                    </div>
-                                    <div className="col-md-6">
-                                        <div className="d-flex align-items-center gap-2 text-muted">
-                                            <i className="bi bi-geo-alt"></i>
-                                            <span>{profileSummary.city || 'Chưa cập nhật địa chỉ'}</span>
-                                        </div>
-                                    </div>
-                                    <div className="col-md-6">
-                                        <div className="d-flex align-items-center gap-2 text-muted">
-                                            <i className="bi bi-globe"></i>
-                                            {profileSummary.personalLink ? (
-                                                <a
-                                                    href={profileSummary.personalLink}
-                                                    className="text-decoration-none"
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                >
-                                                    {profileSummary.personalLink}
-                                                </a>
-                                            ) : (
-                                                <span>Chưa cập nhật link cá nhân</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-
-                            </div>
-                        )}
-
-                        {activeTab === 'jobs' && (
-                            <div className="bg-white rounded shadow-sm p-4">
-                                <h5 className="fw-bold mb-3">Việc làm của tôi</h5>
-                                <div className="text-center py-5">
-                                    <i className="bi bi-briefcase text-secondary" style={{ fontSize: '4rem' }}></i>
-                                    <p className="text-muted mt-3">
-                                        Bạn chưa ứng tuyển công việc nào
-                                    </p>
-                                    <Link to="/jobs" className="btn btn-primary mt-2">
-                                        Tìm việc làm
-                                    </Link>
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'invitations' && (
-                            <div className="bg-white rounded shadow-sm p-4">
-                                <h5 className="fw-bold mb-3">Lời mời công việc</h5>
-                                <div className="text-center py-5">
-                                    <i className="bi bi-envelope text-secondary" style={{ fontSize: '4rem' }}></i>
-                                    <p className="text-muted mt-3">
-                                        Bạn chưa có lời mời công việc nào
-                                    </p>
-                                </div>
-                            </div>
-                        )}
-
-                        {activeTab === 'email' && (
-                            <div className="bg-white rounded shadow-sm p-4">
-                                <h5 className="fw-bold mb-3">Đăng ký nhận email</h5>
-                                <div className="form-check mb-3">
-                                    <input className="form-check-input" type="checkbox" id="emailJobs" defaultChecked />
-                                    <label className="form-check-label" htmlFor="emailJobs">
-                                        Nhận email về việc làm phù hợp
-                                    </label>
-                                </div>
-                                <div className="form-check mb-3">
-                                    <input className="form-check-input" type="checkbox" id="emailNews" defaultChecked />
-                                    <label className="form-check-label" htmlFor="emailNews">
-                                        Nhận email về tin tức và cẩm nang nghề nghiệp
-                                    </label>
-                                </div>
-                                <button className="btn btn-primary" onClick={handleSaveProfile}>Lưu thay đổi</button>
-                            </div>
-                        )}
-
-                        {activeTab === 'notifications' && (
-                            <div className="bg-white rounded shadow-sm p-4">
-                                <h5 className="fw-bold mb-3">Thông báo</h5>
-                                <p className="text-muted">Bạn chưa có thông báo nào</p>
-                            </div>
-                        )}
-
-                        {activeTab === 'settings' && (
-                            <div className="bg-white rounded shadow-sm p-4">
-                                <h5 className="fw-bold mb-3">Cài đặt</h5>
-                                <div className="mb-4">
-                                    <h6 className="fw-semibold mb-3">Thông tin cá nhân</h6>
-                                    <div className="mb-3">
-                                        <label className="form-label">Họ và tên</label>
-                                        <input type="text" className="form-control" defaultValue={user?.name || ''} />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label">Email</label>
-                                        <input type="email" className="form-control" defaultValue={user?.email || ''} disabled />
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label">Số điện thoại</label>
-                                        <input type="tel" className="form-control" defaultValue={user?.phone || ''} placeholder="Nhập số điện thoại" />
-                                    </div>
-                                </div>
-                                <div className="mb-4">
-                                    <div className="d-flex align-items-center justify-content-between mb-3">
-                                        <h6 className="fw-semibold mb-0">Đổi mật khẩu</h6>
-                                        {!showPasswordForm && (
-                                            <button
-                                                type="button"
-                                                className="btn btn-sm btn-outline-primary"
-                                                onClick={() => setShowPasswordForm(true)}
-                                            >
-                                                <i className="bi bi-key me-1"></i>Đổi mật khẩu
-                                            </button>
-                                        )}
-                                    </div>
-                                    {showPasswordForm && (
-                                        <>
-                                            <div className="mb-3">
-                                                <label className="form-label">Mật khẩu hiện tại</label>
-                                                <input
-                                                    type="password"
-                                                    className="form-control"
-                                                    value={passwordForm.current}
-                                                    onChange={(e) => {
-                                                        setPasswordForm({ ...passwordForm, current: e.target.value });
-                                                        setPasswordStatus({ type: '', message: '' });
-                                                    }}
-                                                    placeholder="Nhập mật khẩu hiện tại"
-                                                />
-                                            </div>
-                                            <div className="mb-3">
-                                                <label className="form-label">Mật khẩu mới</label>
-                                                <input
-                                                    type="password"
-                                                    className={`form-control ${passwordShort ? 'is-invalid' : ''}`}
-                                                    value={passwordForm.next}
-                                                    onChange={(e) => {
-                                                        setPasswordForm({ ...passwordForm, next: e.target.value });
-                                                        setPasswordStatus({ type: '', message: '' });
-                                                    }}
-                                                    placeholder="Tối thiểu 8 ký tự"
-                                                />
-                                                {passwordShort && (
-                                                    <div className="invalid-feedback">Mật khẩu mới phải có ít nhất 8 ký tự.</div>
-                                                )}
-                                            </div>
-                                            <div className="mb-3">
-                                                <label className="form-label">Xác nhận mật khẩu mới</label>
-                                                <input
-                                                    type="password"
-                                                    className={`form-control ${passwordMismatch ? 'is-invalid' : ''}`}
-                                                    value={passwordForm.confirm}
-                                                    onChange={(e) => {
-                                                        setPasswordForm({ ...passwordForm, confirm: e.target.value });
-                                                        setPasswordStatus({ type: '', message: '' });
-                                                    }}
-                                                    placeholder="Nhập lại mật khẩu mới"
-                                                />
-                                                {passwordMismatch && (
-                                                    <div className="invalid-feedback">Mật khẩu xác nhận không khớp.</div>
-                                                )}
-                                            </div>
-                                            <div className="d-flex gap-2">
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-primary"
-                                                    disabled={!isPasswordValid || isChangingPassword}
-                                                    onClick={handlePasswordChange}
-                                                >
-                                                    {isChangingPassword ? 'Đang xử lý...' : 'Đổi mật khẩu'}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    className="btn btn-outline-secondary"
-                                                    onClick={() => {
-                                                        setShowPasswordForm(false);
-                                                        setPasswordForm({ current: '', next: '', confirm: '' });
-                                                        setPasswordStatus({ type: '', message: '' });
-                                                    }}
-                                                >
-                                                    Hủy
-                                                </button>
-                                            </div>
-                                            {passwordStatus.message && (
-                                                <div className={`alert alert-${passwordStatus.type === 'success' ? 'success' : 'danger'} mt-3 mb-0`} role="alert">
-                                                    {passwordStatus.message}
-                                                </div>
-                                            )}
-                                        </>
-                                    )}
-                                </div>
-                                <button className="btn btn-outline-secondary">Lưu thay đổi</button>
-                            </div>
-                        )}
-                    </div>
+                    <ProfileMainContent
+                        activeTab={activeTab}
+                        user={user}
+                        profileSummary={profileSummary}
+                        onGoSettings={() => setActiveTab(PROFILE_TAB_SETTINGS)}
+                        showPasswordForm={showPasswordForm}
+                        setShowPasswordForm={setShowPasswordForm}
+                        passwordForm={passwordForm}
+                        setPasswordForm={setPasswordForm}
+                        passwordShort={passwordShort}
+                        passwordMismatch={passwordMismatch}
+                        isPasswordValid={isPasswordValid}
+                        isChangingPassword={isChangingPassword}
+                        onPasswordChange={handlePasswordChange}
+                        passwordStatus={passwordStatus}
+                        setPasswordStatus={setPasswordStatus}
+                    />
                 </div>
             </div>
 
