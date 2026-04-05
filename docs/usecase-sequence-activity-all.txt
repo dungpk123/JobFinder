@@ -1,0 +1,1346 @@
+TÀI LIỆU MÃ BIỂU ĐỒ TỪ SƠ ĐỒ USE CASE ĐỒ ÁN
+Nguồn chính:
+- Sơ đồ use case bạn gửi trong ảnh.
+- Logic đăng nhập/phân quyền được chuẩn hóa theo repo hiện tại: AuthRoute, ProtectedRoute, axios interceptor, localStorage token, refresh token, có thể có CAPTCHA và 2FA.
+Ghi chú sử dụng:
+- Đoạn Mermaid dùng để render sequence diagram.
+- Đoạn PlantText dùng cú pháp PlantUML activity diagram trên planttext.com.
+- Các use case cần đăng nhập đều có bước kiểm tra phiên trước khi thực hiện.
+- "Quản lý nhật ký" được hiểu là xem, lọc, tra cứu và xuất nhật ký hoạt động hệ thống.
+- "Quản lý bài đăng" được hiểu là kiểm duyệt và quản lý bài đăng nội dung/tuyển dụng ở mục quản trị.
+================================================================
+UC01 - Đăng ký
+[Mermaid]
+sequenceDiagram
+    actor Guest as Khách vãng lai
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant DB as CSDL
+    participant Notify as OTP Service
+    Guest->>UI: Mở form đăng ký
+    Guest->>UI: Nhập email và mật khẩu
+    UI->>Auth: Gửi thông tin đăng ký
+    Auth->>DB: Kiểm tra email đã tồn tại
+    alt Email hợp lệ và chưa tồn tại
+        Auth->>DB: Tạo tài khoản mới
+        Auth->>Notify: Gửi email xác minh/hướng dẫn đăng nhập
+        Auth-->>UI: Trả kết quả thành công
+        UI-->>Guest: Thông báo đăng ký thành công và chuyển đến đăng nhập
+    else Email đã tồn tại hoặc dữ liệu sai
+        Auth-->>UI: Trả thông báo lỗi
+        UI-->>Guest: Hiển thị lỗi và yêu cầu nhập lại
+    end
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC01 - Đăng ký
+|Khách vãng lai|
+start
+:Mở trang đăng ký;
+:Nhập email và mật khẩu;
+:Nhấn Đăng ký;
+|Hệ thống|
+:Kiểm tra tính hợp lệ dữ liệu;
+:Kiểm tra email đã tồn tại;
+if (Hợp lệ?) then (Có)
+  :Tạo tài khoản mới;
+  :Gửi email xác minh/hướng dẫn;
+  |Khách vãng lai|
+  :Nhận thông báo đăng ký thành công;
+  stop
+else (Không)
+  |Khách vãng lai|
+  :Nhận thông báo lỗi và nhập lại;
+  stop
+endif
+@enduml
+================================================================
+UC02 - Đăng nhập
+[Mermaid]
+sequenceDiagram
+    actor User as Người dùng
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant DB as CSDL
+    participant Session as Dịch vụ phiên
+    User->>UI: Nhập tài khoản và mật khẩu
+    UI->>Auth: Gửi yêu cầu đăng nhập
+    Auth->>DB: Kiểm tra thông tin đăng nhập
+    alt Tài khoản hợp lệ
+        opt Tài khoản bật 2FA
+            Auth-->>UI: Yêu cầu mã 2FA
+            User->>UI: Nhập mã 2FA
+            UI->>Auth: Xác minh mã 2FA
+        end
+        Auth->>Session: Tạo phiên, cấp token
+        Session-->>Auth: Token/Session hợp lệ
+        Auth-->>UI: Đăng nhập thành công
+        UI-->>User: Lưu token và chuyển đến trang chủ
+    else Sai thông tin hoặc bị khóa
+        Auth-->>UI: Trả thông báo lỗi/CAPTCHA
+        UI-->>User: Hiển thị lỗi đăng nhập
+    end
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC02 - Đăng nhập
+|Người dùng|
+start
+:Nhập tài khoản và mật khẩu;
+:Nhấn Đăng nhập;
+|Hệ thống|
+:Kiểm tra thông tin đăng nhập;
+if (Thông tin hợp lệ?) then (Có)
+  if (Bật 2FA?) then (Có)
+    |Người dùng|
+    :Nhập mã 2FA;
+    |Hệ thống|
+    :Xác minh mã 2FA;
+    if (Mã đúng?) then (Có)
+      :Tạo phiên và cấp token;
+      |Người dùng|
+      :Vào hệ thống;
+      stop
+    else (Không)
+      |Người dùng|
+      :Nhận thông báo sai mã 2FA;
+      stop
+    endif
+  else (Không)
+    :Tạo phiên và cấp token;
+    |Người dùng|
+    :Vào hệ thống;
+    stop
+  endif
+else (Không)
+  :Có thể yêu cầu CAPTCHA hoặc thông báo tài khoản bị khóa;
+  |Người dùng|
+  :Nhận thông báo lỗi;
+  stop
+endif
+@enduml
+================================================================
+UC03 - Đăng xuất
+[Mermaid]
+sequenceDiagram
+    actor User as Người dùng
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant Session as Dịch vụ phiên
+    User->>UI: Chọn Đăng xuất
+    UI->>Auth: Gửi yêu cầu đăng xuất
+    Auth->>Session: Hủy token/phiên hiện tại
+    Session-->>Auth: Hủy thành công
+    Auth-->>UI: Trả kết quả đăng xuất
+    UI-->>User: Xóa token local, chuyển về trang đăng nhập
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC03 - Đăng xuất
+|Người dùng|
+start
+:Chọn Đăng xuất;
+|Hệ thống|
+:Gửi yêu cầu hủy phiên;
+:Xóa token/phiên đăng nhập;
+:Trả kết quả đăng xuất;
+|Người dùng|
+:Bị chuyển về trang đăng nhập;
+stop
+@enduml
+================================================================
+UC04 - Tìm kiếm việc làm
+[Mermaid]
+sequenceDiagram
+    actor Guest as Khách vãng lai
+    participant UI as Hệ thống(UI)
+    participant Job as Dịch vụ việc làm
+    participant DB as CSDL
+    Guest->>UI: Nhập từ khóa, địa điểm, mức lương
+    UI->>Job: Gửi bộ lọc tìm kiếm
+    Job->>DB: Truy vấn danh sách việc làm
+    DB-->>Job: Trả kết quả phù hợp
+    Job-->>UI: Danh sách việc làm đã lọc
+    UI-->>Guest: Hiển thị kết quả tìm kiếm
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC04 - Tìm kiếm việc làm
+|Khách vãng lai|
+start
+:Nhập từ khóa và bộ lọc;
+:Nhấn Tìm kiếm;
+|Hệ thống|
+:Truy vấn danh sách việc làm;
+if (Có kết quả?) then (Có)
+  |Khách vãng lai|
+  :Xem danh sách kết quả;
+  stop
+else (Không)
+  |Khách vãng lai|
+  :Nhận thông báo không có kết quả;
+  stop
+endif
+@enduml
+================================================================
+UC05 - Xem danh sách việc làm
+[Mermaid]
+sequenceDiagram
+    actor Guest as Khách vãng lai
+    participant UI as Hệ thống(UI)
+    participant Job as Dịch vụ việc làm
+    participant DB as CSDL
+    Guest->>UI: Mở trang danh sách việc làm
+    UI->>Job: Yêu cầu danh sách việc làm
+    Job->>DB: Lấy danh sách, sắp xếp, phân trang
+    DB-->>Job: Dữ liệu việc làm
+    Job-->>UI: Trả về danh sách việc làm
+    UI-->>Guest: Hiển thị danh sách việc làm
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC05 - Xem danh sách việc làm
+|Khách vãng lai|
+start
+:Mở trang việc làm;
+|Hệ thống|
+:Tải danh sách việc làm;
+:Sắp xếp và phân trang;
+|Khách vãng lai|
+:Xem danh sách việc làm;
+if (Muốn lọc hoặc đổi trang?) then (Có)
+  :Chọn bộ lọc/trang mới;
+  |Hệ thống|
+  :Tải lại danh sách;
+  |Khách vãng lai|
+  :Xem kết quả cập nhật;
+endif
+stop
+@enduml
+================================================================
+UC06 - Xem chi tiết tin tuyển dụng
+[Mermaid]
+sequenceDiagram
+    actor Guest as Khách vãng lai
+    participant UI as Hệ thống(UI)
+    participant Job as Dịch vụ việc làm
+    participant Company as Dịch vụ công ty
+    participant DB as CSDL
+    Guest->>UI: Chọn một tin tuyển dụng
+    UI->>Job: Lấy chi tiết tin
+    Job->>DB: Truy vấn thông tin tin tuyển dụng
+    Job->>Company: Lấy thông tin công ty liên quan
+    Company->>DB: Truy vấn hồ sơ công ty
+    DB-->>Company: Hồ sơ công ty
+    DB-->>Job: Chi tiết tin
+    Job-->>UI: Gồm chi tiết tin và thông tin công ty
+    UI-->>Guest: Hiển thị trang chi tiết
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC06 - Xem chi tiết tin tuyển dụng
+|Khách vãng lai|
+start
+:Chọn một tin tuyển dụng;
+|Hệ thống|
+:Lấy chi tiết tin;
+:Lấy thông tin công ty liên quan;
+|Khách vãng lai|
+:Xem mô tả công việc, yêu cầu, quyền lợi;
+if (Muốn ứng tuyển/lưu tin?) then (Có)
+  :Chọn thao tác tiếp theo;
+endif
+stop
+@enduml
+================================================================
+UC07 - Xem mẫu CV
+[Mermaid]
+sequenceDiagram
+    actor Guest as Khách vãng lai
+    participant UI as Hệ thống(UI)
+    participant Template as Dịch vụ mẫu CV
+    participant DB as CSDL
+    Guest->>UI: Mở thư viện mẫu CV
+    UI->>Template: Yêu cầu danh sách template
+    Template->>DB: Lấy danh sách mẫu CV
+    DB-->>Template: Danh sách template
+    Template-->>UI: Trả về danh sách và preview
+    UI-->>Guest: Hiển thị mẫu CV
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC07 - Xem mẫu CV
+|Khách vãng lai|
+start
+:Mở thư viện mẫu CV;
+|Hệ thống|
+:Lấy danh sách template CV;
+|Khách vãng lai|
+:Xem preview từng mẫu;
+if (Muốn chọn một mẫu?) then (Có)
+  :Lưu lại mẫu muốn sử dụng sau này;
+endif
+stop
+@enduml
+================================================================
+UC08 - Xem bài viết hướng nghiệp
+[Mermaid]
+sequenceDiagram
+    actor Guest as Khách vãng lai
+    participant UI as Hệ thống(UI)
+    participant Article as Dịch vụ bài viết
+    participant DB as CSDL
+    Guest->>UI: Mở mục bài viết hướng nghiệp
+    UI->>Article: Yêu cầu danh sách bài viết
+    Article->>DB: Lấy bài viết đã xuất bản
+    DB-->>Article: Danh sách bài viết
+    Article-->>UI: Trả danh sách bài viết
+    Guest->>UI: Chọn một bài viết
+    UI->>Article: Lấy chi tiết bài viết
+    Article->>DB: Truy vấn nội dung bài viết
+    DB-->>Article: Nội dung chi tiết
+    Article-->>UI: Trả chi tiết bài viết
+    UI-->>Guest: Hiển thị bài viết
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC08 - Xem bài viết hướng nghiệp
+|Khách vãng lai|
+start
+:Mở danh mục bài viết hướng nghiệp;
+|Hệ thống|
+:Tải danh sách bài viết đã xuất bản;
+|Khách vãng lai|
+:Chọn bài viết muốn đọc;
+|Hệ thống|
+:Tải nội dung chi tiết bài viết;
+|Khách vãng lai|
+:Đọc bài viết hướng nghiệp;
+stop
+@enduml
+================================================================
+UC09 - Cập nhật hồ sơ ứng viên
+[Mermaid]
+sequenceDiagram
+    actor Candidate as Ứng viên
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant Profile as Dịch vụ hồ sơ
+    participant DB as CSDL
+    Candidate->>UI: Mở trang hồ sơ ứng viên
+    UI->>Auth: Kiểm tra đăng nhập
+    Auth-->>UI: Phiên hợp lệ
+    UI->>Profile: Lấy dữ liệu hồ sơ hiện tại
+    Profile->>DB: Đọc hồ sơ ứng viên
+    DB-->>Profile: Dữ liệu hồ sơ
+    Profile-->>UI: Trả dữ liệu hồ sơ
+    Candidate->>UI: Cập nhật thông tin cá nhân, kỹ năng, kinh nghiệm
+    UI->>Profile: Lưu thông tin đã sửa
+    Profile->>DB: Cập nhật hồ sơ
+    DB-->>Profile: Cập nhật thành công
+    Profile-->>UI: Trả kết quả
+    UI-->>Candidate: Thông báo cập nhật thành công
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC09 - Cập nhật hồ sơ ứng viên
+|Ứng viên|
+start
+:Mở trang hồ sơ;
+|Hệ thống|
+:Kiểm tra đăng nhập;
+if (Đã đăng nhập?) then (Có)
+  :Tải hồ sơ hiện tại;
+  |Ứng viên|
+  :Sửa thông tin cá nhân, kỹ năng, kinh nghiệm;
+  :Nhận Lưu;
+  |Hệ thống|
+  :Kiểm tra dữ liệu;
+  if (Hợp lệ?) then (Có)
+    :Cập nhật hồ sơ;
+    |Ứng viên|
+    :Nhận thông báo thành công;
+    stop
+  else (Không)
+    |Ứng viên|
+    :Nhận lỗi và sửa lại;
+    stop
+  endif
+else (Không)
+  |Ứng viên|
+  :Đăng nhập;
+  stop
+endif
+@enduml
+================================================================
+UC10 - Quản lý CV
+[Mermaid]
+sequenceDiagram
+    actor Candidate as Ứng viên
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant CV as Dịch vụ CV
+    participant Storage as Lưu trữ tệp
+    participant DB as CSDL
+    Candidate->>UI: Mở trang quản lý CV
+    UI->>Auth: Kiểm tra đăng nhập
+    Auth-->>UI: Phiên hợp lệ
+    UI->>CV: Lấy danh sách CV
+    CV->>DB: Truy vấn danh sách CV
+    DB-->>CV: Danh sách CV
+    CV-->>UI: Trả danh sách CV
+    Candidate->>UI: Tạo mới/chỉnh sửa/tải lên/xóa CV
+    alt Tải lên tệp CV
+        UI->>Storage: Tải tệp lên
+        Storage-->>UI: Trả đường dẫn tệp
+    end
+    UI->>CV: Lưu thay đổi CV
+    CV->>DB: Cập nhật metadata CV
+    DB-->>CV: Lưu thành công
+    CV-->>UI: Trả kết quả
+    UI-->>Candidate: Hiển thị danh sách CV đã cập nhật
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC10 - Quản lý CV
+|Ứng viên|
+start
+:Mở trang quản lý CV;
+|Hệ thống|
+:Kiểm tra đăng nhập;
+:Tải danh sách CV hiện có;
+|Ứng viên|
+:Chọn tạo mới/chỉnh sửa/tải lên/xóa CV;
+|Hệ thống|
+if (Thao tác cần tệp đính kèm?) then (Có)
+  :Tải tệp CV lên kho lưu trữ;
+endif
+:Lưu thông tin CV;
+|Ứng viên|
+:Nhận kết quả cập nhật danh sách CV;
+stop
+@enduml
+================================================================
+UC11 - Lưu tin tuyển dụng
+[Mermaid]
+sequenceDiagram
+    actor Candidate as Ứng viên
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant SavedJob as Dịch vụ lưu tin
+    participant DB as CSDL
+    Candidate->>UI: Chọn Lưu tin trên tin tuyển dụng
+    UI->>Auth: Kiểm tra đăng nhập
+    alt Chưa đăng nhập
+        Auth-->>UI: Phiên không hợp lệ
+        UI-->>Candidate: Yêu cầu đăng nhập
+    else Đã đăng nhập
+        UI->>SavedJob: Gửi yêu cầu lưu tin
+        SavedJob->>DB: Tạo bản ghi lưu tin
+        DB-->>SavedJob: Lưu thành công
+        SavedJob-->>UI: Trả trạng thái đã lưu
+        UI-->>Candidate: Cập nhật icon và thông báo thành công
+    end
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC11 - Lưu tin tuyển dụng
+|Ứng viên|
+start
+:Nhận Lưu tin;
+|Hệ thống|
+:Kiểm tra đăng nhập;
+if (Đã đăng nhập?) then (Có)
+  :Lưu tin vào danh sách yêu thích;
+  |Ứng viên|
+  :Nhận thông báo đã lưu;
+  stop
+else (Không)
+  |Ứng viên|
+  :Đăng nhập để tiếp tục;
+  stop
+endif
+@enduml
+================================================================
+UC12 - Ứng tuyển
+[Mermaid]
+sequenceDiagram
+    actor Candidate as Ứng viên
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant ApplySvc as Dịch vụ ứng tuyển
+    participant CV as Dịch vụ CV
+    participant DB as CSDL
+    participant Notify as OTP Service
+    Candidate->>UI: Nhận Ứng tuyển
+    UI->>Auth: Kiểm tra đăng nhập
+    alt Chưa đăng nhập
+        Auth-->>UI: Phiên không hợp lệ
+        UI-->>Candidate: Chuyển đến trang đăng nhập
+    else Đã đăng nhập
+        UI->>CV: Kiểm tra CV/mặc định hồ sơ ứng tuyển
+        CV->>DB: Lấy CV mặc định
+        DB-->>CV: Thông tin CV
+        alt Hồ sơ/CV hợp lệ
+            Candidate->>UI: Xác nhận thông tin ứng tuyển
+            UI->>ApplySvc: Gửi hồ sơ ứng tuyển
+            ApplySvc->>DB: Tạo bản ghi ứng tuyển
+            ApplySvc->>Notify: Thông báo cho nhà tuyển dụng
+            DB-->>ApplySvc: Tạo thành công
+            ApplySvc-->>UI: Trả kết quả thành công
+            UI-->>Candidate: Hiển thị đã ứng tuyển thành công
+        else Chưa đủ hồ sơ
+            CV-->>UI: Thiếu CV/thông tin
+            UI-->>Candidate: Yêu cầu bổ sung hồ sơ
+        end
+    end
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC12 - Ứng tuyển
+|Ứng viên|
+start
+:Nhận Ứng tuyển;
+|Hệ thống|
+:Kiểm tra đăng nhập;
+if (Đã đăng nhập?) then (Có)
+  :Kiểm tra CV và hồ sơ mặc định;
+  if (Hồ sơ đầy đủ?) then (Có)
+    |Ứng viên|
+    :Xác nhận thông tin ứng tuyển;
+    |Hệ thống|
+    :Tạo hồ sơ ứng tuyển;
+    :Gửi thông báo cho nhà tuyển dụng;
+|Ứng viên|
+:Nhận thông báo thành công;
+stop
+  else (Không)
+    |Ứng viên|
+    :Bổ sung CV/hồ sơ;
+    stop
+  endif
+else (Không)
+  |Ứng viên|
+  :Đăng nhập để tiếp tục;
+  stop
+endif
+@enduml
+================================================================
+UC13 - Xem danh sách đã ứng tuyển
+[Mermaid]
+sequenceDiagram
+    actor Candidate as Ứng viên
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant ApplySvc as Dịch vụ ứng tuyển
+    participant DB as CSDL
+    Candidate->>UI: Mở trang Đã ứng tuyển
+    UI->>Auth: Kiểm tra đăng nhập
+    Auth-->>UI: Phiên hợp lệ
+    UI->>ApplySvc: Yêu cầu danh sách hồ sơ ứng tuyển
+    ApplySvc->>DB: Truy vấn danh sách hồ sơ của ứng viên
+    DB-->>ApplySvc: Danh sách hồ sơ và trạng thái
+    ApplySvc-->>UI: Trả danh sách đã ứng tuyển
+    UI-->>Candidate: Hiển thị danh sách và trạng thái xử lý
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC13 - Xem danh sách đã ứng tuyển
+|Ứng viên|
+start
+:Mở trang đã ứng tuyển;
+|Hệ thống|
+:Kiểm tra đăng nhập;
+:Tải danh sách hồ sơ ứng tuyển;
+|Ứng viên|
+:Xem danh sách, trạng thái và lịch sử xử lý;
+stop
+@enduml
+================================================================
+UC14 - Bình luận/Đánh giá công ty
+[Mermaid]
+sequenceDiagram
+    actor Candidate as Ứng viên
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant Review as Dịch vụ đánh giá
+    participant DB as CSDL
+    participant Moderation as Dịch vụ kiểm duyệt
+    Candidate->>UI: Mở trang công ty và nhập đánh giá
+    UI->>Auth: Kiểm tra đăng nhập
+    alt Chưa đăng nhập
+        Auth-->>UI: Phiên không hợp lệ
+        UI-->>Candidate: Yêu cầu đăng nhập
+    else Đã đăng nhập
+        UI->>Review: Gửi điểm đánh giá và bình luận
+        Review->>DB: Kiểm tra lịch sử đánh giá
+        alt Được phép gửi
+            Review->>Moderation: Kiểm tra nội dung
+            Moderation-->>Review: Kết quả hợp lệ
+            Review->>DB: Lưu đánh giá/bình luận
+            DB-->>Review: Lưu thành công
+            Review-->>UI: Trả kết quả thành công
+            UI-->>Candidate: Hiển thị đánh giá đã được gửi
+        else Không đủ điều kiện
+            Review-->>UI: Trả thông báo lỗi/trùng lặp
+            UI-->>Candidate: Hiển thị lỗi
+        end
+    end
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC14 - Bình luận/Đánh giá công ty
+|Ứng viên|
+start
+:Mở trang công ty;
+:Nhập điểm đánh giá và bình luận;
+:Nhận Gửi;
+|Hệ thống|
+:Kiểm tra đăng nhập;
+if (Đã đăng nhập?) then (Có)
+  :Kiểm tra điều kiện gửi đánh giá;
+  if (Hợp lệ?) then (Có)
+    :Kiểm duyệt nội dung cơ bản;
+    :Lưu đánh giá/bình luận;
+    |Ứng viên|
+    :Nhận thông báo gửi thành công;
+    stop
+  else (Không)
+    |Ứng viên|
+    :Nhận thông báo lỗi/trùng lặp;
+    stop
+  endif
+else (Không)
+  |Ứng viên|
+  :Đăng nhập để tiếp tục;
+  stop
+endif
+@enduml
+================================================================
+UC15 - Quản lý ứng tuyển
+[Mermaid]
+sequenceDiagram
+    actor Candidate as Ứng viên
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant ApplySvc as Dịch vụ ứng tuyển
+    participant DB as CSDL
+    Candidate->>UI: Mở trang Quản lý ứng tuyển
+    UI->>Auth: Kiểm tra đăng nhập
+    Auth-->>UI: Phiên hợp lệ
+    UI->>ApplySvc: Lấy danh sách hồ sơ và trạng thái
+    ApplySvc->>DB: Truy vấn hồ sơ ứng tuyển
+    DB-->>ApplySvc: Danh sách hồ sơ
+    ApplySvc-->>UI: Trả danh sách hồ sơ
+    Candidate->>UI: Chọn xem chi tiết/rút hồ sơ/theo dõi trạng thái
+    UI->>ApplySvc: Gửi thao tác cập nhật
+    ApplySvc->>DB: Cập nhật bản ghi ứng tuyển
+    DB-->>ApplySvc: Cập nhật thành công
+    ApplySvc-->>UI: Trả kết quả mới
+    UI-->>Candidate: Hiển thị trạng thái mới
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC15 - Quản lý ứng tuyển
+|Ứng viên|
+start
+:Mở trang quản lý ứng tuyển;
+|Hệ thống|
+:Kiểm tra đăng nhập;
+:Tải danh sách hồ sơ ứng tuyển;
+|Ứng viên|
+:Chọn xem chi tiết hoặc rút hồ sơ;
+|Hệ thống|
+if (Có thay đổi trạng thái?) then (Có)
+  :Cập nhật hồ sơ ứng tuyển;
+endif
+|Ứng viên|
+:Xem kết quả/trạng thái mới;
+stop
+@enduml
+================================================================
+UC16 - Bình luận bài viết hướng nghiệp
+[Mermaid]
+sequenceDiagram
+    actor User as Người dùng đã đăng nhập
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant Article as Dịch vụ bài viết
+    participant DB as CSDL
+    participant Moderation as Dịch vụ kiểm duyệt
+    User->>UI: Nhập bình luận bài viết
+    UI->>Auth: Kiểm tra đăng nhập
+    alt Chưa đăng nhập
+        Auth-->>UI: Phiên không hợp lệ
+        UI-->>User: Yêu cầu đăng nhập
+    else Đã đăng nhập
+        UI->>Article: Gửi nội dung bình luận
+        Article->>Moderation: Kiểm tra nội dung
+        Moderation-->>Article: Hợp lệ
+        Article->>DB: Lưu bình luận
+        DB-->>Article: Lưu thành công
+        Article-->>UI: Trả kết quả
+        UI-->>User: Hiển thị bình luận vừa gửi
+    end
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC16 - Bình luận bài viết hướng nghiệp
+|Người dùng|
+start
+:Nhập bình luận bài viết;
+:Nhận Gửi;
+|Hệ thống|
+:Kiểm tra đăng nhập;
+if (Đã đăng nhập?) then (Có)
+  :Kiểm tra nội dung bình luận;
+  if (Hợp lệ?) then (Có)
+    :Lưu bình luận;
+    |Người dùng|
+    :Nhận thông báo thành công;
+    stop
+  else (Không)
+    |Người dùng|
+    :Nhận thông báo nội dung không hợp lệ;
+    stop
+  endif
+else (Không)
+  |Người dùng|
+  :Đăng nhập để tiếp tục;
+  stop
+endif
+@enduml
+================================================================
+UC17 - Báo cáo (tin/người dùng/công ty)
+[Mermaid]
+sequenceDiagram
+    actor User as Người dùng đã đăng nhập
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant Report as Dịch vụ báo cáo
+    participant DB as CSDL
+    participant Notify as OTP Service
+    User->>UI: Chọn Báo cáo đối tượng
+    UI->>Auth: Kiểm tra đăng nhập
+    alt Chưa đăng nhập
+        Auth-->>UI: Phiên không hợp lệ
+        UI-->>User: Yêu cầu đăng nhập
+    else Đã đăng nhập
+        User->>UI: Chọn loại báo cáo và lý do
+        UI->>Report: Gửi thông tin báo cáo
+        Report->>DB: Lưu báo cáo
+        Report->>Notify: Đưa vào hàng chờ xử lý
+        DB-->>Report: Lưu thành công
+        Report-->>UI: Trả kết quả thành công
+        UI-->>User: Hiển thị báo cáo đã được ghi nhận
+    end
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC17 - Báo cáo (tin/người dùng/công ty)
+|Người dùng|
+start
+:Chọn đối tượng cần báo cáo;
+:Nhập lý do và nội dung báo cáo;
+:Nhận Gửi báo cáo;
+|Hệ thống|
+:Kiểm tra đăng nhập;
+if (Đã đăng nhập?) then (Có)
+  :Lưu báo cáo;
+  :Chuyển báo cáo vào hàng chờ duyệt;
+  |Người dùng|
+  :Nhận thông báo gửi thành công;
+  stop
+else (Không)
+  |Người dùng|
+  :Đăng nhập để tiếp tục;
+  stop
+endif
+@enduml
+================================================================
+UC18 - Nhắn tin
+[Mermaid]
+sequenceDiagram
+    actor User as Người gửi
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant Msg as Dịch vụ nhắn tin
+    participant Socket as Kênh realtime
+    participant DB as CSDL
+    participant Notify as OTP Service
+    User->>UI: Mở hội thoại và nhập tin nhắn
+    UI->>Auth: Kiểm tra đăng nhập
+    Auth-->>UI: Phiên hợp lệ
+    UI->>Msg: Gửi tin nhắn
+    Msg->>DB: Lưu nội dung tin nhắn
+    Msg->>Socket: Đẩy tin nhắn realtime
+    Msg->>Notify: Gửi thông báo nếu người nhận offline
+    DB-->>Msg: Lưu thành công
+    Socket-->>UI: Đồng bộ hội thoại
+    UI-->>User: Hiển thị tin nhắn mới
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC18 - Nhắn tin
+|Người gửi|
+start
+:Mở hội thoại;
+:Nhập nội dung tin nhắn;
+:Nhận Gửi;
+|Hệ thống|
+:Kiểm tra đăng nhập;
+:Lưu tin nhắn;
+:Đồng bộ realtime cho người nhận;
+|Người gửi|
+:Thấy tin nhắn xuất hiện trong hội thoại;
+stop
+@enduml
+================================================================
+UC19 - Quản lý nhật ký
+[Mermaid]
+sequenceDiagram
+    actor Admin as Quản trị viên
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant LogSvc as Dịch vụ nhật ký
+    participant DB as CSDL
+    Admin->>UI: Mở màn hình quản lý nhật ký
+    UI->>Auth: Kiểm tra đăng nhập và quyền
+    Auth-->>UI: Hợp lệ
+    UI->>LogSvc: Yêu cầu danh sách nhật ký theo bộ lọc
+    LogSvc->>DB: Truy vấn nhật ký hệ thống
+    DB-->>LogSvc: Dữ liệu nhật ký
+    LogSvc-->>UI: Trả danh sách nhật ký
+    Admin->>UI: Chọn xem chi tiết/xuất file
+    UI->>LogSvc: Gửi thao tác xem chi tiết/xuất
+    LogSvc-->>UI: Trả kết quả
+    UI-->>Admin: Hiển thị nhật ký hoặc file xuất
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC19 - Quản lý nhật ký
+|Quản trị viên|
+start
+:Mở màn hình quản lý nhật ký;
+:Nhập bộ lọc thời gian, đối tượng, hành động;
+|Hệ thống|
+:Kiểm tra đăng nhập và quyền;
+:Truy vấn nhật ký hệ thống;
+|Quản trị viên|
+:Xem danh sách nhật ký;
+if (Cần xuất file?) then (Có)
+  |Hệ thống|
+  :Tạo file xuất nhật ký;
+  |Quản trị viên|
+  :Tải file về;
+endif
+stop
+@enduml
+================================================================
+UC20 - Quản lý tin tuyển dụng
+[Mermaid]
+sequenceDiagram
+    actor Employer as Nhà tuyển dụng
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant Job as Dịch vụ việc làm
+    participant DB as CSDL
+    participant Notify as OTP Service
+    Employer->>UI: Mở trang quản lý tin tuyển dụng
+    UI->>Auth: Kiểm tra đăng nhập
+    Auth-->>UI: Phiên hợp lệ
+    UI->>Job: Lấy danh sách tin của nhà tuyển dụng
+    Job->>DB: Truy vấn tin tuyển dụng
+    DB-->>Job: Danh sách tin
+    Job-->>UI: Trả danh sách tin
+    Employer->>UI: Tạo mới/chỉnh sửa/đóng tin/đăng tin
+    UI->>Job: Gửi dữ liệu thay đổi
+    Job->>DB: Lưu thay đổi tin tuyển dụng
+    Job->>Notify: Cập nhật thông báo liên quan nếu cần
+    DB-->>Job: Lưu thành công
+    Job-->>UI: Trả kết quả
+    UI-->>Employer: Hiển thị trạng thái mới của tin
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC20 - Quản lý tin tuyển dụng
+|Nhà tuyển dụng|
+start
+:Mở trang quản lý tin tuyển dụng;
+|Hệ thống|
+:Kiểm tra đăng nhập;
+:Tải danh sách tin hiện có;
+|Nhà tuyển dụng|
+:Chọn tạo mới/chỉnh sửa/đóng tin/đăng tin;
+|Hệ thống|
+:Kiểm tra dữ liệu;
+if (Hợp lệ?) then (Có)
+  :Lưu thay đổi tin tuyển dụng;
+  |Nhà tuyển dụng|
+  :Nhận thông báo thành công;
+  stop
+else (Không)
+  |Nhà tuyển dụng|
+  :Nhận lỗi và sửa lại;
+  stop
+endif
+@enduml
+================================================================
+UC21 - Lưu CV ứng viên
+[Mermaid]
+sequenceDiagram
+    actor Employer as Nhà tuyển dụng
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant CandidateSvc as Dịch vụ ứng viên
+    participant DB as CSDL
+    Employer->>UI: Xem CV ứng viên
+    UI->>Auth: Kiểm tra đăng nhập
+    Auth-->>UI: Phiên hợp lệ
+    Employer->>UI: Chọn Lưu CV ứng viên
+    UI->>CandidateSvc: Gửi yêu cầu lưu CV vào danh sách quan tâm
+    CandidateSvc->>DB: Tạo bản ghi lưu CV ứng viên
+    DB-->>CandidateSvc: Lưu thành công
+    CandidateSvc-->>UI: Trả trạng thái đã lưu
+    UI-->>Employer: Hiển thị thông báo thành công
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC21 - Lưu CV ứng viên
+|Nhà tuyển dụng|
+start
+:Mở CV ứng viên;
+:Nhận Lưu CV;
+|Hệ thống|
+:Kiểm tra đăng nhập;
+if (Đã đăng nhập?) then (Có)
+  :Lưu CV ứng viên vào danh sách quan tâm;
+  |Nhà tuyển dụng|
+  :Nhận thông báo đã lưu;
+  stop
+else (Không)
+  |Nhà tuyển dụng|
+  :Đăng nhập để tiếp tục;
+  stop
+endif
+@enduml
+================================================================
+UC22 - Xem đánh giá/bình luận công ty
+[Mermaid]
+sequenceDiagram
+    actor Employer as Nhà tuyển dụng
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant Review as Dịch vụ đánh giá
+    participant DB as CSDL
+    Employer->>UI: Mở khu vực đánh giá công ty
+    UI->>Auth: Kiểm tra đăng nhập
+    Auth-->>UI: Phiên hợp lệ
+    UI->>Review: Yêu cầu danh sách đánh giá/bình luận
+    Review->>DB: Truy vấn đánh giá của công ty
+    DB-->>Review: Danh sách đánh giá
+    Review-->>UI: Trả kết quả
+    UI-->>Employer: Hiển thị đánh giá/bình luận
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC22 - Xem đánh giá/bình luận công ty
+|Nhà tuyển dụng|
+start
+:Mở khu vực đánh giá công ty;
+|Hệ thống|
+:Kiểm tra đăng nhập;
+:Tải đánh giá và bình luận công ty;
+|Nhà tuyển dụng|
+:Xem và lọc đánh giá/bình luận;
+stop
+@enduml
+================================================================
+UC23 - Quản lý báo cáo
+[Mermaid]
+sequenceDiagram
+    actor Admin as Quản trị viên
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant Report as Dịch vụ báo cáo
+    participant DB as CSDL
+    participant Notify as OTP Service
+    Admin->>UI: Mở màn hình quản lý báo cáo
+    UI->>Auth: Kiểm tra đăng nhập và quyền
+    Auth-->>UI: Hợp lệ
+    UI->>Report: Lấy danh sách báo cáo cho xử lý
+    Report->>DB: Truy vấn báo cáo
+    DB-->>Report: Danh sách báo cáo
+    Report-->>UI: Trả danh sách báo cáo
+    Admin->>UI: Chọn phê duyệt/ẩn nội dung/khóa đối tượng/bỏ qua
+    UI->>Report: Gửi quyết định xử lý
+    Report->>DB: Cập nhật trạng thái báo cáo và đối tượng bị báo cáo
+    Report->>Notify: Gửi thông báo kết quả xử lý
+    DB-->>Report: Cập nhật thành công
+    Report-->>UI: Trả kết quả mới
+    UI-->>Admin: Hiển thị trạng thái báo cáo đã cập nhật
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC23 - Quản lý báo cáo
+|Quản trị viên|
+start
+:Mở màn hình quản lý báo cáo;
+|Hệ thống|
+:Kiểm tra đăng nhập và quyền;
+:Tải danh sách báo cáo cho xử lý;
+|Quản trị viên|
+:Xem chi tiết báo cáo;
+:Chọn phê duyệt/ẩn nội dung/khóa đối tượng/bỏ qua;
+|Hệ thống|
+:Cập nhật kết quả xử lý;
+:Gửi thông báo liên quan;
+|Quản trị viên|
+:Theo dõi trạng thái đã xử lý;
+stop
+@enduml
+================================================================
+UC24 - Quản lý bài viết hướng nghiệp
+[Mermaid]
+sequenceDiagram
+    actor Employer as Nhà tuyển dụng
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant Article as Dịch vụ bài viết
+    participant Storage as Lưu trữ tệp
+    participant DB as CSDL
+    Employer->>UI: Mở trang quản lý bài viết hướng nghiệp
+    UI->>Auth: Kiểm tra đăng nhập
+    Auth-->>UI: Phiên hợp lệ
+    UI->>Article: Lấy danh sách bài viết hiện có
+    Article->>DB: Truy vấn bài viết
+    DB-->>Article: Danh sách bài viết
+    Article-->>UI: Trả danh sách bài viết
+    Employer->>UI: Tạo/chỉnh sửa/xuất bản/thu hồi bài viết
+    opt Bài viết có ảnh đính kèm
+        UI->>Storage: Tải ảnh tệp lên
+        Storage-->>UI: Trả đường dẫn tệp
+    end
+    UI->>Article: Lưu thay đổi bài viết
+    Article->>DB: Cập nhật bài viết
+    DB-->>Article: Lưu thành công
+    Article-->>UI: Trả kết quả
+    UI-->>Employer: Hiển thị trạng thái bài viết mới
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC24 - Quản lý bài viết hướng nghiệp
+|Nhà tuyển dụng|
+start
+:Mở trang quản lý bài viết hướng nghiệp;
+|Hệ thống|
+:Kiểm tra đăng nhập;
+:Tải danh sách bài viết;
+|Nhà tuyển dụng|
+:Chọn tạo/chỉnh sửa/xuất bản/thu hồi;
+|Hệ thống|
+if (Có tệp đính kèm?) then (Có)
+  :Tải tệp lên kho lưu trữ;
+endif
+:Lưu thay đổi bài viết;
+|Nhà tuyển dụng|
+:Nhận kết quả cập nhật bài viết;
+stop
+@enduml
+================================================================
+UC25 - Quản lý hồ sơ nhà tuyển dụng
+[Mermaid]
+sequenceDiagram
+    actor Employer as Nhà tuyển dụng
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant Profile as Dịch vụ hồ sơ công ty
+    participant Storage as Lưu trữ tệp
+    participant DB as CSDL
+    Employer->>UI: Mở trang hồ sơ nhà tuyển dụng
+    UI->>Auth: Kiểm tra đăng nhập
+    Auth-->>UI: Phiên hợp lệ
+    UI->>Profile: Lấy thông tin hồ sơ hiện tại
+    Profile->>DB: Truy vấn hồ sơ công ty
+    DB-->>Profile: Dữ liệu hồ sơ công ty
+    Profile-->>UI: Trả dữ liệu hồ sơ
+    Employer->>UI: Sửa logo, mô tả, địa chỉ, thông tin liên hệ
+    opt Cập nhật logo/tệp
+        UI->>Storage: Tải tệp lên
+        Storage-->>UI: Trả đường dẫn tệp
+    end
+    UI->>Profile: Lưu thông tin đã sửa
+    Profile->>DB: Cập nhật hồ sơ công ty
+    DB-->>Profile: Cập nhật thành công
+    Profile-->>UI: Trả kết quả
+    UI-->>Employer: Hiển thị hồ sơ đã cập nhật
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC25 - Quản lý hồ sơ nhà tuyển dụng
+|Nhà tuyển dụng|
+start
+:Mở trang hồ sơ nhà tuyển dụng;
+|Hệ thống|
+:Kiểm tra đăng nhập;
+:Tải hồ sơ công ty hiện tại;
+|Nhà tuyển dụng|
+:Cập nhật thông tin công ty;
+|Hệ thống|
+if (Có tệp/logo mới?) then (Có)
+  :Tải tệp lên kho lưu trữ;
+endif
+:Lưu hồ sơ công ty;
+|Nhà tuyển dụng|
+:Nhận thông báo cập nhật thành công;
+stop
+@enduml
+================================================================
+UC26 - Quản lý người dùng
+[Mermaid]
+sequenceDiagram
+    actor Admin as Quản trị viên
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant UserSvc as Dịch vụ người dùng
+    participant RoleSvc as Dịch vụ vai trò
+    participant DB as CSDL
+    Admin->>UI: Mở màn hình quản lý người dùng
+    UI->>Auth: Kiểm tra đăng nhập và quyền
+    Auth-->>UI: Hợp lệ
+    UI->>UserSvc: Lấy danh sách người dùng
+    UserSvc->>DB: Truy vấn danh sách người dùng
+    DB-->>UserSvc: Dữ liệu người dùng
+    UserSvc-->>UI: Trả danh sách người dùng
+    Admin->>UI: Tạo mới/chỉnh sửa/khóa/mở khóa/gán vai trò
+    UI->>UserSvc: Gửi thay đổi người dùng
+    opt Gán vai trò/quyền
+        UserSvc->>RoleSvc: Đồng bộ vai trò quyền
+    end
+    UserSvc->>DB: Cập nhật dữ liệu người dùng
+    DB-->>UserSvc: Cập nhật thành công
+    UserSvc-->>UI: Trả kết quả
+    UI-->>Admin: Hiển thị trạng thái người dùng mới
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC26 - Quản lý người dùng
+|Quản trị viên|
+start
+:Mở màn hình quản lý người dùng;
+|Hệ thống|
+:Kiểm tra đăng nhập và quyền;
+:Tải danh sách người dùng;
+|Quản trị viên|
+:Chọn tạo mới/chỉnh sửa/khóa/mở khóa/gán vai trò;
+|Hệ thống|
+:Kiểm tra dữ liệu;
+if (Hợp lệ?) then (Có)
+  :Cập nhật người dùng và vai trò;
+  |Quản trị viên|
+  :Nhận kết quả cập nhật;
+  stop
+else (Không)
+  |Quản trị viên|
+  :Nhận lỗi và sửa lại;
+  stop
+endif
+@enduml
+================================================================
+UC27 - Quản lý bài đăng
+[Mermaid]
+sequenceDiagram
+    actor Admin as Quản trị viên
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant PostSvc as Dịch vụ bài đăng
+    participant Moderation as Dịch vụ kiểm duyệt
+    participant DB as CSDL
+    Admin->>UI: Mở màn hình quản lý bài đăng
+    UI->>Auth: Kiểm tra đăng nhập và quyền
+    Auth-->>UI: Hợp lệ
+    UI->>PostSvc: Lấy danh sách bài đăng
+    PostSvc->>DB: Truy vấn bài đăng
+    DB-->>PostSvc: Danh sách bài đăng
+    PostSvc-->>UI: Trả danh sách bài đăng
+    Admin->>UI: Chọn duyệt/ẩn/xóa/khôi phục bài đăng
+    UI->>Moderation: Gửi quyết định kiểm duyệt
+    Moderation->>DB: Cập nhật trạng thái bài đăng
+    DB-->>Moderation: Cập nhật thành công
+    Moderation-->>UI: Trả kết quả
+    UI-->>Admin: Hiển thị trạng thái bài đăng mới
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC27 - Quản lý bài đăng
+|Quản trị viên|
+start
+:Mở màn hình quản lý bài đăng;
+|Hệ thống|
+:Kiểm tra đăng nhập và quyền;
+:Tải danh sách bài đăng;
+|Quản trị viên|
+:Chọn duyệt/ẩn/xóa/khôi phục;
+|Hệ thống|
+:Cập nhật trạng thái bài đăng;
+|Quản trị viên|
+:Xem kết quả kiểm duyệt;
+stop
+@enduml
+================================================================
+UC28 - Quản lý đánh giá công ty
+[Mermaid]
+sequenceDiagram
+    actor Admin as Quản trị viên
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant Review as Dịch vụ đánh giá
+    participant Moderation as Dịch vụ kiểm duyệt
+    participant DB as CSDL
+    Admin->>UI: Mở màn hình quản lý đánh giá công ty
+    UI->>Auth: Kiểm tra đăng nhập và quyền
+    Auth-->>UI: Hợp lệ
+    UI->>Review: Lấy danh sách đánh giá/bình luận
+    Review->>DB: Truy vấn đánh giá
+    DB-->>Review: Danh sách đánh giá
+    Review-->>UI: Trả danh sách
+    Admin->>UI: Chọn duyệt/ẩn/xóa đánh giá
+    UI->>Moderation: Gửi quyết định xử lý đánh giá
+    Moderation->>DB: Cập nhật trạng thái đánh giá
+    DB-->>Moderation: Cập nhật thành công
+    Moderation-->>UI: Trả kết quả
+    UI-->>Admin: Hiển thị trạng thái mới
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC28 - Quản lý đánh giá công ty
+|Quản trị viên|
+start
+:Mở màn hình quản lý đánh giá công ty;
+|Hệ thống|
+:Kiểm tra đăng nhập và quyền;
+:Tải danh sách đánh giá;
+|Quản trị viên|
+:Chọn duyệt/ẩn/xóa đánh giá;
+|Hệ thống|
+:Cập nhật trạng thái đánh giá;
+|Quản trị viên|
+:Xem kết quả xử lý;
+stop
+@enduml
+================================================================
+UC29 - Quản lý template
+[Mermaid]
+sequenceDiagram
+    actor Admin as Quản trị viên
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant Template as Dịch vụ template
+    participant Storage as Lưu trữ tệp
+    participant DB as CSDL
+    Admin->>UI: Mở màn hình quản lý template
+    UI->>Auth: Kiểm tra đăng nhập và quyền
+    Auth-->>UI: Hợp lệ
+    UI->>Template: Lấy danh sách template
+    Template->>DB: Truy vấn template hiện có
+    DB-->>Template: Danh sách template
+    Template-->>UI: Trả danh sách template
+    Admin->>UI: Tạo/chỉnh sửa/xóa/xuất bản template
+    opt Có tệp giao diện/template
+        UI->>Storage: Tải tệp lên
+        Storage-->>UI: Trả đường dẫn tệp
+    end
+    UI->>Template: Lưu thay đổi template
+    Template->>DB: Cập nhật template
+    DB-->>Template: Cập nhật thành công
+    Template-->>UI: Trả kết quả
+    UI-->>Admin: Hiển thị trạng thái template mới
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC29 - Quản lý template
+|Quản trị viên|
+start
+:Mở màn hình quản lý template;
+|Hệ thống|
+:Kiểm tra đăng nhập và quyền;
+:Tải danh sách template;
+|Quản trị viên|
+:Chọn tạo/chỉnh sửa/xóa/xuất bản template;
+|Hệ thống|
+if (Có tệp template mới?) then (Có)
+  :Tải tệp lên kho lưu trữ;
+endif
+:Cập nhật template;
+|Quản trị viên|
+:Nhận kết quả cập nhật;
+stop
+@enduml
+================================================================
+UC30 - Quản lý cẩm nang nghề nghiệp
+[Mermaid]
+sequenceDiagram
+    actor Admin as Quản trị viên
+    participant UI as Hệ thống(UI)
+    participant Auth as Controller
+    participant Handbook as Dịch vụ cẩm nang
+    participant DB as CSDL
+    Admin->>UI: Mở màn hình quản lý cẩm nang nghề nghiệp
+    UI->>Auth: Kiểm tra đăng nhập và quyền
+    Auth-->>UI: Hợp lệ
+    UI->>Handbook: Lấy danh mục và bài viết cẩm nang
+    Handbook->>DB: Truy vấn danh mục/bài viết cẩm nang
+    DB-->>Handbook: Dữ liệu cẩm nang
+    Handbook-->>UI: Trả dữ liệu
+    Admin->>UI: Tạo danh mục/thêm bài/chỉnh sửa/ẩn hiện
+    UI->>Handbook: Gửi thay đổi
+    Handbook->>DB: Cập nhật cấu trúc và nội dung cẩm nang
+    DB-->>Handbook: Cập nhật thành công
+    Handbook-->>UI: Trả kết quả
+    UI-->>Admin: Hiển thị cẩm nang đã cập nhật
+[PlantText]
+@startuml
+skinparam shadowing false
+title UC30 - Quản lý cẩm nang nghề nghiệp
+|Quản trị viên|
+start
+:Mở màn hình quản lý cẩm nang nghề nghiệp;
+|Hệ thống|
+:Kiểm tra đăng nhập và quyền;
+:Tải danh mục và nội dung cẩm nang;
+|Quản trị viên|
+:Chọn tạo danh mục/thêm bài/chỉnh sửa/ẩn hiện;
+|Hệ thống|
+:Cập nhật cẩm nang nghề nghiệp;
+|Quản trị viên|
+:Nhận kết quả cập nhật;
+stop
+@enduml
+================================================================
+PROMPT GỢI Ý ĐỂ GỬI CHO COPILOT TRONG VS CODE
+Hãy mở file `usecase_diagrams_do_an_ordered.txt` trong workspace hiện tại và thực hiện đúng các yêu cầu sau:
+1. Đọc toàn bộ 30 use case trong file.
+2. Kiểm tra syntax của từng đoạn Mermaid và PlantUML, nếu có lỗi render thì sửa syntax nhưng không đổi tên use case và không đổi logic nghiệp vụ.
+3. Tách mỗi use case thành 2 file riêng:
+   - `docs/sequence/ucxx-ten-use-case.mmd`
+   - `docs/activity/ucxx-ten-use-case.puml`
+4. Tạo thêm `docs/README_usecase_diagrams.md` gồm:
+   - danh sách 30 use case
+   - đường dẫn tới file `.mmd` và `.puml`
+   - hướng dẫn render Mermaid và PlantText ngắn gọn
+5. Giữ nguyên ngôn ngữ tiếng Việt cho tên use case trong nội dung biểu đồ.
+6. Nếu thay một use case trong file bị mơ hồ, hãy thêm comment ngắn ở đầu file đó để ghi rõ giả định nghiệp vụ, nhưng không được tự ý bỏ use case nào.
+7. Sau khi hoàn thành, trả về bảng tổng hợp gồm: tên use case, file Mermaid, file PlantUML, ghi chú nếu đã sửa syntax.
+Nếu cần tối ưu hóa, ưu tiên:
+- Sequence diagram ngắn gọn, dễ đọc, có `alt/else` cho nhanh quyết định.
+- Activity diagram có swimlane `|Người dùng|` và `|Hệ thống|` hoặc actor tương ứng.
+- Không sử dụng ký tự đặc biệt để tránh lỗi render nếu không cần thiết.
+
+
+
+
+
+
+
+
+
