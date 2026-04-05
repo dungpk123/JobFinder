@@ -142,14 +142,15 @@ const savePendingRegistration = async ({
     );
 };
 
-const sendOtpOrRollbackPending = async ({ email, otp, userName }) => {
+const sendOtpToPendingRegistration = async ({ email, otp, userName }) => {
     const emailResult = await sendVerificationEmail(email, otp, userName || email);
 
-    if (!emailResult?.success) {
-        await dbRunAsync('DELETE FROM DangKyTam WHERE Email = ?', [email]);
-        const reason = emailResult?.error || 'Không thể gửi email. Vui lòng thử lại.';
-        throw new Error(reason);
+    if (emailResult?.success) {
+        return { success: true };
     }
+
+    const reason = emailResult?.error || 'Không thể gửi email. Vui lòng thử lại.';
+    return { success: false, error: reason };
 };
 
 const verifyLegacyUnverifiedUserOtp = async ({ email, otp }) => {
@@ -262,15 +263,21 @@ router.post('/register', async (req, res) => {
             otpExpiry
         });
 
-        await sendOtpOrRollbackPending({
+        const otpDispatchResult = await sendOtpToPendingRegistration({
             email: normalizedEmail,
             otp,
             userName: name || normalizedEmail
         });
 
-        return res.status(201).json(buildRegistrationResponse({
+        return res.status(otpDispatchResult.success ? 201 : 202).json(buildRegistrationResponse({
             email: normalizedEmail,
-            otp
+            otp,
+            extra: otpDispatchResult.success
+                ? {}
+                : {
+                    message: 'Đăng ký tạm thành công. Hệ thống chưa gửi được email xác thực, vui lòng vào màn hình xác thực và bấm "Gửi lại mã".',
+                    otpDeliveryFailed: true
+                }
         }));
     } catch (err) {
         if (isUniqueConstraintError(err)) {
@@ -418,15 +425,21 @@ router.post('/register-employer', async (req, res) => {
             otpExpiry
         });
 
-        await sendOtpOrRollbackPending({
+        const otpDispatchResult = await sendOtpToPendingRegistration({
             email: normalizedEmail,
             otp,
             userName: name || companyName || normalizedEmail
         });
 
-        return res.status(201).json(buildRegistrationResponse({
+        return res.status(otpDispatchResult.success ? 201 : 202).json(buildRegistrationResponse({
             email: normalizedEmail,
-            otp
+            otp,
+            extra: otpDispatchResult.success
+                ? {}
+                : {
+                    message: 'Đăng ký tạm thành công. Hệ thống chưa gửi được email xác thực, vui lòng vào màn hình xác thực và bấm "Gửi lại mã".',
+                    otpDeliveryFailed: true
+                }
         }));
     } catch (err) {
         if (isUniqueConstraintError(err)) {

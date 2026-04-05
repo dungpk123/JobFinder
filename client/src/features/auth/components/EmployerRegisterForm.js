@@ -83,7 +83,13 @@ const EmployerRegisterForm = ({ onSuccess }) => {
       }
 
       if (data.requireVerification) {
-        navigate('/verify-otp', { state: { email: formData.email } });
+        navigate('/verify-otp', {
+          state: {
+            email: formData.email,
+            otpDeliveryFailed: Boolean(data.otpDeliveryFailed),
+            verificationMessage: data.message || ''
+          }
+        });
       } else {
         notify({ type: 'success', message: 'Đăng ký nhà tuyển dụng thành công! Vui lòng đăng nhập.' });
         if (onSuccess) {

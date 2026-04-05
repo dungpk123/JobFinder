@@ -6,6 +6,8 @@ const VerifyOTP = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const email = location.state?.email || '';
+    const otpDeliveryFailed = Boolean(location.state?.otpDeliveryFailed);
+    const verificationMessage = String(location.state?.verificationMessage || '');
     const apiBase = CLIENT_API_BASE;
     
     const [otp, setOtp] = useState('');
@@ -90,10 +92,17 @@ const VerifyOTP = () => {
                                 <i className="bi bi-envelope-check" style={{ fontSize: '4rem', color: '#0d6efd' }}></i>
                                 <h2 className="mt-3 mb-2">Xác thực tài khoản</h2>
                                 <p className="text-muted">
-                                    Chúng tôi đã gửi mã xác thực 6 số đến<br />
+                                    {otpDeliveryFailed ? 'Tạm thời chưa gửi được mã xác thực đến' : 'Chúng tôi đã gửi mã xác thực 6 số đến'}<br />
                                     <strong>{email}</strong>
                                 </p>
                             </div>
+
+                            {otpDeliveryFailed && (
+                                <div className="alert alert-warning" role="alert">
+                                    <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                                    {verificationMessage || 'Vui lòng bấm "Gửi lại mã xác thực" để nhận OTP mới.'}
+                                </div>
+                            )}
 
                             <form onSubmit={handleSubmit}>
                                 <div className="mb-4">

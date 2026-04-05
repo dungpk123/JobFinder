@@ -4,7 +4,14 @@ const nodemailer = require('nodemailer');
 // 1) OAuth2 (không cần bật 2FA/App Password) với CLIENT_ID/SECRET + REFRESH_TOKEN
 // 2) App Password (yêu cầu bật 2FA) với EMAIL_USER/EMAIL_PASSWORD
 
-const MAIL_TIMEOUT_MS = Number(process.env.EMAIL_TIMEOUT_MS || 15000);
+const toPositiveMs = (value, fallback) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 0) return fallback;
+    return Math.floor(parsed);
+};
+
+const DEFAULT_MAIL_TIMEOUT_MS = process.env.NODE_ENV === 'production' ? 45000 : 15000;
+const MAIL_TIMEOUT_MS = toPositiveMs(process.env.EMAIL_TIMEOUT_MS, DEFAULT_MAIL_TIMEOUT_MS);
 
 let useOAuth2 = Boolean(
     process.env.EMAIL_OAUTH_CLIENT_ID &&
