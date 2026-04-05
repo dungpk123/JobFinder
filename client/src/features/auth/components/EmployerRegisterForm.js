@@ -87,7 +87,8 @@ const EmployerRegisterForm = ({ onSuccess }) => {
           state: {
             email: formData.email,
             otpDeliveryFailed: Boolean(data.otpDeliveryFailed),
-            verificationMessage: data.message || ''
+            verificationMessage: data.message || '',
+            otp: String(data.otp || '')
           }
         });
       } else {

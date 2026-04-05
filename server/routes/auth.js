@@ -73,6 +73,15 @@ const passwordStrengthError = (password) => {
     return null;
 };
 
+const parseBooleanEnv = (value) => {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized) return false;
+    return ['1', 'true', 'yes', 'on'].includes(normalized);
+};
+
+const shouldExposeOtpInResponse = process.env.NODE_ENV !== 'production'
+    || parseBooleanEnv(process.env.EXPOSE_OTP_IN_RESPONSE);
+
 let ensurePendingRegistrationTablePromise = null;
 const ensurePendingRegistrationTable = async () => {
     if (!ensurePendingRegistrationTablePromise) {
@@ -102,7 +111,7 @@ const buildRegistrationResponse = ({ email, otp, extra = {} }) => {
         ...extra
     };
 
-    if (process.env.NODE_ENV !== 'production') {
+    if (shouldExposeOtpInResponse) {
         payload.otp = otp;
     }
 
@@ -208,11 +217,22 @@ const resendLegacyUnverifiedUserOtp = async ({ email }) => {
 
     const emailResult = await sendVerificationEmail(email, otp, user.HoTen || email);
     if (!emailResult?.success) {
+        if (shouldExposeOtpInResponse) {
+            return {
+                handled: true,
+                status: 200,
+                body: {
+                    message: 'Không thể gửi email lúc này. Dùng mã OTP tạm thời để xác thực.',
+                    otp,
+                    otpDeliveryFailed: true
+                }
+            };
+        }
         return { handled: true, status: 500, body: { error: 'Không thể gửi email. Vui lòng thử lại.' } };
     }
 
     const body = { message: 'Đã gửi lại mã xác thực. Vui lòng kiểm tra email.' };
-    if (process.env.NODE_ENV !== 'production') {
+    if (shouldExposeOtpInResponse) {
         body.otp = otp;
     }
 
@@ -578,11 +598,18 @@ router.post('/resend-otp', async (req, res) => {
 
             const emailResult = await sendVerificationEmail(normalizedEmail, otp, pending.HoTen || pending.TenCongTy || normalizedEmail);
             if (!emailResult?.success) {
+                if (shouldExposeOtpInResponse) {
+                    return res.json({
+                        message: 'Không thể gửi email lúc này. Dùng mã OTP tạm thời để xác thực.',
+                        otp,
+                        otpDeliveryFailed: true
+                    });
+                }
                 return res.status(500).json({ error: 'Không thể gửi email. Vui lòng thử lại.' });
             }
 
             const payload = { message: 'Đã gửi lại mã xác thực. Vui lòng kiểm tra email.' };
-            if (process.env.NODE_ENV !== 'production') {
+            if (shouldExposeOtpInResponse) {
                 payload.otp = otp;
             }
 
@@ -625,10 +652,17 @@ router.post('/forgot-password', async (req, res) => {
 
                 const emailResult = await sendVerificationEmail(normalizeEmail(email), otp, user.HoTen || normalizeEmail(email));
                 if (!emailResult.success) {
+                    if (shouldExposeOtpInResponse) {
+                        return res.json({
+                            message: 'Không thể gửi email lúc này. Dùng mã OTP tạm thời để đặt lại mật khẩu.',
+                            otp,
+                            otpDeliveryFailed: true
+                        });
+                    }
                     return res.status(500).json({ error: 'Không thể gửi email. Vui lòng thử lại.' });
                 }
 
-                if (process.env.NODE_ENV !== 'production') {
+                if (shouldExposeOtpInResponse) {
                     return res.json({ message: 'Đã gửi mã đặt lại mật khẩu. Vui lòng kiểm tra email.', otp });
                 }
 
