@@ -23,6 +23,8 @@ const toBoolean = (value, fallback) => {
 const EMAIL_USER = asTrimmed(process.env.EMAIL_USER);
 const EMAIL_PASSWORD = normalizeAppPassword(process.env.EMAIL_PASSWORD);
 const EMAIL_FROM = asTrimmed(process.env.EMAIL_FROM) || EMAIL_USER;
+const EMAIL_PROVIDER = asTrimmed(process.env.EMAIL_PROVIDER).toLowerCase() || 'smtp';
+const RESEND_API_KEY = asTrimmed(process.env.RESEND_API_KEY);
 
 const EMAIL_OAUTH_CLIENT_ID = asTrimmed(process.env.EMAIL_OAUTH_CLIENT_ID);
 const EMAIL_OAUTH_CLIENT_SECRET = asTrimmed(process.env.EMAIL_OAUTH_CLIENT_SECRET);
@@ -43,9 +45,66 @@ const useOAuth2 = Boolean(
     EMAIL_USER
 );
 const hasAppPassword = Boolean(EMAIL_USER && EMAIL_PASSWORD);
+const useResendApi = EMAIL_PROVIDER === 'resend' && Boolean(RESEND_API_KEY);
 
 let transporter;
 let fetchOAuthAccessToken = null;
+
+const getFetch = async () => {
+    if (typeof fetch === 'function') {
+        return fetch;
+    }
+
+    try {
+        const mod = await import('node-fetch');
+        return mod.default;
+    } catch {
+        return null;
+    }
+};
+
+const parseErrorMessage = async (response) => {
+    const fallback = `Email provider responded with status ${response.status}`;
+    try {
+        const payload = await response.json();
+        return payload?.message || payload?.error || fallback;
+    } catch {
+        try {
+            const text = await response.text();
+            return text || fallback;
+        } catch {
+            return fallback;
+        }
+    }
+};
+
+const sendMailViaResend = async ({ to, subject, html }) => {
+    const fetchImpl = await getFetch();
+    if (!fetchImpl) {
+        throw new Error('Fetch API is not available for Resend provider');
+    }
+
+    const response = await fetchImpl('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            from: EMAIL_FROM,
+            to: [to],
+            subject,
+            html,
+        }),
+    });
+
+    if (!response.ok) {
+        const errorMessage = await parseErrorMessage(response);
+        throw new Error(errorMessage);
+    }
+
+    return response.json().catch(() => ({}));
+};
 
 const createTransport = (auth) => nodemailer.createTransport({
     host: EMAIL_SMTP_HOST,
@@ -76,7 +135,7 @@ const withTimeout = (promiseFactory, label) => new Promise((resolve, reject) => 
         });
 });
 
-if (useOAuth2) {
+if (!useResendApi && useOAuth2) {
     // Dùng OAuth2 (không cần 2FA). Cần cài package googleapis: npm i googleapis
     let googleapis;
     try {
@@ -110,7 +169,7 @@ if (useOAuth2) {
     }
 }
 
-if (!transporter && hasAppPassword) {
+if (!useResendApi && !transporter && hasAppPassword) {
     // Fallback: App Password
     transporter = createTransport({
         user: EMAIL_USER,
@@ -118,7 +177,9 @@ if (!transporter && hasAppPassword) {
     });
 }
 
-if (!transporter) {
+if (useResendApi) {
+    console.info('[email] Resend API provider is enabled.');
+} else if (!transporter) {
     console.warn('[email] EMAIL_USER/EMAIL_PASSWORD (hoặc OAuth2) chưa cấu hình. OTP email sẽ không gửi được.');
 } else {
     console.info(`[email] SMTP ready host=${EMAIL_SMTP_HOST} port=${EMAIL_SMTP_PORT} secure=${EMAIL_SMTP_SECURE} requireTLS=${EMAIL_SMTP_REQUIRE_TLS}`);
@@ -131,7 +192,7 @@ function generateOTP() {
 
 // Hàm gửi email xác thực
 async function sendVerificationEmail(email, otp, userName) {
-    if (!transporter) {
+    if (!useResendApi && !transporter) {
         return { success: false, error: 'Email transporter is not configured' };
     }
 
@@ -159,6 +220,14 @@ async function sendVerificationEmail(email, otp, userName) {
     };
 
     try {
+        if (useResendApi) {
+            await withTimeout(
+                () => sendMailViaResend({ to: email, subject: mailOptions.subject, html: mailOptions.html }),
+                'Send verification email'
+            );
+            return { success: true };
+        }
+
         // Nếu dùng OAuth2, đảm bảo có accessToken mới
         if (typeof fetchOAuthAccessToken === 'function') {
             const accessToken = await withTimeout(() => fetchOAuthAccessToken(), 'Get OAuth access token');
