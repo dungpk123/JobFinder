@@ -690,6 +690,17 @@ const resendLegacyUnverifiedUserOtp = async ({ email }) => {
     return { handled: true, status: 200, body };
 };
 
+// Endpoint to expose public configuration (especially Google Client ID)
+// This allows frontend to use runtime config instead of relying on build-time env vars
+router.get('/config', (req, res) => {
+    const firstValidGoogleClientId = GOOGLE_AUDIENCES[0] || '';
+    
+    res.json({
+        googleClientId: firstValidGoogleClientId,
+        apiBase: process.env.API_BASE || 'http://localhost:3001'
+    });
+});
+
 router.post('/register', async (req, res) => {
     const { email, password, confirmPassword, name, phone, address, birthday, gender, acceptedTerms } = req.body;
 

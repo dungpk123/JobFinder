@@ -14,7 +14,12 @@
       name="description"
       content="JobFinder - Tìm việc làm mơ ước của bạn"
     />
+    <meta name="google-client-id" content="%REACT_APP_GOOGLE_CLIENT_ID%" />
     <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script>
+      // Set window variable with Google Client ID for runtime access
+      window.__GOOGLE_CLIENT_ID__ = '%REACT_APP_GOOGLE_CLIENT_ID%';
+    </script>
     <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/apple-touch-icon.png" />
     <link rel="apple-touch-icon" sizes="192x192" href="%PUBLIC_URL%/pwa-192x192.png" />
     <link rel="apple-touch-icon" sizes="512x512" href="%PUBLIC_URL%/pwa-512x512.png" />

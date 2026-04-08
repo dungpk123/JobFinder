@@ -116,7 +116,10 @@ const LoginForm = ({ onSuccess }) => {
   const googleInitializedRef = useRef(false);
   const googleCallbackReceivedRef = useRef(false);
   const googlePopupHintTimeoutRef = useRef(null);
-  const GOOGLE_CLIENT_ID = resolveGoogleClientId();
+  const initialGoogleClientId = resolveGoogleClientId();
+  
+  // State for Google Client ID with fallback support
+  const [googleClientId, setGoogleClientId] = useState(initialGoogleClientId);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -125,6 +128,28 @@ const LoginForm = ({ onSuccess }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
+  // Fetch Google Client ID from backend API for runtime configuration
+  useEffect(() => {
+    const fetchGoogleConfig = async () => {
+      try {
+        const response = await fetch(`${apiBase}/auth/config`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.googleClientId && typeof data.googleClientId === 'string') {
+            setGoogleClientId(data.googleClientId);
+            // Also set window alias for other components
+            window.__GOOGLE_CLIENT_ID__ = data.googleClientId;
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch Google config from backend, using build-time value:', err?.message);
+        // Keep using initialGoogleClientId as fallback
+      }
+    };
+
+    fetchGoogleConfig();
+  }, [apiBase]);
 
   const clearGooglePopupHintTimeout = () => {
     if (!googlePopupHintTimeoutRef.current) return;
@@ -202,7 +227,7 @@ const LoginForm = ({ onSuccess }) => {
     googleCallbackReceivedRef.current = false;
     clearGooglePopupHintTimeout();
 
-    if (!GOOGLE_CLIENT_ID) {
+    if (!googleClientId) {
       setError('Thiếu cấu hình Google Client ID. Hãy thêm REACT_APP_GOOGLE_CLIENT_ID (hoặc REACT_APP_GOOGLE_OAUTH_CLIENT_ID) trong Vercel Project Settings > Environment Variables rồi redeploy.');
       return;
     }
@@ -214,7 +239,7 @@ const LoginForm = ({ onSuccess }) => {
 
     if (!googleInitializedRef.current) {
       window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
+        client_id: googleClientId,
         callback: async (response) => {
           const credential = String(response?.credential || '').trim();
           if (!credential) {
@@ -268,7 +293,7 @@ const LoginForm = ({ onSuccess }) => {
 
     googlePopupHintTimeoutRef.current = window.setTimeout(() => {
       if (!googleCallbackReceivedRef.current) {
-        setError(getGoogleOriginMismatchHint(GOOGLE_CLIENT_ID));
+        setError(getGoogleOriginMismatchHint(googleClientId));
       }
     }, 4500);
   };
