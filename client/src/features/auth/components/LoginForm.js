@@ -64,6 +64,7 @@ const resolveGoogleClientId = () => {
 
 const getGoogleOriginMismatchHint = (clientId) => {
   const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+  const isLocalOrigin = /localhost|127\.0\.0\.1/i.test(currentOrigin);
 
   if (!currentOrigin) {
     return 'Google popup khong tra credential. Kha nang cao cau hinh OAuth chua dung origin.';
@@ -73,8 +74,28 @@ const getGoogleOriginMismatchHint = (clientId) => {
     'Google popup khong tra credential (thuong la Error 400: origin_mismatch).',
     `Origin hien tai: ${currentOrigin}.`,
     `Client ID dang dung: ${clientId || '(trong)'}.`,
-    'Hay them origin nay vao Authorized JavaScript origins cua dung OAuth Client tren Google Cloud va redeploy frontend.'
+    isLocalOrigin
+      ? 'Hay them origin local nay (bao gom dung port) vao Authorized JavaScript origins trong Google Cloud Console. Vi du: http://localhost:3000.'
+      : 'Hay them origin nay vao Authorized JavaScript origins cua dung OAuth Client tren Google Cloud va redeploy frontend.'
   ].join(' ');
+};
+
+const getGooglePopupErrorMessage = (reason, clientId) => {
+  const normalizedReason = String(reason || '').trim().toLowerCase();
+
+  if (normalizedReason.includes('popup_closed_by_user')) {
+    return 'Bạn đã đóng popup Google trước khi hoàn tất đăng nhập.';
+  }
+
+  if (normalizedReason.includes('popup_failed_to_open')) {
+    return 'Trình duyệt đã chặn popup Google. Vui lòng cho phép popup cho localhost rồi thử lại.';
+  }
+
+  if (normalizedReason.includes('idpiframe_initialization_failed')) {
+    return 'Google Sign-In không thể khởi tạo iframe. Hãy thử tắt extension chặn quảng cáo/cookie và tải lại trang.';
+  }
+
+  return getGoogleOriginMismatchHint(clientId);
 };
 
 const parseJsonSafe = async (response) => {
@@ -240,11 +261,17 @@ const LoginForm = ({ onSuccess }) => {
     if (!googleInitializedRef.current) {
       window.google.accounts.id.initialize({
         client_id: googleClientId,
+        error_callback: (googleError) => {
+          googleCallbackReceivedRef.current = true;
+          clearGooglePopupHintTimeout();
+          setGoogleLoading(false);
+          setError(getGooglePopupErrorMessage(googleError?.type || googleError?.message, googleClientId));
+        },
         callback: async (response) => {
           const credential = String(response?.credential || '').trim();
           if (!credential) {
             clearGooglePopupHintTimeout();
-            setError('Không nhận được thông tin xác thực từ Google.');
+            setError(getGooglePopupErrorMessage('missing_credential', googleClientId));
             return;
           }
 
@@ -263,7 +290,7 @@ const LoginForm = ({ onSuccess }) => {
           }
         },
         auto_select: false,
-        cancel_on_tap_outside: true
+        cancel_on_tap_outside: false
       });
 
       googleInitializedRef.current = true;
@@ -295,7 +322,7 @@ const LoginForm = ({ onSuccess }) => {
       if (!googleCallbackReceivedRef.current) {
         setError(getGoogleOriginMismatchHint(googleClientId));
       }
-    }, 4500);
+    }, 10000);
   };
 
   const handleSubmit = async (e) => {

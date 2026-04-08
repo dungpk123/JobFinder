@@ -807,7 +807,13 @@ router.post('/login', async (req, res) => {
 });
 
 router.post('/google-login', async (req, res) => {
-    const credential = String(req.body?.credential || '').trim();
+    const credential = String(
+        req.body?.credential
+        || req.body?.token
+        || req.body?.idToken
+        || req.body?.id_token
+        || ''
+    ).trim();
 
     try {
         const googlePayload = await verifyGoogleCredential(credential);
