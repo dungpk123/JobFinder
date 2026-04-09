@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import CareerRichTextEditor from '../../career-guide/components/CareerRichTextEditor';
 import './JobCreate.css';
 
 const salaryTypes = ['Thỏa thuận', 'Tháng', 'Năm', 'Khoảng', 'Không xác định'];
@@ -31,217 +32,40 @@ const normalizeProvinceEntry = (entry) => {
     ).trim();
 };
 
-const RichTextField = ({ label, onChange, rows = 4, placeholder, initialValue = '' }) => {
-    const editorRef = useRef(null);
-    const selectionRef = useRef(null);
-    const composingRef = useRef(false);
-    const [activeFormats, setActiveFormats] = useState({
-        bold: false,
-        italic: false,
-        insertUnorderedList: false
-    });
+const pad2 = (value) => String(value).padStart(2, '0');
 
-    // Sync from server-loaded value only.
-    useEffect(() => {
-        if (editorRef.current && typeof initialValue === 'string') {
-            editorRef.current.innerHTML = initialValue;
-        }
-    }, [initialValue]);
+const parseIsoDateParts = (value) => {
+    const input = String(value || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input)) return null;
 
-    const emitChange = () => {
-        const editor = editorRef.current;
-        if (!editor) return;
-        onChange(editor.innerHTML || '');
-    };
+    const [yearRaw, monthRaw, dayRaw] = input.split('-');
+    const year = Number(yearRaw);
+    const month = Number(monthRaw);
+    const day = Number(dayRaw);
 
-    const placeCaretAtEnd = () => {
-        const editor = editorRef.current;
-        if (!editor) return;
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+        return null;
+    }
 
-        const selection = window.getSelection?.();
-        if (!selection) return;
+    if (month < 1 || month > 12) return null;
 
-        const range = document.createRange();
-        range.selectNodeContents(editor);
-        range.collapse(false);
-        selection.removeAllRanges();
-        selection.addRange(range);
-        selectionRef.current = range.cloneRange();
-    };
+    const daysInMonth = new Date(year, month, 0).getDate();
+    if (day < 1 || day > daysInMonth) return null;
 
-    const saveSelection = () => {
-        const editor = editorRef.current;
-        if (!editor) return;
+    return { year, month, day };
+};
 
-        const selection = window.getSelection?.();
-        if (!selection || selection.rangeCount === 0) return;
+const formatIsoDate = (date) => {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+    const year = date.getFullYear();
+    const month = pad2(date.getMonth() + 1);
+    const day = pad2(date.getDate());
+    return `${year}-${month}-${day}`;
+};
 
-        const range = selection.getRangeAt(0);
-        const anchorNode = selection.anchorNode;
-
-        // Only save if selection/caret is inside this editor
-        if (anchorNode && editor.contains(anchorNode)) {
-            selectionRef.current = range.cloneRange();
-        }
-    };
-
-    const restoreSelection = () => {
-        const editor = editorRef.current;
-        if (!editor) return;
-        const range = selectionRef.current;
-        if (!range) {
-            placeCaretAtEnd();
-            return;
-        }
-
-        if (!editor.contains(range.startContainer) || !editor.contains(range.endContainer)) {
-            return;
-        }
-
-        const selection = window.getSelection?.();
-        if (!selection) return;
-        try {
-            selection.removeAllRanges();
-            selection.addRange(range);
-        } catch {
-            // noop
-        }
-    };
-
-    const updateActiveFormats = () => {
-        const editor = editorRef.current;
-        if (!editor) return;
-
-        const selection = window.getSelection?.();
-        const anchorNode = selection?.anchorNode || null;
-        const isInsideEditor = Boolean(anchorNode && editor.contains(anchorNode));
-
-        if (!isInsideEditor) {
-            setActiveFormats({ bold: false, italic: false, insertUnorderedList: false });
-            return;
-        }
-
-        const queryState = (command) => {
-            try {
-                return Boolean(document.queryCommandState(command));
-            } catch {
-                return false;
-            }
-        };
-
-        setActiveFormats({
-            bold: queryState('bold'),
-            italic: queryState('italic'),
-            insertUnorderedList: queryState('insertUnorderedList')
-        });
-    };
-
-    const applyCommand = (command) => {
-        // Toggle formatting at caret (or selection) so user can click once to turn on, click again to turn off.
-        const editor = editorRef.current;
-        if (!editor) return;
-
-        editor.focus();
-        restoreSelection();
-
-        // execCommand is deprecated but widely supported and sufficient for this simple use.
-        document.execCommand(command, false, null);
-
-        emitChange();
-        saveSelection();
-        updateActiveFormats();
-    };
-
-    const minHeight = Math.max(96, rows * 24);
-
-    return (
-        <div className="col-12">
-            <label className="form-label">{label}</label>
-            <div className="job-create-rich-toolbar">
-                <button
-                    type="button"
-                    className={`job-create-rich-btn ${activeFormats.bold ? 'is-active' : ''}`}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => applyCommand('bold')}
-                    title="In đậm"
-                    aria-label="In đậm"
-                    aria-pressed={activeFormats.bold}
-                >
-                    <strong>B</strong>
-                </button>
-                <button
-                    type="button"
-                    className={`job-create-rich-btn ${activeFormats.italic ? 'is-active' : ''}`}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => applyCommand('italic')}
-                    title="In nghiêng"
-                    aria-label="In nghiêng"
-                    aria-pressed={activeFormats.italic}
-                >
-                    <em>I</em>
-                </button>
-                <button
-                    type="button"
-                    className={`job-create-rich-btn ${activeFormats.insertUnorderedList ? 'is-active' : ''}`}
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => applyCommand('insertUnorderedList')}
-                    title="Gạch đầu dòng"
-                    aria-label="Gạch đầu dòng"
-                    aria-pressed={activeFormats.insertUnorderedList}
-                >
-                    •
-                </button>
-                <small className="job-create-rich-hint">Bấm để bật/tắt định dạng tại vị trí đang gõ</small>
-            </div>
-            <div
-                ref={editorRef}
-                className="form-control job-create-editor"
-                contentEditable
-                suppressContentEditableWarning
-                onFocus={() => {
-                    saveSelection();
-                    updateActiveFormats();
-                }}
-                onKeyUp={() => {
-                    saveSelection();
-                    updateActiveFormats();
-                }}
-                onMouseUp={() => {
-                    saveSelection();
-                    updateActiveFormats();
-                }}
-                onInput={() => {
-                    if (composingRef.current) return;
-                    emitChange();
-                    saveSelection();
-                    updateActiveFormats();
-                }}
-                onBlur={() => {
-                    emitChange();
-                    saveSelection();
-                    updateActiveFormats();
-                }}
-                onCompositionStart={() => {
-                    composingRef.current = true;
-                }}
-                onCompositionEnd={() => {
-                    composingRef.current = false;
-                    emitChange();
-                    saveSelection();
-                    updateActiveFormats();
-                }}
-                data-placeholder={placeholder || ''}
-                style={{ minHeight, whiteSpace: 'pre-wrap', overflowY: 'auto', textAlign: 'left' }}
-            />
-            {/* Simple placeholder for contentEditable */}
-            <style>{`
-                [data-placeholder]:empty:before {
-                    content: attr(data-placeholder);
-                    color: #6c757d;
-                }
-            `}</style>
-        </div>
-    );
+const getDaysInMonth = (year, month) => {
+    if (!year || !month) return 31;
+    return new Date(year, month, 0).getDate();
 };
 
 const JobsStyleSelect = ({
@@ -372,6 +196,145 @@ const JobsStyleSelect = ({
     );
 };
 
+const DeadlineDateField = ({ value, onChange, disabled = false }) => {
+    const parsed = useMemo(() => parseIsoDateParts(value), [value]);
+    const [year, setYear] = useState(parsed ? String(parsed.year) : '');
+    const [month, setMonth] = useState(parsed ? pad2(parsed.month) : '');
+    const [day, setDay] = useState(parsed ? pad2(parsed.day) : '');
+
+    useEffect(() => {
+        setYear(parsed ? String(parsed.year) : '');
+        setMonth(parsed ? pad2(parsed.month) : '');
+        setDay(parsed ? pad2(parsed.day) : '');
+    }, [parsed]);
+
+    const yearOptions = useMemo(() => {
+        const currentYear = new Date().getFullYear();
+        return Array.from({ length: 8 }, (_, index) => String(currentYear + index));
+    }, []);
+
+    const monthOptions = useMemo(
+        () => Array.from({ length: 12 }, (_, index) => pad2(index + 1)),
+        []
+    );
+
+    const dayOptions = useMemo(() => {
+        if (!year || !month) return [];
+        const totalDays = getDaysInMonth(Number(year), Number(month));
+        return Array.from({ length: totalDays }, (_, index) => pad2(index + 1));
+    }, [year, month]);
+
+    const emitNextValue = (nextYear, nextMonth, nextDay) => {
+        if (!nextYear || !nextMonth || !nextDay) {
+            onChange('');
+            return;
+        }
+
+        const maxDay = getDaysInMonth(Number(nextYear), Number(nextMonth));
+        const clampedDay = pad2(Math.min(maxDay, Number(nextDay)));
+
+        if (clampedDay !== nextDay) {
+            setDay(clampedDay);
+        }
+
+        onChange(`${nextYear}-${nextMonth}-${clampedDay}`);
+    };
+
+    const handleChangeYear = (nextYear) => {
+        setYear(nextYear);
+        emitNextValue(nextYear, month, day);
+    };
+
+    const handleChangeMonth = (nextMonth) => {
+        setMonth(nextMonth);
+        emitNextValue(year, nextMonth, day);
+    };
+
+    const handleChangeDay = (nextDay) => {
+        setDay(nextDay);
+        emitNextValue(year, month, nextDay);
+    };
+
+    const setQuickDate = (daysToAdd) => {
+        const next = new Date();
+        next.setHours(0, 0, 0, 0);
+        next.setDate(next.getDate() + daysToAdd);
+        onChange(formatIsoDate(next));
+    };
+
+    const displayValue = parsed
+        ? `${pad2(parsed.day)}/${pad2(parsed.month)}/${parsed.year}`
+        : 'Chưa chọn hạn nộp hồ sơ';
+
+    return (
+        <div className="job-create-deadline-picker">
+            <div className="row g-2">
+                <div className="col-4">
+                    <JobsStyleSelect
+                        value={day}
+                        options={dayOptions}
+                        onChange={handleChangeDay}
+                        placeholder="Ngày"
+                        disabled={disabled || !year || !month}
+                    />
+                </div>
+                <div className="col-4">
+                    <JobsStyleSelect
+                        value={month}
+                        options={monthOptions}
+                        onChange={handleChangeMonth}
+                        placeholder="Tháng"
+                        disabled={disabled}
+                    />
+                </div>
+                <div className="col-4">
+                    <JobsStyleSelect
+                        value={year}
+                        options={yearOptions}
+                        onChange={handleChangeYear}
+                        placeholder="Năm"
+                        disabled={disabled}
+                    />
+                </div>
+            </div>
+
+            <div className="job-create-deadline-actions">
+                <button
+                    type="button"
+                    className="job-create-deadline-chip"
+                    onClick={() => setQuickDate(7)}
+                    disabled={disabled}
+                >
+                    +7 ngày
+                </button>
+                <button
+                    type="button"
+                    className="job-create-deadline-chip"
+                    onClick={() => setQuickDate(30)}
+                    disabled={disabled}
+                >
+                    +30 ngày
+                </button>
+                <button
+                    type="button"
+                    className="job-create-deadline-chip is-clear"
+                    onClick={() => {
+                        setYear('');
+                        setMonth('');
+                        setDay('');
+                        onChange('');
+                    }}
+                    disabled={disabled}
+                >
+                    Xóa
+                </button>
+            </div>
+
+            <small className="job-create-helptext">{displayValue}</small>
+        </div>
+    );
+};
+
 const USD_TO_VND_RATE = 25000;
 const MAX_VND_SALARY = 999999999;
 
@@ -443,10 +406,7 @@ const JobCreate = () => {
     const [loadingProvinces, setLoadingProvinces] = useState(false);
     const [salaryCurrency, setSalaryCurrency] = useState('VND');
     const [loadingJob, setLoadingJob] = useState(isEdit);
-    const [richInitialValues, setRichInitialValues] = useState({ description: '', requirements: '', benefits: '' });
-
-    // Store rich text HTML without re-rendering the editor on every keystroke
-    const richRef = useRef({
+    const [richValues, setRichValues] = useState({
         description: '',
         requirements: '',
         benefits: ''
@@ -490,7 +450,10 @@ const JobCreate = () => {
     };
 
     const setRichField = (key) => (html) => {
-        richRef.current[key] = html;
+        setRichValues((prev) => ({
+            ...prev,
+            [key]: html
+        }));
     };
 
     const setSalaryField = (key) => (e) => {
@@ -539,8 +502,7 @@ const JobCreate = () => {
                     requirements: data.YeuCau || '',
                     benefits: data.QuyenLoi || ''
                 };
-                richRef.current = nextRich;
-                setRichInitialValues(nextRich);
+                setRichValues(nextRich);
             } catch (err) {
                 if (!cancelled) setError(err.message || 'Có lỗi khi tải tin.');
             } finally {
@@ -575,9 +537,9 @@ const JobCreate = () => {
                 },
                 body: JSON.stringify({
                     ...form,
-                    description: richRef.current.description,
-                    requirements: richRef.current.requirements,
-                    benefits: richRef.current.benefits,
+                    description: richValues.description,
+                    requirements: richValues.requirements,
+                    benefits: richValues.benefits,
                     salaryFrom: form.salaryFrom === '' ? null : Math.min(MAX_VND_SALARY, Number(digitsOnly(form.salaryFrom))),
                     salaryTo: form.salaryTo === '' ? null : Math.min(MAX_VND_SALARY, Number(digitsOnly(form.salaryTo)))
                 })
@@ -640,29 +602,38 @@ const JobCreate = () => {
                                 />
                             </div>
 
-                            <RichTextField
-                                label="Mô tả công việc"
-                                onChange={setRichField('description')}
-                                initialValue={richInitialValues.description}
-                                rows={6}
-                                placeholder="Nhập mô tả công việc..."
-                            />
+                            <div className="col-12">
+                                <label className="form-label">Mô tả công việc</label>
+                                <CareerRichTextEditor
+                                    value={richValues.description}
+                                    onChange={setRichField('description')}
+                                    placeholder="Nhập mô tả công việc..."
+                                    minHeight={180}
+                                    className="job-create-career-editor"
+                                />
+                            </div>
 
-                            <RichTextField
-                                label="Yêu cầu"
-                                onChange={setRichField('requirements')}
-                                initialValue={richInitialValues.requirements}
-                                rows={6}
-                                placeholder="Nhập yêu cầu ứng viên..."
-                            />
+                            <div className="col-12">
+                                <label className="form-label">Yêu cầu</label>
+                                <CareerRichTextEditor
+                                    value={richValues.requirements}
+                                    onChange={setRichField('requirements')}
+                                    placeholder="Nhập yêu cầu ứng viên..."
+                                    minHeight={180}
+                                    className="job-create-career-editor"
+                                />
+                            </div>
 
-                            <RichTextField
-                                label="Quyền lợi"
-                                onChange={setRichField('benefits')}
-                                initialValue={richInitialValues.benefits}
-                                rows={5}
-                                placeholder="Nhập quyền lợi..."
-                            />
+                            <div className="col-12">
+                                <label className="form-label">Quyền lợi</label>
+                                <CareerRichTextEditor
+                                    value={richValues.benefits}
+                                    onChange={setRichField('benefits')}
+                                    placeholder="Nhập quyền lợi..."
+                                    minHeight={170}
+                                    className="job-create-career-editor"
+                                />
+                            </div>
 
                             <div className="col-12">
                                 <h5 className="job-create-section-title">Địa điểm làm việc</h5>
@@ -806,11 +777,10 @@ const JobCreate = () => {
 
                                     <div className="col-md-4">
                                         <label className="form-label">Hạn nộp hồ sơ</label>
-                                        <input
-                                            type="date"
-                                            className="form-control"
+                                        <DeadlineDateField
                                             value={form.deadline}
                                             onChange={setField('deadline')}
+                                            disabled={submitting || loadingJob}
                                         />
                                     </div>
                                 </div>

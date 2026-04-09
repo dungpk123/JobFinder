@@ -108,6 +108,65 @@
   font-weight: 600;
 }
 
+.cgrte.job-create-career-editor {
+  border-color: #cfdbeb;
+  border-radius: 14px;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.cgrte.job-create-career-editor .cgrte-toolbar {
+  background: linear-gradient(180deg, #f8fbff 0%, #f1f7ff 100%);
+}
+
+.cgrte.job-create-career-editor .cgrte-content {
+  min-height: 160px;
+}
+
+.job-create-deadline-picker {
+  border: 1px solid #d5e3f2;
+  border-radius: 12px;
+  padding: 10px;
+  background: linear-gradient(180deg, #fbfdff 0%, #f7fbff 100%);
+}
+
+.job-create-deadline-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.job-create-deadline-chip {
+  border: 1px solid #c8d9ec;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1e3a8a;
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 4px 12px;
+  transition: all 0.18s ease;
+}
+
+.job-create-deadline-chip:hover {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.job-create-deadline-chip.is-clear {
+  color: #b91c1c;
+  border-color: #f4caca;
+}
+
+.job-create-deadline-chip.is-clear:hover {
+  background: #fff1f2;
+  border-color: #f2a8b2;
+}
+
+.job-create-deadline-chip:disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+}
+
 .job-create-editor {
   min-height: 140px;
   border: 1px solid #cfdbeb;
@@ -255,6 +314,10 @@
 
   .job-create-rich-hint {
     margin-left: 0;
+    width: 100%;
+  }
+
+  .job-create-deadline-chip {
     width: 100%;
   }
 }

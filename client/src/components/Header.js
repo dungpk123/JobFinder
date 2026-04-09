@@ -1,10 +1,32 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useNotification } from './NotificationProvider';
 
 const Header = () => {
+    const navigate = useNavigate();
     const location = useLocation();
+    const { requestConfirm } = useNotification();
     const [showJobManagement, setShowJobManagement] = useState(false);
     const [showMobileJobsMenu, setShowMobileJobsMenu] = useState(false);
+
+    const handleLogout = async () => {
+        const confirmed = await requestConfirm({
+            type: 'warning',
+            title: 'Xác nhận đăng xuất',
+            message: 'Bạn có chắc chắn muốn đăng xuất?',
+            confirmText: 'Đăng xuất',
+            cancelText: 'Ở lại'
+        });
+
+        if (!confirmed) return;
+
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        setShowJobManagement(false);
+        setShowMobileJobsMenu(false);
+        collapseMobileNavbar();
+        navigate('/login');
+    };
 
     const collapseMobileNavbar = () => {
         const collapseElement = document.getElementById('mainNavbar');
@@ -254,13 +276,7 @@ const Header = () => {
                                     <li><hr className="dropdown-divider" /></li>
                                     <li className="jf-user-dropdown-row jf-user-dropdown-row-last">
                                         <button className="btn btn-link text-decoration-none jf-user-logout-btn"
-                                                onClick={() => {
-                                                    const confirmed = window.confirm('Bạn có chắc chắn muốn đăng xuất?');
-                                                    if (!confirmed) return;
-                                                    localStorage.removeItem('user');
-                                                    localStorage.removeItem('token');
-                                                    window.location.reload();
-                                                }}>
+                                                onClick={handleLogout}>
                                             Đăng xuất
                                         </button>
                                     </li>

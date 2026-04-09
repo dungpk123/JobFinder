@@ -44,14 +44,59 @@ import MessageNotificationBridge from './components/MessageNotificationBridge';
 import { API_BASE } from './config/apiBase';
 import './App.css';
 
+const normalizeRoleValue = (value) => String(value || '')
+  .trim()
+  .toLowerCase()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '');
+
+const getUserRoleNormalized = (user) => normalizeRoleValue(
+  user?.role
+  || user?.vaiTro
+  || user?.VaiTro
+  || user?.LoaiNguoiDung
+  || ''
+);
+
+const hasCareerGuideCreatePermission = (user) => {
+  if (!user) return false;
+
+  const isSuperAdmin = (
+    user?.isSuperAdmin === true
+    || user?.isSuperAdmin === 1
+    || user?.isSuperAdmin === '1'
+    || user?.IsSuperAdmin === true
+    || user?.IsSuperAdmin === 1
+    || user?.IsSuperAdmin === '1'
+  );
+
+  if (isSuperAdmin) return true;
+
+  const normalizedRole = getUserRoleNormalized(user);
+  return (
+    normalizedRole === 'nha tuyen dung'
+    || normalizedRole === 'quan tri'
+    || normalizedRole === 'sieu quan tri vien'
+  );
+};
+
 function AppContent() {
   const location = useLocation();
   const normalizedPath = location.pathname.length > 1
     ? location.pathname.replace(/\/+$/, '')
     : location.pathname;
   const userStr = localStorage.getItem('user');
+  const currentUser = (() => {
+    if (!userStr) return null;
+    try {
+      return JSON.parse(userStr);
+    } catch {
+      return null;
+    }
+  })();
   const token = String(localStorage.getItem('token') || '').trim();
   const isAuthenticated = Boolean(userStr && token);
+  const canCreateCareerGuidePost = hasCareerGuideCreatePermission(currentUser);
 
   const isGuestVisiblePath = (pathname) => {
     const directPaths = new Set([
@@ -146,7 +191,14 @@ function AppContent() {
           <Route path="/create-cv/templates" element={<OnlineCvBuilder />} />
           <Route path="/create-cv/online-editor" element={<OnlineCvEditor />} />
           <Route path="/career-guide" element={<CareerGuide />} />
-          <Route path="/career-guide/create" element={<CareerGuideManage />} />
+          <Route
+            path="/career-guide/create"
+            element={(
+              isAuthenticated
+                ? (canCreateCareerGuidePost ? <CareerGuideManage /> : <Navigate to="/career-guide" replace />)
+                : <Navigate to="/login" replace state={{ from: location }} />
+            )}
+          />
           <Route path="/career-guide/:id" element={<CareerGuideDetail />} />
           <Route path="/support" element={<SupportCenterPage />} />
           <Route

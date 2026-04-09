@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, Outlet, Link, useLocation } from 'react-router-dom';
+import { useNotification } from '../../components/NotificationProvider';
 import './EmployerLayout.css';
 
 const EmployerLayout = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const { requestConfirm } = useNotification();
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -16,8 +18,14 @@ const EmployerLayout = () => {
     const avatarUrl = String(user?.avatar || user?.avatarAbsoluteUrl || user?.AnhDaiDien || user?.avatarUrl || '').trim();
     const initial = String(displayName || 'N').trim().charAt(0).toUpperCase();
 
-    const handleLogout = () => {
-        const confirmed = window.confirm('Bạn có chắc chắn muốn đăng xuất?');
+    const handleLogout = async () => {
+        const confirmed = await requestConfirm({
+            type: 'warning',
+            title: 'Xác nhận đăng xuất',
+            message: 'Bạn có chắc chắn muốn đăng xuất?',
+            confirmText: 'Đăng xuất',
+            cancelText: 'Ở lại'
+        });
         if (!confirmed) return;
 
         localStorage.removeItem('token');

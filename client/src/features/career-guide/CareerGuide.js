@@ -11,6 +11,12 @@ const TOPIC_FILTERS = [
   { key: 'skills', label: 'Kỹ năng làm việc', keywords: ['kỹ năng', 'giao tiếp', 'thuyết trình', 'teamwork'] }
 ];
 
+const normalizeRoleValue = (value) => String(value || '')
+  .trim()
+  .toLowerCase()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '');
+
 function CareerGuide() {
   const navigate = useNavigate();
   const [posts, setPosts] = useState([]);
@@ -22,6 +28,38 @@ function CareerGuide() {
   const [user, setUser] = useState(null);
   const [activeTopic, setActiveTopic] = useState('all');
   const [sortMode, setSortMode] = useState('latest');
+
+  const normalizedUserRole = useMemo(
+    () => normalizeRoleValue(
+      user?.role
+      || user?.vaiTro
+      || user?.VaiTro
+      || user?.LoaiNguoiDung
+      || ''
+    ),
+    [user]
+  );
+
+  const canCreatePost = useMemo(() => {
+    if (!user) return false;
+
+    const isSuperAdmin = (
+      user?.isSuperAdmin === true
+      || user?.isSuperAdmin === 1
+      || user?.isSuperAdmin === '1'
+      || user?.IsSuperAdmin === true
+      || user?.IsSuperAdmin === 1
+      || user?.IsSuperAdmin === '1'
+    );
+
+    if (isSuperAdmin) return true;
+
+    return (
+      normalizedUserRole === 'nha tuyen dung'
+      || normalizedUserRole === 'quan tri'
+      || normalizedUserRole === 'sieu quan tri vien'
+    );
+  }, [normalizedUserRole, user]);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
@@ -381,7 +419,7 @@ function CareerGuide() {
                 </div>
               </div>
 
-              {user ? (
+              {user && canCreatePost ? (
                 <button
                   type="button"
                   className="cg-create-post-btn"
@@ -390,6 +428,11 @@ function CareerGuide() {
                   <i className="bi bi-plus-circle"></i>
                   Viết bài mới
                 </button>
+              ) : user ? (
+                <div className="cg-sidebar-card cg-sidebar-auth">
+                  <h3>Quyền của bạn</h3>
+                  <p>Tài khoản Ứng viên có thể xem và bình luận bài viết, nhưng không thể tạo bài mới.</p>
+                </div>
               ) : (
                 <div className="cg-sidebar-card cg-sidebar-auth">
                   <h3>Đăng nhập để viết bài</h3>
@@ -402,7 +445,7 @@ function CareerGuide() {
         )}
       </div>
 
-      {user && (
+      {user && canCreatePost && (
         <button
           className="cg-fab-create-post"
           onClick={() => navigate('/career-guide/create')}
