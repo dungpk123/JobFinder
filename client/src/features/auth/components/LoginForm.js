@@ -62,29 +62,11 @@ const resolveGoogleClientId = () => {
   return '';
 };
 
-const getGoogleOriginMismatchHint = (clientId) => {
-  const currentOrigin = typeof window !== 'undefined' ? window.location.origin : '';
-  const isLocalOrigin = /localhost|127\.0\.0\.1/i.test(currentOrigin);
-
-  if (!currentOrigin) {
-    return 'Google popup khong tra credential. Kha nang cao cau hinh OAuth chua dung origin.';
-  }
-
-  return [
-    'Google popup khong tra credential (thuong la Error 400: origin_mismatch).',
-    `Origin hien tai: ${currentOrigin}.`,
-    `Client ID dang dung: ${clientId || '(trong)'}.`,
-    isLocalOrigin
-      ? 'Hay them origin local nay (bao gom dung port) vao Authorized JavaScript origins trong Google Cloud Console. Vi du: http://localhost:3000.'
-      : 'Hay them origin nay vao Authorized JavaScript origins cua dung OAuth Client tren Google Cloud va redeploy frontend.'
-  ].join(' ');
-};
-
-const getGooglePopupErrorMessage = (reason, clientId) => {
+const getGooglePopupErrorMessage = (reason) => {
   const normalizedReason = String(reason || '').trim().toLowerCase();
 
   if (normalizedReason.includes('popup_closed_by_user')) {
-    return 'Bạn đã đóng popup Google trước khi hoàn tất đăng nhập.';
+    return '';
   }
 
   if (normalizedReason.includes('popup_failed_to_open')) {
@@ -95,7 +77,7 @@ const getGooglePopupErrorMessage = (reason, clientId) => {
     return 'Google Sign-In không thể khởi tạo iframe. Hãy thử tắt extension chặn quảng cáo/cookie và tải lại trang.';
   }
 
-  return getGoogleOriginMismatchHint(clientId);
+  return 'Không thể hoàn tất đăng nhập Google. Vui lòng thử lại.';
 };
 
 const parseJsonSafe = async (response) => {
@@ -265,13 +247,13 @@ const LoginForm = ({ onSuccess }) => {
           googleCallbackReceivedRef.current = true;
           clearGooglePopupHintTimeout();
           setGoogleLoading(false);
-          setError(getGooglePopupErrorMessage(googleError?.type || googleError?.message, googleClientId));
+          setError(getGooglePopupErrorMessage(googleError?.type || googleError?.message));
         },
         callback: async (response) => {
           const credential = String(response?.credential || '').trim();
           if (!credential) {
             clearGooglePopupHintTimeout();
-            setError(getGooglePopupErrorMessage('missing_credential', googleClientId));
+            setError(getGooglePopupErrorMessage('missing_credential'));
             return;
           }
 
@@ -320,7 +302,10 @@ const LoginForm = ({ onSuccess }) => {
 
     googlePopupHintTimeoutRef.current = window.setTimeout(() => {
       if (!googleCallbackReceivedRef.current) {
-        setError(getGoogleOriginMismatchHint(googleClientId));
+        console.warn('Google popup timed out before returning credential.', {
+          origin: typeof window !== 'undefined' ? window.location.origin : '',
+          clientId: googleClientId
+        });
       }
     }, 10000);
   };

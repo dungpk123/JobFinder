@@ -4,6 +4,8 @@ import {
     BarChart3,
     BriefcaseBusiness,
     Building2,
+    Bell,
+    CircleHelp,
     ChevronDown,
     ClipboardList,
     FileStack,
@@ -19,6 +21,7 @@ import { API_BASE as CLIENT_API_BASE } from '../../config/apiBase';
 import AdminCompaniesPage from './pages/AdminCompaniesPage';
 import AdminJobsPage from './pages/AdminJobsPage';
 import AdminOverviewPage from './pages/AdminOverviewPage';
+import AdminNotificationsPage from './pages/AdminNotificationsPage';
 import AdminProfilePage from './pages/AdminProfilePage';
 import AdminReportsPage from './pages/AdminReportsPage';
 import AdminTemplatesPage from './pages/AdminTemplatesPage';
@@ -109,6 +112,7 @@ const SIDEBAR_LOGO_URL = 'https://i.postimg.cc/nhWfcVvh/logo.png';
 
 const resolvePageTitle = (pathname) => {
     if (pathname.startsWith('/admin/profile')) return 'Hồ sơ';
+    if (pathname.startsWith('/admin/notifications')) return 'Thông báo';
     if (pathname.startsWith('/admin/usersmanament')) return 'Quản lý người dùng';
     if (pathname.startsWith('/admin/jobs')) return 'Quản lý tin tuyển dụng';
     if (pathname.startsWith('/admin/companies')) return 'Quản lý công ty';
@@ -643,6 +647,14 @@ const AdminDashboard = () => {
 
                             {profileMenuOpen && (
                                 <div className="admin-header-dropdown" role="menu">
+                                    <button type="button" className="admin-header-dropdown-item" onClick={() => handleProfileMenuNavigate('/support')}>
+                                        <CircleHelp size={16} />
+                                        <span>Hỗ trợ</span>
+                                    </button>
+                                    <button type="button" className="admin-header-dropdown-item" onClick={() => handleProfileMenuNavigate('/admin/notifications')}>
+                                        <Bell size={16} />
+                                        <span>Thông báo</span>
+                                    </button>
                                     <button type="button" className="admin-header-dropdown-item" onClick={() => handleProfileMenuNavigate('/admin/profile')}>
                                         Hồ sơ
                                     </button>
@@ -773,6 +785,7 @@ const AdminDashboard = () => {
                 <div className="admin-confirm-backdrop" role="dialog" aria-modal="true">
                     <div className="admin-confirm-dialog card border-0 shadow-sm">
                         <div className="card-body">
+                        <Route path="notifications" element={<AdminNotificationsPage />} />
                             <h5 className="mb-3">{confirmState.title}</h5>
                             <div className="mb-4">{confirmState.message}</div>
                             <div className="d-flex justify-content-end gap-2">

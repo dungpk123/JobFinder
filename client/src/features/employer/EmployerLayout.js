@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, Outlet, Link, useLocation } from 'react-router-dom';
 import './EmployerLayout.css';
 
@@ -8,6 +8,8 @@ const EmployerLayout = () => {
     const user = JSON.parse(localStorage.getItem('user') || '{}');
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+    const profileDropdownRef = useRef(null);
 
     const displayName = user?.name || user?.hoTen || user?.fullName || user?.email || 'Nhà tuyển dụng';
     const roleLabel = user?.role || user?.vaiTro || 'Nhà tuyển dụng';
@@ -21,6 +23,28 @@ const EmployerLayout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         navigate('/login');
+    };
+
+    useEffect(() => {
+        setShowProfileDropdown(false);
+    }, [location.pathname]);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (!profileDropdownRef.current) return;
+            if (profileDropdownRef.current.contains(event.target)) return;
+            setShowProfileDropdown(false);
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, []);
+
+    const handleHeaderMenuNavigate = (to) => {
+        setShowProfileDropdown(false);
+        navigate(to);
     };
 
     const menuItems = [
@@ -142,26 +166,64 @@ const EmployerLayout = () => {
                             <i className="bi bi-house-door"></i>
                             <span>Trang chủ</span>
                         </Link>
-                        <div className="employer-header-user">
-                            <div className="employer-user-pill-icon">
-                                {avatarUrl ? (
-                                    <img
-                                        src={avatarUrl}
-                                        alt={displayName}
-                                        className="employer-user-pill-avatar"
-                                        onError={(event) => {
-                                            event.currentTarget.onerror = null;
-                                            event.currentTarget.src = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+                        <div className="employer-header-user" ref={profileDropdownRef}>
+                            <button
+                                type="button"
+                                className={`employer-user-pill ${showProfileDropdown ? 'is-open' : ''}`}
+                                onClick={() => setShowProfileDropdown((prev) => !prev)}
+                                aria-haspopup="menu"
+                                aria-expanded={showProfileDropdown}
+                                aria-label="Mở menu tài khoản"
+                            >
+                                <div className="employer-user-pill-icon">
+                                    {avatarUrl ? (
+                                        <img
+                                            src={avatarUrl}
+                                            alt={displayName}
+                                            className="employer-user-pill-avatar"
+                                            onError={(event) => {
+                                                event.currentTarget.onerror = null;
+                                                event.currentTarget.src = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+                                            }}
+                                        />
+                                    ) : (
+                                        <i className="bi bi-shield-check"></i>
+                                    )}
+                                </div>
+                                <div className="employer-user-pill-copy">
+                                    <strong>{displayName}</strong>
+                                    <small>{roleLabel}</small>
+                                </div>
+                                <i className={`bi bi-chevron-${showProfileDropdown ? 'up' : 'down'} employer-user-pill-chevron`} aria-hidden="true"></i>
+                            </button>
+
+                            {showProfileDropdown && (
+                                <div className="employer-user-menu" role="menu">
+                                    <button type="button" className="employer-user-menu-item" onClick={() => handleHeaderMenuNavigate('/employer/account')}>
+                                        <i className="bi bi-file-earmark-person"></i>
+                                        <span>Hồ sơ của tôi</span>
+                                    </button>
+                                    <button type="button" className="employer-user-menu-item" onClick={() => handleHeaderMenuNavigate('/employer')}>
+                                        <i className="bi bi-speedometer2"></i>
+                                        <span>Dashboard</span>
+                                    </button>
+                                    <button type="button" className="employer-user-menu-item" onClick={() => handleHeaderMenuNavigate('/employer/jobs')}>
+                                        <i className="bi bi-briefcase"></i>
+                                        <span>Quản lý tin tuyển dụng</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="employer-user-menu-item danger"
+                                        onClick={() => {
+                                            setShowProfileDropdown(false);
+                                            handleLogout();
                                         }}
-                                    />
-                                ) : (
-                                    <i className="bi bi-shield-check"></i>
-                                )}
-                            </div>
-                            <div className="employer-user-pill-copy">
-                                <strong>{displayName}</strong>
-                                <small>{roleLabel}</small>
-                            </div>
+                                    >
+                                        <i className="bi bi-box-arrow-right"></i>
+                                        <span>Đăng xuất</span>
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </header>

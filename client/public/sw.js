@@ -48,6 +48,29 @@ self.addEventListener("message", (event) => {
   }
 });
 
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const targetUrl = event.notification?.data?.url || "/messages";
+  const absoluteUrl = new URL(targetUrl, self.location.origin).href;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if (client.url && client.url.includes(targetUrl)) {
+          return client.focus();
+        }
+      }
+
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(absoluteUrl);
+      }
+
+      return undefined;
+    })
+  );
+});
+
 const isApiRequest = (pathname) => API_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 
 const staleWhileRevalidate = async (request) => {

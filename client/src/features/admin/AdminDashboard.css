@@ -447,11 +447,20 @@
     padding: 0.58rem 0.65rem;
 }
 
+.admin-header-dropdown-item svg {
+    flex-shrink: 0;
+    color: #2563eb;
+}
+
 .admin-header-dropdown-item:hover {
     background: #f1f5f9;
 }
 
 .admin-header-dropdown-item.danger {
+    color: #dc2626;
+}
+
+.admin-header-dropdown-item.danger svg {
     color: #dc2626;
 }
 

@@ -72,7 +72,8 @@ const Header = () => {
     const profileIcon = isAdmin
         ? 'bi-shield-check'
         : (isEmployer ? 'bi-building-check' : 'bi-person-check');
-    const dashboardLink = isEmployer ? '/employer/jobs' : (isAdmin ? '/admin' : '');
+    const profileLink = isEmployer ? '/employer/account' : (isAdmin ? '/admin/profile' : '/profile');
+    const dashboardLink = isEmployer ? '/employer' : (isAdmin ? '/admin' : '');
     const messagingLink = isEmployer ? '/employer/messages' : (!isAdmin ? '/messages' : '');
 
     return (
@@ -188,7 +189,7 @@ const Header = () => {
                                 <ul className="dropdown-menu dropdown-menu-end jf-user-dropdown-menu" aria-labelledby="dropdownUser">
                                     {/* Menu items */}
                                     <li className="jf-user-dropdown-row">
-                                        <Link className="dropdown-item jf-user-dropdown-item" to="/profile" onClick={collapseMobileNavbar}>
+                                        <Link className="dropdown-item jf-user-dropdown-item" to={profileLink} onClick={collapseMobileNavbar}>
                                             <i className="bi bi-file-earmark-person text-primary"></i>
                                             <span>Hồ sơ của tôi</span>
                                         </Link>
@@ -209,32 +210,41 @@ const Header = () => {
                                             </Link>
                                         </li>
                                     )}
-                                    <li className="jf-user-dropdown-row">
-                                        <div className="dropdown-item jf-user-dropdown-item jf-user-dropdown-toggle"
-                                            onClick={e => { e.stopPropagation(); setShowJobManagement(!showJobManagement); }}>
-                                            <div className="d-flex align-items-center gap-2">
+                                    {!isAdmin && (isEmployer ? (
+                                        <li className="jf-user-dropdown-row">
+                                            <Link className="dropdown-item jf-user-dropdown-item" to="/employer/jobs" onClick={collapseMobileNavbar}>
                                                 <i className="bi bi-briefcase text-primary"></i>
-                                                <span>Quản lý việc làm</span>
+                                                <span>Quản lý tin tuyển dụng</span>
+                                            </Link>
+                                        </li>
+                                    ) : (
+                                        <li className="jf-user-dropdown-row">
+                                            <div className="dropdown-item jf-user-dropdown-item jf-user-dropdown-toggle"
+                                                onClick={e => { e.stopPropagation(); setShowJobManagement(!showJobManagement); }}>
+                                                <div className="d-flex align-items-center gap-2">
+                                                    <i className="bi bi-briefcase text-primary"></i>
+                                                    <span>Quản lý việc làm</span>
+                                                </div>
+                                                <i className={`bi bi-chevron-${showJobManagement ? 'up' : 'down'}`}></i>
                                             </div>
-                                            <i className={`bi bi-chevron-${showJobManagement ? 'up' : 'down'}`}></i>
-                                        </div>
-                                        {showJobManagement && (
-                                            <ul className="list-unstyled jf-user-submenu-list">
-                                                <li>
-                                                    <Link className="jf-user-submenu-link" to="/jobs/applied" onClick={collapseMobileNavbar}>
-                                                        <i className="bi bi-file-earmark-check text-primary"></i>
-                                                        <span>Việc làm đã ứng tuyển</span>
-                                                    </Link>
-                                                </li>
-                                                <li>
-                                                    <Link className="jf-user-submenu-link" to="/jobs/saved" onClick={collapseMobileNavbar}>
-                                                        <i className="bi bi-bookmark text-primary"></i>
-                                                        <span>Việc làm đã lưu</span>
-                                                    </Link>
-                                                </li>
-                                            </ul>
-                                        )}
-                                    </li>
+                                            {showJobManagement && (
+                                                <ul className="list-unstyled jf-user-submenu-list">
+                                                    <li>
+                                                        <Link className="jf-user-submenu-link" to="/jobs/applied" onClick={collapseMobileNavbar}>
+                                                            <i className="bi bi-file-earmark-check text-primary"></i>
+                                                            <span>Việc làm đã ứng tuyển</span>
+                                                        </Link>
+                                                    </li>
+                                                    <li>
+                                                        <Link className="jf-user-submenu-link" to="/jobs/saved" onClick={collapseMobileNavbar}>
+                                                            <i className="bi bi-bookmark text-primary"></i>
+                                                            <span>Việc làm đã lưu</span>
+                                                        </Link>
+                                                    </li>
+                                                </ul>
+                                            )}
+                                        </li>
+                                    ))}
                                     <li className="jf-user-dropdown-row">
                                         <Link className="dropdown-item jf-user-dropdown-item" to="/support" onClick={collapseMobileNavbar}>
                                             <i className="bi bi-bell text-primary"></i>

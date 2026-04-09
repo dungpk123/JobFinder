@@ -37,19 +37,56 @@ import CareerGuide from './features/career-guide/CareerGuide';
 import CareerGuideDetail from './features/career-guide/CareerGuideDetail';
 import CareerGuideManage from './features/career-guide/CareerGuideManage';
 import MessagesPage from './features/messages/MessagesPage';
+import SupportCenterPage from './features/support/SupportCenterPage';
 import PWAUpdatePrompt from './components/pwa/PWAUpdatePrompt';
 import AccountInstallPrompt from './components/pwa/AccountInstallPrompt';
+import MessageNotificationBridge from './components/MessageNotificationBridge';
 import { API_BASE } from './config/apiBase';
 import './App.css';
 
 function AppContent() {
   const location = useLocation();
+  const normalizedPath = location.pathname.length > 1
+    ? location.pathname.replace(/\/+$/, '')
+    : location.pathname;
   const userStr = localStorage.getItem('user');
   const token = String(localStorage.getItem('token') || '').trim();
   const isAuthenticated = Boolean(userStr && token);
 
-  const guestAllowedPaths = ['/', '/login', '/register', '/forgot-password', '/verify-otp'];
-  const isGuestBlockedPath = !isAuthenticated && !guestAllowedPaths.includes(location.pathname);
+  const isGuestVisiblePath = (pathname) => {
+    const directPaths = new Set([
+      '/',
+      '/login',
+      '/register',
+      '/forgot-password',
+      '/verify-otp',
+      '/jobs',
+      '/support',
+      '/career-guide',
+      '/create-cv/templates'
+    ]);
+
+    if (directPaths.has(pathname)) {
+      return true;
+    }
+
+    const segments = pathname.split('/').filter(Boolean);
+
+    // Allow only job detail path like /jobs/:id (not /jobs/saved|applied|matching)
+    if (segments[0] === 'jobs' && segments.length === 2) {
+      const blockedJobSubRoutes = new Set(['saved', 'applied', 'matching']);
+      return !blockedJobSubRoutes.has(segments[1]);
+    }
+
+    // Allow only article detail path like /career-guide/:id (not /career-guide/create)
+    if (segments[0] === 'career-guide' && segments.length === 2) {
+      return segments[1] !== 'create';
+    }
+
+    return false;
+  };
+
+  const isGuestBlockedPath = !isAuthenticated && !isGuestVisiblePath(normalizedPath);
 
   // Kiểm tra và xóa token không hợp lệ khi app khởi động
   useEffect(() => {
@@ -78,7 +115,7 @@ function AppContent() {
   // Ẩn Header và Footer khi ở các trang dashboard
   const isDashboardPage = location.pathname.startsWith('/admin') || 
                           location.pathname.startsWith('/employer');
-  const isAuthPage = ['/login', '/register', '/forgot-password', '/verify-otp', '/onboarding/role', '/onboarding/profile'].includes(location.pathname);
+  const isAuthPage = ['/login', '/register', '/forgot-password', '/verify-otp', '/onboarding/role', '/onboarding/profile'].includes(normalizedPath);
   const showPublicChrome = !isDashboardPage && !isAuthPage;
 
   if (isGuestBlockedPath) {
@@ -111,6 +148,7 @@ function AppContent() {
           <Route path="/career-guide" element={<CareerGuide />} />
           <Route path="/career-guide/create" element={<CareerGuideManage />} />
           <Route path="/career-guide/:id" element={<CareerGuideDetail />} />
+          <Route path="/support" element={<SupportCenterPage />} />
           <Route
             path="/messages"
             element={(
@@ -158,6 +196,7 @@ function AppContent() {
 
       {showPublicChrome && <Footer />}
       {showPublicChrome && <AIAssistantWidget />}
+      <MessageNotificationBridge />
       <AccountInstallPrompt />
       <PWAUpdatePrompt />
     </div>
