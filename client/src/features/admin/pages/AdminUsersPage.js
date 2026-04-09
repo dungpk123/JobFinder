@@ -155,13 +155,13 @@ const getStatusBadge = (user) => {
     return <span className="badge bg-warning-subtle text-warning-emphasis">Đã chặn</span>;
 };
 
-const UserInfoField = ({ label, value, className = '' }) => {
+const UserInfoField = ({ label, value, className = '', noWrap = false }) => {
     const rawValue = value === 0 ? '0' : String(value ?? '').trim();
     const displayValue = rawValue || '-';
     const isLink = /^https?:\/\//i.test(displayValue);
 
     return (
-        <div className={`admin-users-info-field ${className}`.trim()}>
+        <div className={`admin-users-info-field ${noWrap ? 'is-nowrap' : ''} ${className}`.trim()}>
             <small>{label}</small>
             <div className={`admin-users-info-value ${isLink ? 'is-link' : ''}`.trim()}>
                 {isLink ? (
@@ -546,8 +546,8 @@ const AdminUsersPage = ({
                             {!viewModal.loading && viewModal.error && <div className="alert alert-danger mb-0">{viewModal.error}</div>}
 
                             {!viewModal.loading && !viewModal.error && detailUser && (
-                                <div className="admin-users-view-shell">
-                                    <div className="admin-users-view-hero">
+                                <div className="admin-users-view-layout">
+                                    <aside className="admin-users-profile-panel">
                                         {avatarUrl ? (
                                             <img
                                                 src={avatarUrl}
@@ -560,94 +560,93 @@ const AdminUsersPage = ({
                                             </div>
                                         )}
 
-                                        <div className="admin-users-hero-content">
-                                            <h6 className="mb-1">{detailUser.HoTen || '-'}</h6>
-                                            <div className="admin-users-hero-sub">
-                                                <Mail size={14} />
-                                                <span>{detailUser.Email || '-'}</span>
+                                        <div className="admin-users-profile-name">{detailUser.HoTen || '-'}</div>
+                                        <div className="admin-users-profile-email">
+                                            <Mail size={14} />
+                                            <span>{detailUser.Email || '-'}</span>
+                                        </div>
+
+                                        <div className="admin-users-profile-tags">
+                                            <span className="badge rounded-pill text-bg-light border">{detailUser.VaiTro || 'Ứng viên'}</span>
+                                            {getStatusBadge(detailUser)}
+                                        </div>
+
+                                        <div className="admin-users-profile-meta">
+                                            <div className="admin-users-profile-meta-item">
+                                                <span>Mã người dùng</span>
+                                                <strong>{viewModal.user?.MaNguoiDung || '-'}</strong>
                                             </div>
-                                            <div className="admin-users-hero-tags">
-                                                <span className="badge rounded-pill text-bg-light border">{detailUser.VaiTro || 'Ứng viên'}</span>
-                                                {getStatusBadge(detailUser)}
+                                            <div className="admin-users-profile-meta-item">
+                                                <span>Ngày tạo</span>
+                                                <strong>{formatDateTime(detailUser.NgayTao)}</strong>
+                                            </div>
+                                            <div className="admin-users-profile-meta-item">
+                                                <span>Cập nhật</span>
+                                                <strong>{formatDateTime(detailUser.NgayCapNhat)}</strong>
                                             </div>
                                         </div>
-                                    </div>
+                                    </aside>
 
-                                    <div className="admin-users-view-grid">
-                                        <UserInfoField
-                                            label="Số điện thoại"
-                                            value={detailUser.SoDienThoai}
-                                            className="admin-users-info-card"
-                                        />
-                                        <UserInfoField
-                                            label="Địa chỉ"
-                                            value={detailUser.DiaChi}
-                                            className="admin-users-info-card"
-                                        />
-                                        <UserInfoField
-                                            label="Ngày tạo"
-                                            value={formatDateTime(detailUser.NgayTao)}
-                                            className="admin-users-info-card"
-                                        />
-                                        <UserInfoField
-                                            label="Ngày cập nhật"
-                                            value={formatDateTime(detailUser.NgayCapNhat)}
-                                            className="admin-users-info-card"
-                                        />
-                                        <UserInfoField
-                                            label="Ngày xóa"
-                                            value={formatDateTime(detailUser.NgayXoa)}
-                                            className="admin-users-info-card"
-                                        />
-                                    </div>
-
-                                    {candidateProfile && (
-                                        <div className="admin-users-section mt-3">
-                                            <h6 className="mb-2 d-flex align-items-center gap-2">
-                                                <MapPin size={16} />
-                                                Thông tin ứng viên
-                                            </h6>
-                                            <div className="admin-users-view-grid">
-                                                <UserInfoField label="Chức danh" value={candidateProfile.ChucDanh} className="admin-users-info-card" />
-                                                <UserInfoField label="Giới tính" value={candidateProfile.GioiTinh} className="admin-users-info-card" />
-                                                <UserInfoField label="Ngày sinh" value={formatDateOnly(candidateProfile.NgaySinh)} className="admin-users-info-card" />
-                                                <UserInfoField label="Thành phố" value={candidateProfile.ThanhPho} className="admin-users-info-card" />
-                                                <UserInfoField label="Quận/Huyện" value={candidateProfile.QuanHuyen} className="admin-users-info-card" />
-                                                <UserInfoField label="Địa chỉ chi tiết" value={candidateProfile.DiaChi} className="admin-users-info-card" />
-                                                <UserInfoField label="Trình độ học vấn" value={candidateProfile.TrinhDoHocVan} className="admin-users-info-card" />
-                                                <UserInfoField label="Số năm kinh nghiệm" value={candidateProfile.SoNamKinhNghiem} className="admin-users-info-card" />
-                                                <UserInfoField label="Link cá nhân" value={candidateProfile.LinkCaNhan} className="admin-users-info-card" />
+                                    <div className="admin-users-detail-panels">
+                                        <section className="admin-users-section-card">
+                                            <h6 className="mb-2">Thông tin cơ bản</h6>
+                                            <div className="admin-users-field-grid">
+                                                <UserInfoField label="Số điện thoại" value={detailUser.SoDienThoai} className="admin-users-info-card" />
+                                                <UserInfoField label="Địa chỉ" value={detailUser.DiaChi} className="admin-users-info-card" />
+                                                <UserInfoField label="Ngày tạo" value={formatDateTime(detailUser.NgayTao)} className="admin-users-info-card" noWrap />
+                                                <UserInfoField label="Ngày cập nhật" value={formatDateTime(detailUser.NgayCapNhat)} className="admin-users-info-card" noWrap />
+                                                <UserInfoField label="Ngày xóa" value={formatDateTime(detailUser.NgayXoa)} className="admin-users-info-card" noWrap />
                                             </div>
-                                            {candidateProfile.GioiThieuBanThan ? (
-                                                <div className="mt-2 admin-users-note-box">
-                                                    <small className="text-muted d-block">Giới thiệu bản thân</small>
-                                                    <div>{candidateProfile.GioiThieuBanThan}</div>
+                                        </section>
+
+                                        {candidateProfile && (
+                                            <section className="admin-users-section-card">
+                                                <h6 className="mb-2 d-flex align-items-center gap-2">
+                                                    <MapPin size={16} />
+                                                    Thông tin ứng viên
+                                                </h6>
+                                                <div className="admin-users-field-grid">
+                                                    <UserInfoField label="Chức danh" value={candidateProfile.ChucDanh} className="admin-users-info-card" />
+                                                    <UserInfoField label="Giới tính" value={candidateProfile.GioiTinh} className="admin-users-info-card" />
+                                                    <UserInfoField label="Ngày sinh" value={formatDateOnly(candidateProfile.NgaySinh)} className="admin-users-info-card" noWrap />
+                                                    <UserInfoField label="Thành phố" value={candidateProfile.ThanhPho} className="admin-users-info-card" />
+                                                    <UserInfoField label="Quận/Huyện" value={candidateProfile.QuanHuyen} className="admin-users-info-card" />
+                                                    <UserInfoField label="Địa chỉ chi tiết" value={candidateProfile.DiaChi} className="admin-users-info-card" />
+                                                    <UserInfoField label="Trình độ học vấn" value={candidateProfile.TrinhDoHocVan} className="admin-users-info-card" />
+                                                    <UserInfoField label="Số năm kinh nghiệm" value={candidateProfile.SoNamKinhNghiem} className="admin-users-info-card" />
+                                                    <UserInfoField label="Link cá nhân" value={candidateProfile.LinkCaNhan} className="admin-users-info-card" />
                                                 </div>
-                                            ) : null}
-                                        </div>
-                                    )}
+                                                {candidateProfile.GioiThieuBanThan ? (
+                                                    <div className="mt-2 admin-users-note-box">
+                                                        <small className="text-muted d-block">Giới thiệu bản thân</small>
+                                                        <div>{candidateProfile.GioiThieuBanThan}</div>
+                                                    </div>
+                                                ) : null}
+                                            </section>
+                                        )}
 
-                                    {employerProfile && (
-                                        <div className="admin-users-section mt-3">
-                                            <h6 className="mb-2 d-flex align-items-center gap-2">
-                                                <Building2 size={16} />
-                                                Thông tin nhà tuyển dụng
-                                            </h6>
-                                            <div className="admin-users-view-grid">
-                                                <UserInfoField label="Tên công ty" value={employerProfile.TenCongTy} className="admin-users-info-card" />
-                                                <UserInfoField label="Mã số thuế" value={employerProfile.MaSoThue} className="admin-users-info-card" />
-                                                <UserInfoField label="Website" value={employerProfile.Website} className="admin-users-info-card" />
-                                                <UserInfoField label="Thành phố" value={employerProfile.ThanhPho} className="admin-users-info-card" />
-                                                <UserInfoField label="Địa chỉ" value={employerProfile.DiaChi} className="admin-users-info-card" />
-                                            </div>
-                                            {employerProfile.MoTa ? (
-                                                <div className="mt-2 admin-users-note-box">
-                                                    <small className="text-muted d-block">Mô tả công ty</small>
-                                                    <div>{employerProfile.MoTa}</div>
+                                        {employerProfile && (
+                                            <section className="admin-users-section-card">
+                                                <h6 className="mb-2 d-flex align-items-center gap-2">
+                                                    <Building2 size={16} />
+                                                    Thông tin nhà tuyển dụng
+                                                </h6>
+                                                <div className="admin-users-field-grid">
+                                                    <UserInfoField label="Tên công ty" value={employerProfile.TenCongTy} className="admin-users-info-card" />
+                                                    <UserInfoField label="Mã số thuế" value={employerProfile.MaSoThue} className="admin-users-info-card" />
+                                                    <UserInfoField label="Website" value={employerProfile.Website} className="admin-users-info-card" />
+                                                    <UserInfoField label="Thành phố" value={employerProfile.ThanhPho} className="admin-users-info-card" />
+                                                    <UserInfoField label="Địa chỉ" value={employerProfile.DiaChi} className="admin-users-info-card" />
                                                 </div>
-                                            ) : null}
-                                        </div>
-                                    )}
+                                                {employerProfile.MoTa ? (
+                                                    <div className="mt-2 admin-users-note-box">
+                                                        <small className="text-muted d-block">Mô tả công ty</small>
+                                                        <div>{employerProfile.MoTa}</div>
+                                                    </div>
+                                                ) : null}
+                                            </section>
+                                        )}
+                                    </div>
                                 </div>
                             )}
 

@@ -327,6 +327,93 @@
   max-width: 480px;
 }
 
+.profile-inline-state {
+  margin-top: 16px;
+  border: 1px dashed #cfdef0;
+  border-radius: 12px;
+  background: #f8fbff;
+  color: #466585;
+  padding: 12px 14px;
+  font-weight: 600;
+}
+
+.profile-invitation-list {
+  margin-top: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.profile-invitation-item {
+  border: 1px solid #d7e4f3;
+  border-radius: 14px;
+  background: #f8fbff;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-invitation-logo {
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
+  border: 1px solid #d4e2f2;
+  background: #ffffff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.profile-invitation-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-invitation-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-invitation-body h6 {
+  margin: 0;
+  color: #16385a;
+  font-weight: 800;
+  font-size: 1rem;
+}
+
+.profile-invitation-body p {
+  margin: 4px 0 0;
+  color: #486581;
+  font-size: 0.9rem;
+}
+
+.profile-invitation-meta {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.profile-invitation-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid #d4e1f0;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #385675;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 4px 10px;
+}
+
+.profile-invitation-action {
+  white-space: nowrap;
+}
+
 .profile-settings-panel {
   border: 1px solid #d8e6f7;
   border-radius: 16px;
@@ -596,6 +683,15 @@
 
   .profile-action-grid {
     grid-template-columns: 1fr;
+  }
+
+  .profile-invitation-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .profile-invitation-action {
+    width: 100%;
   }
 
   .profile-settings-grid {

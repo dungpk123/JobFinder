@@ -609,6 +609,7 @@ const JobCreate = () => {
                                     onChange={setRichField('description')}
                                     placeholder="Nhập mô tả công việc..."
                                     minHeight={180}
+                                    toolbarMode="word-basic"
                                     className="job-create-career-editor"
                                 />
                             </div>
@@ -620,6 +621,7 @@ const JobCreate = () => {
                                     onChange={setRichField('requirements')}
                                     placeholder="Nhập yêu cầu ứng viên..."
                                     minHeight={180}
+                                    toolbarMode="word-basic"
                                     className="job-create-career-editor"
                                 />
                             </div>
@@ -631,6 +633,7 @@ const JobCreate = () => {
                                     onChange={setRichField('benefits')}
                                     placeholder="Nhập quyền lợi..."
                                     minHeight={170}
+                                    toolbarMode="word-basic"
                                     className="job-create-career-editor"
                                 />
                             </div>

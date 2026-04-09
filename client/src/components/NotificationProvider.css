@@ -34,17 +34,21 @@
 }
 
 .jf-notify-dialog {
-  width: min(500px, 94vw);
-  border-radius: 20px;
+  width: min(540px, 94vw);
+  border-radius: 22px;
   background: #ffffff;
   border: 1px solid rgba(167, 189, 212, 0.45);
-  box-shadow: 0 24px 48px rgba(14, 37, 63, 0.22);
+  box-shadow: 0 30px 60px rgba(14, 37, 63, 0.24);
   overflow: hidden;
   animation: jfNotifyDialogIn 0.2s ease-out;
 }
 
+.jf-notify-dialog-confirm {
+  width: min(640px, 95vw);
+}
+
 .jf-notify-topbar {
-  height: 6px;
+  height: 8px;
   background: linear-gradient(90deg, #2890dd 0%, #34b4e8 100%);
 }
 
@@ -63,20 +67,24 @@
 .jf-notify-content {
   display: flex;
   align-items: flex-start;
-  gap: 14px;
-  padding: 20px 20px 12px;
+  gap: 16px;
+  padding: 24px 24px 14px;
+}
+
+.jf-notify-dialog-confirm .jf-notify-content {
+  padding: 26px 28px 16px;
 }
 
 .jf-notify-icon-wrap {
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
+  width: 52px;
+  height: 52px;
+  border-radius: 15px;
   background: #e8f3ff;
   color: #2283cf;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.35rem;
+  font-size: 1.5rem;
   flex-shrink: 0;
 }
 
@@ -98,34 +106,55 @@
 .jf-notify-copy h4 {
   margin: 0;
   color: #14324f;
-  font-size: 1.08rem;
+  font-size: 1.22rem;
   font-weight: 800;
   letter-spacing: -0.01em;
 }
 
+.jf-notify-dialog-confirm .jf-notify-copy h4 {
+  font-size: 1.34rem;
+  line-height: 1.2;
+}
+
 .jf-notify-copy p {
-  margin: 8px 0 0;
+  margin: 10px 0 0;
   color: #49627b;
-  line-height: 1.55;
+  line-height: 1.62;
   white-space: pre-wrap;
-  font-size: 0.96rem;
+  font-size: 1.02rem;
+}
+
+.jf-notify-dialog-confirm .jf-notify-copy p {
+  font-size: 1.08rem;
+  font-weight: 600;
+  color: #294967;
 }
 
 .jf-notify-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding: 0 20px 18px;
+  gap: 12px;
+  padding: 0 24px 22px;
+}
+
+.jf-notify-dialog-confirm .jf-notify-actions {
+  padding: 0 28px 26px;
 }
 
 .jf-notify-btn {
   border: 0;
-  border-radius: 11px;
-  min-height: 40px;
-  padding: 0 14px;
+  border-radius: 12px;
+  min-height: 44px;
+  padding: 0 18px;
   font-weight: 800;
-  font-size: 0.92rem;
+  font-size: 0.98rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.jf-notify-dialog-confirm .jf-notify-btn {
+  min-height: 48px;
+  padding: 0 22px;
+  font-size: 1.02rem;
 }
 
 .jf-notify-btn:hover {
@@ -157,6 +186,43 @@
 .jf-notify-btn-warning {
   background: linear-gradient(135deg, #ec9f2c 0%, #ebbe3e 100%);
   color: #ffffff;
+}
+
+@media (max-width: 767.98px) {
+  .jf-notify-dialog,
+  .jf-notify-dialog-confirm {
+    width: min(96vw, 540px);
+    border-radius: 18px;
+  }
+
+  .jf-notify-content,
+  .jf-notify-dialog-confirm .jf-notify-content {
+    padding: 18px 16px 12px;
+    gap: 12px;
+  }
+
+  .jf-notify-copy h4,
+  .jf-notify-dialog-confirm .jf-notify-copy h4 {
+    font-size: 1.1rem;
+  }
+
+  .jf-notify-copy p,
+  .jf-notify-dialog-confirm .jf-notify-copy p {
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+
+  .jf-notify-actions,
+  .jf-notify-dialog-confirm .jf-notify-actions {
+    padding: 0 16px 16px;
+    flex-wrap: wrap;
+  }
+
+  .jf-notify-btn,
+  .jf-notify-dialog-confirm .jf-notify-btn {
+    min-height: 42px;
+    font-size: 0.95rem;
+  }
 }
 
 .jf-toast-stack {

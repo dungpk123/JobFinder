@@ -72,6 +72,16 @@ const FORM_TO_SNAPSHOT_KEY = {
     avatarUrl: 'AnhDaiDien'
 };
 
+const normalizeStatusValue = (value = '') =>
+    String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[đĐ]/g, 'd')
+        .toLowerCase()
+        .trim();
+
+const isInterviewInvitationStatus = (value = '') => normalizeStatusValue(value) === 'phong van';
+
 const Profile = ({ initialTab = 'overview' }) => {
     const location = useLocation();
     const { notify } = useNotification();
@@ -193,6 +203,9 @@ const Profile = ({ initialTab = 'overview' }) => {
         city: '',
         personalLink: ''
     });
+    const [applications, setApplications] = useState([]);
+    const [applicationsLoading, setApplicationsLoading] = useState(false);
+    const [applicationsError, setApplicationsError] = useState('');
 
     useEffect(() => {
         const tabFromQuery = new URLSearchParams(location.search).get('tab');
@@ -427,6 +440,56 @@ const Profile = ({ initialTab = 'overview' }) => {
     useEffect(() => {
         fetchCvs();
     }, [fetchCvs]);
+
+    useEffect(() => {
+        if (!userId) return;
+
+        let cancelled = false;
+
+        const loadApplications = async () => {
+            setApplicationsLoading(true);
+            setApplicationsError('');
+
+            const token = localStorage.getItem('token');
+            if (!token) {
+                if (!cancelled) {
+                    setApplications([]);
+                    setApplicationsError('Bạn cần đăng nhập để xem lời mời phỏng vấn.');
+                    setApplicationsLoading(false);
+                }
+                return;
+            }
+
+            try {
+                const response = await fetch('/applications/mine', {
+                    headers: { Authorization: `Bearer ${token}` }
+                });
+                const payload = await response.json().catch(() => []);
+
+                if (!response.ok) {
+                    throw new Error(payload?.error || 'Không tải được danh sách ứng tuyển.');
+                }
+
+                if (!cancelled) {
+                    setApplications(Array.isArray(payload) ? payload : []);
+                }
+            } catch (error) {
+                if (!cancelled) {
+                    setApplications([]);
+                    setApplicationsError(error.message || 'Không tải được lời mời phỏng vấn.');
+                }
+            } finally {
+                if (!cancelled) {
+                    setApplicationsLoading(false);
+                }
+            }
+        };
+
+        loadApplications();
+        return () => {
+            cancelled = true;
+        };
+    }, [userId]);
 
     useEffect(() => {   
         let aborted = false;
@@ -687,6 +750,10 @@ const Profile = ({ initialTab = 'overview' }) => {
         passwordForm.next === passwordForm.confirm &&
         passwordForm.current !== passwordForm.next
     );
+    const interviewInvitations = useMemo(
+        () => applications.filter((item) => isInterviewInvitationStatus(item?.TrangThai || item?.status || '')),
+        [applications]
+    );
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
@@ -836,12 +903,18 @@ const Profile = ({ initialTab = 'overview' }) => {
                         activeTab={activeTab}
                         onChangeTab={setActiveTab}
                         userName={user?.name || 'Người dùng'}
+                        invitationCount={interviewInvitations.length}
                     />
 
                     <ProfileMainContent
                         activeTab={activeTab}
                         user={user}
                         profileSummary={profileSummary}
+                        interviewInvitations={interviewInvitations}
+                        invitationsLoading={applicationsLoading}
+                        invitationsError={applicationsError}
+                        jobsAppliedCount={applications.length}
+                        invitationCount={interviewInvitations.length}
                         onOpenProfileModal={() => setShowEditModal(true)}
                         onOpenPasswordModal={() => {
                             setPasswordStatus({ type: '', message: '' });

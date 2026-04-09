@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
+const AVATAR_FALLBACK = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+
 const fetchProfile = async (userId) => {
   const res = await fetch(`/users/profile/${userId}`);
   const data = await res.json();
@@ -63,7 +65,8 @@ const EmployerAccount = () => {
     address: '',
     city: '',
     position: '',
-    personalLink: ''
+    personalLink: '',
+    avatarUrl: ''
   });
 
   const [passwords, setPasswords] = useState({ current: '', next: '', confirm: '' });
@@ -73,6 +76,11 @@ const EmployerAccount = () => {
 
   const cityDropdownRef = useRef(null);
   const citySearchInputRef = useRef(null);
+  const avatarInputRef = useRef(null);
+  const avatarObjectUrlRef = useRef('');
+  const [avatarPreview, setAvatarPreview] = useState(user?.avatar || user?.AnhDaiDien || AVATAR_FALLBACK);
+  const [avatarFile, setAvatarFile] = useState(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   // Local draft cache key per user
   const draftKey = userId ? `employer_profile_draft_${userId}` : null;
@@ -104,7 +112,8 @@ const EmployerAccount = () => {
           address: profile.address || '',
           city: profile.city || '',
           position: profile.position || '',
-          personalLink: profile.personalLink || ''
+          personalLink: profile.personalLink || '',
+          avatarUrl: profile.avatarAbsoluteUrl || profile.avatarUrl || ''
         };
 
         let cached = null;
@@ -121,11 +130,13 @@ const EmployerAccount = () => {
               address: cached.address || serverData.address,
               city: cached.city || serverData.city,
               position: cached.position || serverData.position,
-              personalLink: cached.personalLink || serverData.personalLink
+              personalLink: cached.personalLink || serverData.personalLink,
+              avatarUrl: cached.avatarUrl || serverData.avatarUrl
             }
           : serverData;
 
         setForm(combined);
+        setAvatarPreview(combined.avatarUrl || AVATAR_FALLBACK);
 
         if (draftKey) {
           try {
@@ -139,7 +150,7 @@ const EmployerAccount = () => {
       }
     })();
     return () => { cancelled = true; };
-  }, [userId]);
+  }, [userId, draftKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -194,6 +205,120 @@ const EmployerAccount = () => {
     return () => window.clearTimeout(id);
   }, [isCityOpen]);
 
+  useEffect(() => () => {
+    if (avatarObjectUrlRef.current) {
+      URL.revokeObjectURL(avatarObjectUrlRef.current);
+      avatarObjectUrlRef.current = '';
+    }
+  }, []);
+
+  const syncLocalUser = (overrides = {}) => {
+    try {
+      const current = JSON.parse(localStorage.getItem('user') || '{}');
+      const next = {
+        ...current,
+        ...overrides
+      };
+      localStorage.setItem('user', JSON.stringify(next));
+    } catch (_) {}
+  };
+
+  const clearPendingAvatar = () => {
+    if (avatarObjectUrlRef.current) {
+      URL.revokeObjectURL(avatarObjectUrlRef.current);
+      avatarObjectUrlRef.current = '';
+    }
+    setAvatarFile(null);
+    setAvatarPreview(form.avatarUrl || AVATAR_FALLBACK);
+    if (avatarInputRef.current) {
+      avatarInputRef.current.value = '';
+    }
+  };
+
+  const handleAvatarSelect = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setError('Ảnh đại diện chỉ nhận JPG, PNG hoặc WEBP.');
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Ảnh đại diện không được vượt quá 5MB.');
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+      return;
+    }
+
+    setError('');
+    setMessage('');
+    setAvatarFile(file);
+
+    if (avatarObjectUrlRef.current) {
+      URL.revokeObjectURL(avatarObjectUrlRef.current);
+    }
+    const objectUrl = URL.createObjectURL(file);
+    avatarObjectUrlRef.current = objectUrl;
+    setAvatarPreview(objectUrl);
+  };
+
+  const handleAvatarUpload = async () => {
+    if (!avatarFile || !userId || uploadingAvatar) return;
+
+    setUploadingAvatar(true);
+    setError('');
+    setMessage('');
+
+    try {
+      const formData = new FormData();
+      formData.append('avatar', avatarFile);
+      formData.append('userId', String(userId));
+
+      const response = await fetch('/users/upload-avatar', {
+        method: 'POST',
+        body: formData
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Không thể tải ảnh đại diện lên.');
+      }
+
+      const uploadedAvatar = data.absoluteUrl || data.avatarUrl || '';
+      const nextForm = { ...form, avatarUrl: uploadedAvatar };
+      setForm(nextForm);
+      setAvatarPreview(uploadedAvatar || AVATAR_FALLBACK);
+      setAvatarFile(null);
+
+      if (draftKey) {
+        try {
+          localStorage.setItem(draftKey, JSON.stringify(nextForm));
+        } catch (_) {}
+      }
+
+      if (avatarInputRef.current) {
+        avatarInputRef.current.value = '';
+      }
+      if (avatarObjectUrlRef.current) {
+        URL.revokeObjectURL(avatarObjectUrlRef.current);
+        avatarObjectUrlRef.current = '';
+      }
+
+      syncLocalUser({
+        avatar: uploadedAvatar,
+        AnhDaiDien: uploadedAvatar
+      });
+
+      setMessage('Đã cập nhật ảnh đại diện.');
+    } catch (err) {
+      setError(err.message || 'Không thể tải ảnh đại diện lên.');
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
   const handleSave = async () => {
     setError('');
     setMessage('');
@@ -203,8 +328,14 @@ const EmployerAccount = () => {
     }
     setSaving(true);
     try {
-      await updateProfile({ userId, ...form });
+      await updateProfile({ userId, ...form, avatar: form.avatarUrl || '' });
       setMessage('Đã lưu thông tin cá nhân.');
+      syncLocalUser({
+        name: form.fullName || user?.name || user?.HoTen || '',
+        HoTen: form.fullName || user?.HoTen || user?.name || '',
+        avatar: form.avatarUrl || user?.avatar || user?.AnhDaiDien || '',
+        AnhDaiDien: form.avatarUrl || user?.AnhDaiDien || user?.avatar || ''
+      });
       if (draftKey) {
         try {
           localStorage.setItem(draftKey, JSON.stringify(form));
@@ -274,6 +405,58 @@ const EmployerAccount = () => {
               </p>
             </div>
           </div>
+
+          <section className="employer-avatar-panel mb-3">
+            <img
+              src={avatarPreview || AVATAR_FALLBACK}
+              alt="Ảnh đại diện"
+              className="employer-avatar-image"
+              onError={(event) => {
+                event.currentTarget.onerror = null;
+                event.currentTarget.src = AVATAR_FALLBACK;
+              }}
+            />
+            <div className="employer-avatar-content">
+              <h6>Ảnh đại diện</h6>
+              <p>Ảnh JPG/PNG/WEBP, dung lượng tối đa 5MB.</p>
+              <div className="employer-avatar-actions">
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="d-none"
+                  onChange={handleAvatarSelect}
+                />
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  onClick={() => avatarInputRef.current?.click()}
+                  disabled={uploadingAvatar}
+                >
+                  Chọn ảnh
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleAvatarUpload}
+                  disabled={!avatarFile || uploadingAvatar}
+                >
+                  {uploadingAvatar ? 'Đang tải lên...' : 'Cập nhật avatar'}
+                </button>
+                {avatarFile ? (
+                  <button
+                    type="button"
+                    className="btn btn-outline-secondary"
+                    onClick={clearPendingAvatar}
+                    disabled={uploadingAvatar}
+                  >
+                    Bỏ chọn
+                  </button>
+                ) : null}
+              </div>
+              {avatarFile ? <div className="employer-avatar-file">Đã chọn: {avatarFile.name}</div> : null}
+            </div>
+          </section>
 
           {error && <div className="alert alert-danger">{error}</div>}
           {message && <div className="alert alert-success">{message}</div>}

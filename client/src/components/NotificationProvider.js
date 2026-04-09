@@ -156,7 +156,10 @@ export const NotificationProvider = ({ children }) => {
 
       {state.open && (
         <div className="jf-notify-overlay" role="dialog" aria-modal="true" onClick={() => closeWithResult(false)}>
-          <div className={`jf-notify-dialog jf-notify-${ui.accent}`} onClick={(e) => e.stopPropagation()}>
+          <div
+            className={`jf-notify-dialog jf-notify-${ui.accent} ${state.kind === 'confirm' ? 'jf-notify-dialog-confirm' : ''}`.trim()}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="jf-notify-topbar" />
 
             <div className="jf-notify-content">

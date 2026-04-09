@@ -175,6 +175,16 @@
   gap: 12px;
 }
 
+.auth-grid-three {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.auth-birthday-grid {
+  margin-top: 2px;
+}
+
 .auth-field {
   margin-bottom: 12px;
   text-align: left;
@@ -207,6 +217,87 @@
 
 .auth-select {
   appearance: auto;
+}
+
+.auth-hidden-file-input {
+  display: none;
+}
+
+.auth-avatar-upload {
+  border: 1px dashed #b9d6f1;
+  border-radius: 14px;
+  background: #f7fbff;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.auth-avatar-preview-wrap {
+  width: 82px;
+  height: 82px;
+  border-radius: 12px;
+  background: #e6f1fd;
+  border: 1px solid #c7dff6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.auth-avatar-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.auth-avatar-preview-empty {
+  color: #78a5d1;
+  font-size: 2rem;
+}
+
+.auth-avatar-upload-actions {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 6px;
+}
+
+.auth-avatar-upload-btn,
+.auth-avatar-clear-btn {
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid #c6dbef;
+  background: #ffffff;
+  color: #22567f;
+  font-weight: 700;
+  font-size: 0.88rem;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-width: 112px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auth-avatar-upload-btn:hover,
+.auth-avatar-clear-btn:hover {
+  border-color: #8ec0eb;
+  background: #eff7ff;
+}
+
+.auth-avatar-clear-btn {
+  color: #8a3f3f;
+  border-color: #e1c0c0;
+}
+
+.auth-avatar-clear-btn:hover {
+  border-color: #d7a3a3;
+  background: #fff2f2;
 }
 
 .auth-input::placeholder {
@@ -579,8 +670,23 @@
   }
 
   .auth-grid-two,
+  .auth-grid-three,
   .auth-radio-group {
     grid-template-columns: 1fr;
+  }
+
+  .auth-avatar-upload {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .auth-avatar-upload-actions {
+    width: 100%;
+  }
+
+  .auth-avatar-upload-btn,
+  .auth-avatar-clear-btn {
+    width: 100%;
   }
 }
 

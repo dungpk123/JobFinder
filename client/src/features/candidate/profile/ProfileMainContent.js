@@ -11,10 +11,22 @@ import {
 
 const avatarFallback = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
 
+const formatViDate = (value) => {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('vi-VN').format(date);
+};
+
 const ProfileMainContent = ({
   activeTab,
   user,
   profileSummary,
+  interviewInvitations = [],
+  invitationsLoading = false,
+  invitationsError = '',
+  jobsAppliedCount = 0,
+  invitationCount = 0,
   onOpenProfileModal,
   onOpenPasswordModal,
   passwordStatus
@@ -57,11 +69,11 @@ const ProfileMainContent = ({
             <div className="profile-overview-kpis">
               <div className="profile-kpi-item">
                 <span>Việc đã ứng tuyển</span>
-                <strong>0</strong>
+                <strong>{Number(jobsAppliedCount || 0).toLocaleString('vi-VN')}</strong>
               </div>
               <div className="profile-kpi-item">
                 <span>Lời mời mới</span>
-                <strong>0</strong>
+                <strong>{Number(invitationCount || 0).toLocaleString('vi-VN')}</strong>
               </div>
               <div className="profile-kpi-item">
                 <span>Thông báo</span>
@@ -115,17 +127,60 @@ const ProfileMainContent = ({
       {activeTab === PROFILE_TAB_INVITATIONS && (
         <section className="profile-tab-card profile-section-card">
           <div className="profile-section-head">
-            <h5>Lời mời công việc</h5>
-            <p>Các nhà tuyển dụng sẽ gửi lời mời khi hồ sơ của bạn phù hợp.</p>
+            <h5>Lời mời phỏng vấn</h5>
+            <p>Danh sách công ty đã chuyển hồ sơ ứng tuyển của bạn sang trạng thái phỏng vấn.</p>
           </div>
-          <div className="profile-empty-state">
-            <div className="profile-empty-icon"><i className="bi bi-envelope-paper"></i></div>
-            <h6>Hiện chưa có lời mời nào</h6>
-            <p>Hãy cập nhật hồ sơ chi tiết để tăng khả năng được mời phỏng vấn.</p>
-            <button type="button" className="btn profile-outline-btn" onClick={onOpenProfileModal}>
-              Cập nhật hồ sơ ngay
-            </button>
-          </div>
+
+          {invitationsLoading ? <div className="profile-inline-state">Đang tải lời mời phỏng vấn...</div> : null}
+
+          {!invitationsLoading && invitationsError ? <div className="alert alert-danger mt-3 mb-0">{invitationsError}</div> : null}
+
+          {!invitationsLoading && !invitationsError && interviewInvitations.length === 0 ? (
+            <div className="profile-empty-state">
+              <div className="profile-empty-icon"><i className="bi bi-envelope-paper"></i></div>
+              <h6>Hiện chưa có lời mời phỏng vấn</h6>
+              <p>Hãy tiếp tục ứng tuyển và hoàn thiện hồ sơ để tăng tỷ lệ được mời phỏng vấn.</p>
+              <button type="button" className="btn profile-outline-btn" onClick={onOpenProfileModal}>
+                Cập nhật hồ sơ ngay
+              </button>
+            </div>
+          ) : null}
+
+          {!invitationsLoading && !invitationsError && interviewInvitations.length > 0 ? (
+            <div className="profile-invitation-list">
+              {interviewInvitations.map((item) => {
+                const submittedAt = formatViDate(item?.NgayNop || item?.submittedAt);
+                return (
+                  <article key={item?.MaUngTuyen || `${item?.MaTin || 'job'}-${item?.TenCongTy || 'company'}`} className="profile-invitation-item">
+                    <div className="profile-invitation-logo">
+                      <img
+                        src={item?.Logo || '/images/logo.png'}
+                        alt={item?.TenCongTy || 'Logo công ty'}
+                        onError={(event) => {
+                          event.currentTarget.onerror = null;
+                          event.currentTarget.src = '/images/logo.png';
+                        }}
+                      />
+                    </div>
+                    <div className="profile-invitation-body">
+                      <h6>{item?.TieuDe || 'Vị trí đã ứng tuyển'}</h6>
+                      <p>
+                        {item?.TenCongTy || 'Nhà tuyển dụng'}
+                        {item?.ThanhPho ? ` • ${item.ThanhPho}` : ''}
+                      </p>
+                      <div className="profile-invitation-meta">
+                        <span><i className="bi bi-person-badge"></i>{item?.TrangThai || 'Phỏng vấn'}</span>
+                        {submittedAt ? <span><i className="bi bi-calendar-check"></i>Nộp hồ sơ: {submittedAt}</span> : null}
+                      </div>
+                    </div>
+                    <Link to={`/jobs/${item?.MaTin}`} className="btn profile-outline-btn profile-invitation-action">
+                      Xem tin
+                    </Link>
+                  </article>
+                );
+              })}
+            </div>
+          ) : null}
         </section>
       )}
 

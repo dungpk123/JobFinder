@@ -348,23 +348,6 @@ const toNullableInteger = (value, fallback = 0) => {
     return parsed;
 };
 
-const toJsonArrayString = (value) => {
-    if (Array.isArray(value)) {
-        return JSON.stringify(value);
-    }
-
-    if (typeof value === 'string') {
-        try {
-            const parsed = JSON.parse(value);
-            return Array.isArray(parsed) ? JSON.stringify(parsed) : '[]';
-        } catch {
-            return '[]';
-        }
-    }
-
-    return '[]';
-};
-
 const updateBasicUserInfo = async ({ userId, fullName, phone, address, role }) => {
     const updates = [];
     const params = [];
@@ -401,7 +384,32 @@ const updateBasicUserInfo = async ({ userId, fullName, phone, address, role }) =
     );
 };
 
-const ensureCandidateProfileWithJsonColumns = async ({
+const clearCandidateProfileLists = async (userId) => {
+    const clearQueries = [
+        `UPDATE HoSoUngVien
+         SET DanhSachHocVanJson = NULL,
+             DanhSachKinhNghiemJson = NULL,
+             DanhSachNgoaiNguJson = NULL
+         WHERE MaNguoiDung = ?`,
+        `UPDATE HoSoUngVien
+         SET EducationListJson = NULL,
+             WorkListJson = NULL,
+             LanguageListJson = NULL
+         WHERE MaNguoiDung = ?`
+    ];
+
+    for (const query of clearQueries) {
+        try {
+            await dbRunAsync(query, [userId]);
+        } catch (err) {
+            if (!isUnknownColumnError(err)) {
+                throw err;
+            }
+        }
+    }
+};
+
+const ensureCandidateProfile = async ({
     userId,
     birthday,
     gender,
@@ -413,11 +421,8 @@ const ensureCandidateProfileWithJsonColumns = async ({
     education,
     avatar,
     title,
-    personalLink,
-    educationList,
-    workList,
-    languageList
-}, jsonColumns) => {
+    personalLink
+}) => {
     const existing = await dbGetAsync('SELECT MaHoSo FROM HoSoUngVien WHERE MaNguoiDung = ?', [userId]);
 
     const profileParams = [
@@ -431,10 +436,7 @@ const ensureCandidateProfileWithJsonColumns = async ({
         toNullableString(education),
         toNullableString(avatar),
         toNullableString(title),
-        toNullableString(personalLink),
-        toJsonArrayString(educationList),
-        toJsonArrayString(workList),
-        toJsonArrayString(languageList)
+        toNullableString(personalLink)
     ];
 
     if (existing?.MaHoSo) {
@@ -451,47 +453,21 @@ const ensureCandidateProfileWithJsonColumns = async ({
                  AnhDaiDien = ?,
                  ChucDanh = ?,
                  LinkCaNhan = ?,
-                 ${jsonColumns.education} = ?,
-                 ${jsonColumns.work} = ?,
-                 ${jsonColumns.language} = ?,
                  NgayCapNhat = CURRENT_TIMESTAMP
              WHERE MaNguoiDung = ?`,
             [...profileParams, userId]
         );
+        await clearCandidateProfileLists(userId);
         return;
     }
 
     await dbRunAsync(
         `INSERT INTO HoSoUngVien
-        (MaNguoiDung, NgaySinh, GioiTinh, DiaChi, ThanhPho, QuanHuyen, GioiThieuBanThan, SoNamKinhNghiem, TrinhDoHocVan, AnhDaiDien, ChucDanh, LinkCaNhan, ${jsonColumns.education}, ${jsonColumns.work}, ${jsonColumns.language}, NgayTao, NgayCapNhat)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        (MaNguoiDung, NgaySinh, GioiTinh, DiaChi, ThanhPho, QuanHuyen, GioiThieuBanThan, SoNamKinhNghiem, TrinhDoHocVan, AnhDaiDien, ChucDanh, LinkCaNhan, NgayTao, NgayCapNhat)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
         [userId, ...profileParams]
     );
-};
-
-const ensureCandidateProfile = async (payload) => {
-    const vietnameseColumns = {
-        education: 'DanhSachHocVanJson',
-        work: 'DanhSachKinhNghiemJson',
-        language: 'DanhSachNgoaiNguJson'
-    };
-
-    try {
-        await ensureCandidateProfileWithJsonColumns(payload, vietnameseColumns);
-        return;
-    } catch (err) {
-        if (!isUnknownColumnError(err)) {
-            throw err;
-        }
-    }
-
-    const legacyColumns = {
-        education: 'EducationListJson',
-        work: 'WorkListJson',
-        language: 'LanguageListJson'
-    };
-
-    await ensureCandidateProfileWithJsonColumns(payload, legacyColumns);
+    await clearCandidateProfileLists(userId);
 };
 
 const ensureEmployerAndCompanyProfile = async ({
@@ -1001,10 +977,7 @@ router.post('/complete-profile', authenticateToken, async (req, res) => {
                 education: req.body?.education ?? req.body?.TrinhDoHocVan,
                 avatar: req.body?.avatar ?? req.body?.AnhDaiDien,
                 title: req.body?.title ?? req.body?.ChucDanh ?? req.body?.position,
-                personalLink: req.body?.personalLink ?? req.body?.LinkCaNhan,
-                educationList: req.body?.educationList,
-                workList: req.body?.workList,
-                languageList: req.body?.languageList
+                personalLink: req.body?.personalLink ?? req.body?.LinkCaNhan
             });
         } else {
             await ensureEmployerAndCompanyProfile({

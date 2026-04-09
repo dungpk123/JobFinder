@@ -1,7 +1,8 @@
 import React from 'react';
 import { PROFILE_NAV_ITEMS } from './profileNavigation';
+import { PROFILE_TAB_INVITATIONS } from './profileNavigation';
 
-const ProfileSidebar = ({ activeTab, onChangeTab, userName }) => {
+const ProfileSidebar = ({ activeTab, onChangeTab, userName, invitationCount = 0 }) => {
   return (
     <div className="col-lg-3 col-md-4">
       <aside className="profile-sidebar-card">
@@ -16,6 +17,10 @@ const ProfileSidebar = ({ activeTab, onChangeTab, userName }) => {
         <ul className="profile-nav-list">
           {PROFILE_NAV_ITEMS.map((item) => {
             const isActive = activeTab === item.key;
+            const badgeValue =
+              item.key === PROFILE_TAB_INVITATIONS && Number(invitationCount) > 0
+                ? String(invitationCount)
+                : item.badge;
             return (
               <li key={item.key}>
                 <button
@@ -25,7 +30,7 @@ const ProfileSidebar = ({ activeTab, onChangeTab, userName }) => {
                 >
                   <span className="profile-nav-icon"><i className={`bi ${item.icon}`}></i></span>
                   <span className="profile-nav-label">{item.label}</span>
-                  {item.badge ? <span className="profile-nav-badge">{item.badge}</span> : null}
+                  {badgeValue ? <span className="profile-nav-badge">{badgeValue}</span> : null}
                 </button>
               </li>
             );

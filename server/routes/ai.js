@@ -63,6 +63,65 @@ const safeJsonParse = (text) => {
   }
 };
 
+const getProviderErrorStatusCode = (errorText = '') => {
+  const text = String(errorText || '');
+  const direct = text.match(/\berror\s+(\d{3})\b/i);
+  if (direct?.[1]) {
+    const code = Number(direct[1]);
+    if (Number.isFinite(code)) return code;
+  }
+
+  const jsonCode = text.match(/"code"\s*:\s*(\d{3})/i);
+  if (jsonCode?.[1]) {
+    const code = Number(jsonCode[1]);
+    if (Number.isFinite(code)) return code;
+  }
+
+  return null;
+};
+
+const isProviderOverloadError = (errorText = '') => {
+  const text = String(errorText || '').toLowerCase();
+  const statusCode = getProviderErrorStatusCode(text);
+
+  if ([429, 500, 502, 503, 504].includes(statusCode)) return true;
+
+  return (
+    text.includes('high demand') ||
+    text.includes('overloaded') ||
+    text.includes('unavailable') ||
+    text.includes('temporarily') ||
+    text.includes('rate limit') ||
+    text.includes('quota') ||
+    text.includes('timeout')
+  );
+};
+
+const isMissingAiKeyError = (errorText = '') => {
+  const text = String(errorText || '').toLowerCase();
+  return text.includes('api_key') || text.includes('chưa được cấu hình') || text.includes('not configured');
+};
+
+const looksLikeRawProviderError = (errorText = '') => {
+  const text = String(errorText || '');
+  return /\b(gemini|openai)\s+error\s+\d{3}\b/i.test(text) || /"error"\s*:\s*\{/i.test(text);
+};
+
+const toFriendlyAiFailureMessage = ({ errorText = '', fallbackUsed = false } = {}) => {
+  if (isMissingAiKeyError(errorText)) {
+    return 'Hiện máy chủ AI chưa được cấu hình đầy đủ. Bạn vui lòng liên hệ quản trị viên để bổ sung API key và thử lại.';
+  }
+
+  if (isProviderOverloadError(errorText) || looksLikeRawProviderError(errorText)) {
+    if (fallbackUsed) {
+      return 'Hệ thống AI đang quá tải và kênh dự phòng cũng tạm thời bận. Bạn thử lại sau ít phút giúp mình nhé.';
+    }
+    return 'Hệ thống AI đang quá tải tạm thời. Bạn đợi khoảng 10-30 giây rồi gửi lại nhé.';
+  }
+
+  return 'Mình chưa thể kết nối AI ở thời điểm này. Bạn thử lại sau ít phút giúp mình nhé.';
+};
+
 const dbGet = (sql, params = []) =>
   new Promise((resolve, reject) => {
     db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
@@ -466,8 +525,63 @@ const callGeminiGenerateContent = async ({ messages, temperature = 0.4 }) => {
 };
 
 const callLLMChat = async ({ messages, temperature = 0.4 }) => {
-  if (AI_PROVIDER === 'gemini') return callGeminiGenerateContent({ messages, temperature });
-  return callOpenAIChat({ messages, temperature });
+  if (AI_PROVIDER === 'gemini') {
+    const primary = await callGeminiGenerateContent({ messages, temperature });
+    if (primary.ok) return { ...primary, provider: 'gemini', fallbackUsed: false };
+
+    const canFallbackToOpenAI = Boolean(OPENAI_API_KEY);
+    if (canFallbackToOpenAI) {
+      const fallback = await callOpenAIChat({ messages, temperature });
+      if (fallback.ok) {
+        return {
+          ...fallback,
+          provider: 'openai',
+          fallbackUsed: true,
+          primaryProvider: 'gemini',
+          primaryError: primary.error
+        };
+      }
+
+      return {
+        ok: false,
+        provider: 'gemini',
+        fallbackUsed: true,
+        primaryProvider: 'gemini',
+        primaryError: primary.error,
+        error: fallback.error || primary.error
+      };
+    }
+
+    return { ...primary, provider: 'gemini', fallbackUsed: false, primaryProvider: 'gemini' };
+  }
+
+  const primary = await callOpenAIChat({ messages, temperature });
+  if (primary.ok) return { ...primary, provider: 'openai', fallbackUsed: false };
+
+  const canFallbackToGemini = Boolean(GEMINI_API_KEY);
+  if (canFallbackToGemini) {
+    const fallback = await callGeminiGenerateContent({ messages, temperature });
+    if (fallback.ok) {
+      return {
+        ...fallback,
+        provider: 'gemini',
+        fallbackUsed: true,
+        primaryProvider: 'openai',
+        primaryError: primary.error
+      };
+    }
+
+    return {
+      ok: false,
+      provider: 'openai',
+      fallbackUsed: true,
+      primaryProvider: 'openai',
+      primaryError: primary.error,
+      error: fallback.error || primary.error
+    };
+  }
+
+  return { ...primary, provider: 'openai', fallbackUsed: false, primaryProvider: 'openai' };
 };
 
 router.post('/chat', async (req, res) => {
@@ -517,14 +631,19 @@ router.post('/chat', async (req, res) => {
       const ai = await callLLMChat({ messages: finalMessages, temperature: 0.4 });
       if (ai.ok) return res.json({ success: true, reply: ai.text });
 
-      // No key / error fallback
+      console.warn('AI general chat failure:', {
+        provider: ai.provider || AI_PROVIDER,
+        fallbackUsed: Boolean(ai.fallbackUsed),
+        primaryError: ai.primaryError || null,
+        error: ai.error || null
+      });
+
       return res.json({
         success: true,
-        reply:
-          ai.error ||
-          (AI_PROVIDER === 'gemini'
-            ? 'Hiện chưa cấu hình AI (GEMINI_API_KEY). Bạn thêm key vào server/.env rồi restart server giúp mình nhé.'
-            : 'Hiện chưa cấu hình AI (OPENAI_API_KEY). Bạn thêm key vào server/.env rồi restart server giúp mình nhé.')
+        reply: toFriendlyAiFailureMessage({
+          errorText: ai.error || ai.primaryError || '',
+          fallbackUsed: Boolean(ai.fallbackUsed)
+        })
       });
     }
 
@@ -640,13 +759,19 @@ router.post('/chat/cv-file', handleCvUpload, async (req, res) => {
       return res.json({ success: true, reply: ai.text });
     }
 
+    console.warn('AI cv-file chat failure:', {
+      provider: ai.provider || AI_PROVIDER,
+      fallbackUsed: Boolean(ai.fallbackUsed),
+      primaryError: ai.primaryError || null,
+      error: ai.error || null
+    });
+
     return res.json({
       success: true,
-      reply:
-        ai.error ||
-        (AI_PROVIDER === 'gemini'
-          ? 'Chưa cấu hình GEMINI_API_KEY. Thêm key vào server/.env rồi khởi động lại server.'
-          : 'Chưa cấu hình OPENAI_API_KEY. Thêm key vào server/.env rồi khởi động lại server.')
+      reply: toFriendlyAiFailureMessage({
+        errorText: ai.error || ai.primaryError || '',
+        fallbackUsed: Boolean(ai.fallbackUsed)
+      })
     });
   } catch (err) {
     console.error('AI cv-file error:', err);

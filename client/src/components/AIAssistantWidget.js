@@ -20,6 +20,38 @@ const getToken = () => {
   }
 };
 
+const isProviderBusyError = (text = '') => {
+  const value = String(text || '').toLowerCase();
+  return (
+    /\b(gemini|openai)\s+error\s+(429|500|502|503|504)\b/i.test(value) ||
+    /"code"\s*:\s*(429|500|502|503|504)/i.test(value) ||
+    value.includes('high demand') ||
+    value.includes('overloaded') ||
+    value.includes('temporarily') ||
+    value.includes('unavailable') ||
+    value.includes('rate limit') ||
+    value.includes('quota')
+  );
+};
+
+const toFriendlyAiError = (text = '') => {
+  const value = String(text || '').trim();
+  if (!value) return 'Không thể gọi AI.';
+  if (isProviderBusyError(value) || /"error"\s*:\s*\{/i.test(value)) {
+    return 'Hệ thống AI đang quá tải tạm thời. Bạn thử gửi lại sau khoảng 10-30 giây nhé.';
+  }
+  return value;
+};
+
+const normalizeAssistantReply = (text = '') => {
+  const value = String(text || '').trim();
+  if (!value) return '';
+  if (isProviderBusyError(value) || /"error"\s*:\s*\{/i.test(value)) {
+    return 'Mình đang gặp tải cao từ hệ thống AI nên phản hồi chưa ổn định. Bạn vui lòng thử lại sau một chút nhé.';
+  }
+  return value;
+};
+
 const AIAssistantWidget = () => {
   const { notify } = useNotification();
   const [open, setOpen] = useState(false);
@@ -373,17 +405,27 @@ const AIAssistantWidget = () => {
 
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Không thể gọi AI.');
+        throw new Error(toFriendlyAiError(data.error || 'Không thể gọi AI.'));
       }
 
-      setMessages((prev) => [...prev, { role: 'assistant', content: data.reply || 'OK' }]);
+      const safeReply = normalizeAssistantReply(data.reply || '');
+      setMessages((prev) => [...prev, { role: 'assistant', content: safeReply || 'OK' }]);
       if (pendingUploadFile) {
         setPendingUploadFile(null);
       }
       setTimeout(scrollToBottom, 0);
     } catch (err) {
-      notify({ type: 'error', message: err.message || 'Không thể gọi AI.' });
-      setMessages((prev) => [...prev, { role: 'assistant', content: 'Mình gặp lỗi khi xử lý. Bạn thử lại giúp mình nhé.' }]);
+      const friendlyMessage = toFriendlyAiError(err.message || 'Không thể gọi AI.');
+      notify({ type: 'error', message: friendlyMessage });
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: isProviderBusyError(friendlyMessage)
+            ? 'Máy chủ AI đang bận tạm thời. Bạn thử gửi lại sau vài chục giây nhé.'
+            : 'Mình gặp lỗi khi xử lý. Bạn thử lại giúp mình nhé.'
+        }
+      ]);
       setTimeout(scrollToBottom, 0);
     } finally {
       setLoading(false);

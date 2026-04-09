@@ -900,6 +900,59 @@
     font-size: 0.9rem;
 }
 
+.employer-avatar-panel {
+    border: 1px solid #dbe6f2;
+    border-radius: 14px;
+    background: #f8fbff;
+    padding: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.95rem;
+}
+
+.employer-avatar-image {
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    border: 2px solid #ffffff;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.14);
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.employer-avatar-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.employer-avatar-content h6 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 800;
+    color: #143556;
+}
+
+.employer-avatar-content p {
+    margin: 0.2rem 0 0;
+    color: #60748a;
+    font-size: 0.85rem;
+}
+
+.employer-avatar-actions {
+    margin-top: 0.6rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.employer-avatar-file {
+    margin-top: 0.45rem;
+    color: #1f3347;
+    font-size: 0.82rem;
+    font-weight: 600;
+    word-break: break-word;
+}
+
 .employer-profile-grid .form-label {
     font-weight: 700;
     color: #1f3347;
@@ -979,6 +1032,16 @@
     .employer-profile-actions .btn {
         min-width: 0;
         width: 100%;
+    }
+
+    .employer-avatar-panel {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .employer-avatar-image {
+        width: 76px;
+        height: 76px;
     }
 
     .main-content .table > :not(caption) > * > * {
