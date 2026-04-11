@@ -111,6 +111,51 @@ const insertCompanyReport = async ({ reporterId, employerId, reason, detail }) =
   await dbRun(sql, [reporterId, employerId, reason, detail]);
 };
 
+const getEmployerIdByUserId = async (userId) => {
+  const row = await dbGet(
+    `SELECT MaNhaTuyenDung
+     FROM NhaTuyenDung
+     WHERE MaNguoiDung = ?
+     ORDER BY MaNhaTuyenDung DESC
+     LIMIT 1`,
+    [userId]
+  );
+
+  return row?.MaNhaTuyenDung != null ? Number(row.MaNhaTuyenDung) : null;
+};
+
+// Employer: get own company review/comment dashboard data
+router.get('/me/reviews', authenticateToken, authorizeRole(['Nhà tuyển dụng']), async (req, res) => {
+  try {
+    const employerId = await getEmployerIdByUserId(req.user.id);
+    if (!employerId) {
+      return res.status(404).json({ success: false, error: 'Không tìm thấy hồ sơ công ty của tài khoản này' });
+    }
+
+    const company = await dbGet(
+      `SELECT MaNhaTuyenDung, TenCongTy, Website, DiaChi, ThanhPho, MoTa, Logo
+       FROM NhaTuyenDung
+       WHERE MaNhaTuyenDung = ?`,
+      [employerId]
+    );
+
+    const [rating, comments] = await Promise.all([
+      getRatingSummary(employerId),
+      listComments(employerId)
+    ]);
+
+    return res.json({
+      success: true,
+      employerId,
+      company: normalizeLogoField(req, company || null),
+      rating,
+      comments
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || 'Server error' });
+  }
+});
+
 // Public: list company comments
 router.get('/:employerId/comments', async (req, res) => {
   try {

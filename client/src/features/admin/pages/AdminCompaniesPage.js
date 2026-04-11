@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Building2 } from 'lucide-react';
+import { Ban, Building2, ShieldCheck, Trash2 } from 'lucide-react';
 
 const AdminCompanyRow = ({ company, onSaveStatus, onDelete, canEdit, requestConfirm }) => {
     const initialStatus = Number(company.TrangThaiDaiDien ?? 1);
@@ -64,16 +64,37 @@ const AdminCompanyRow = ({ company, onSaveStatus, onDelete, canEdit, requestConf
             <td>
                 <div className="d-flex flex-wrap gap-2">
                     {status === 1 ? (
-                        <button className="btn btn-sm btn-outline-warning" disabled={!canEdit || saving} onClick={() => save(0)}>
-                            Chặn
+                        <button
+                            type="button"
+                            className="btn btn-sm btn-outline-warning admin-action-icon-btn"
+                            disabled={!canEdit || saving}
+                            onClick={() => save(0)}
+                            title="Chặn công ty"
+                            aria-label="Chặn công ty"
+                        >
+                            <Ban size={14} />
                         </button>
                     ) : (
-                        <button className="btn btn-sm btn-outline-success" disabled={!canEdit || saving} onClick={() => save(1)}>
-                            Bỏ chặn
+                        <button
+                            type="button"
+                            className="btn btn-sm btn-outline-success admin-action-icon-btn"
+                            disabled={!canEdit || saving}
+                            onClick={() => save(1)}
+                            title="Bỏ chặn công ty"
+                            aria-label="Bỏ chặn công ty"
+                        >
+                            <ShieldCheck size={14} />
                         </button>
                     )}
-                    <button className="btn btn-sm btn-outline-danger" disabled={!canEdit || saving} onClick={handleDelete}>
-                        Xóa
+                    <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger admin-action-icon-btn"
+                        disabled={!canEdit || saving}
+                        onClick={handleDelete}
+                        title="Xóa công ty"
+                        aria-label="Xóa công ty"
+                    >
+                        <Trash2 size={14} />
                     </button>
                 </div>
                 {err ? <div className="text-danger small mt-1">{err}</div> : null}

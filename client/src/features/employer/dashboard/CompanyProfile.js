@@ -35,6 +35,10 @@ const CompanyProfile = () => {
     const [loadingProvinces, setLoadingProvinces] = useState(false);
     const [isCityOpen, setIsCityOpen] = useState(false);
     const [cityQuery, setCityQuery] = useState('');
+    const [companyRating, setCompanyRating] = useState({ avgRating: 0, ratingCount: 0 });
+    const [companyComments, setCompanyComments] = useState([]);
+    const [loadingReviews, setLoadingReviews] = useState(false);
+    const [reviewsError, setReviewsError] = useState('');
 
     const cityDropdownRef = useRef(null);
     const citySearchInputRef = useRef(null);
@@ -42,6 +46,7 @@ const CompanyProfile = () => {
     useEffect(() => {
         fetchCompanyInfo();
         fetchProvinces();
+        fetchCompanyReviews();
     }, []);
 
     useEffect(() => {
@@ -174,6 +179,64 @@ const CompanyProfile = () => {
             city: value
         }));
         setIsCityOpen(false);
+    };
+
+    const fetchCompanyReviews = async () => {
+        if (!token) return;
+
+        setLoadingReviews(true);
+        setReviewsError('');
+
+        try {
+            const res = await fetch('/api/companies/me/reviews', {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok || !data.success) {
+                throw new Error(data.error || 'Không tải được dữ liệu đánh giá công ty');
+            }
+
+            const rating = data.rating || {};
+            setCompanyRating({
+                avgRating: Number(rating.avgRating || 0),
+                ratingCount: Number(rating.ratingCount || 0)
+            });
+            setCompanyComments(Array.isArray(data.comments) ? data.comments : []);
+        } catch (err) {
+            setReviewsError(err.message || 'Không tải được dữ liệu đánh giá công ty');
+            setCompanyComments([]);
+            setCompanyRating({ avgRating: 0, ratingCount: 0 });
+        } finally {
+            setLoadingReviews(false);
+        }
+    };
+
+    const renderRatingStars = (avgRating) => {
+        const rounded = Math.round(Number(avgRating) || 0);
+        return Array.from({ length: 5 }, (_, index) => (
+            <i
+                key={`rating-star-${index}`}
+                className={`bi ${index < rounded ? 'bi-star-fill' : 'bi-star'}`}
+                aria-hidden="true"
+            ></i>
+        ));
+    };
+
+    const formatReviewDate = (dateValue) => {
+        if (!dateValue) return 'Không rõ thời gian';
+        const date = new Date(dateValue);
+        if (Number.isNaN(date.getTime())) return String(dateValue);
+
+        return new Intl.DateTimeFormat('vi-VN', {
+            dateStyle: 'medium',
+            timeStyle: 'short'
+        }).format(date);
+    };
+
+    const getDisplayInitial = (name) => {
+        const normalized = String(name || '').trim();
+        if (!normalized) return 'U';
+        return normalized.charAt(0).toUpperCase();
     };
 
     const visibleProvinces = useMemo(() => {
@@ -448,6 +511,77 @@ const CompanyProfile = () => {
                             )}
                         </div>
                     </form>
+                </div>
+            </div>
+
+            <div className="card border-0 shadow-sm employer-profile-card employer-company-review-card">
+                <div className="card-body p-4 p-lg-4">
+                    <div className="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
+                        <div>
+                            <h5 className="employer-company-review-title mb-1">Đánh giá và bình luận công ty</h5>
+                            <p className="employer-company-review-subtitle mb-0">Tổng hợp phản hồi công khai từ ứng viên để bạn theo dõi chất lượng thương hiệu tuyển dụng.</p>
+                        </div>
+                        <button
+                            type="button"
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={fetchCompanyReviews}
+                            disabled={loadingReviews}
+                        >
+                            <i className="bi bi-arrow-clockwise me-2"></i>
+                            Làm mới
+                        </button>
+                    </div>
+
+                    <div className="employer-company-review-summary">
+                        <div className="employer-company-review-score">{companyRating.avgRating.toFixed(1)}</div>
+                        <div>
+                            <div className="employer-company-review-stars" aria-label={`Đánh giá trung bình ${companyRating.avgRating.toFixed(1)} trên 5`}>
+                                {renderRatingStars(companyRating.avgRating)}
+                            </div>
+                            <p className="employer-company-review-meta mb-0">{companyRating.ratingCount} lượt đánh giá</p>
+                        </div>
+                    </div>
+
+                    {reviewsError ? (
+                        <div className="alert alert-warning mt-3 mb-0" role="alert">
+                            <div className="d-flex justify-content-between align-items-center gap-2 flex-wrap">
+                                <span>{reviewsError}</span>
+                                <button type="button" className="btn btn-sm btn-outline-warning" onClick={fetchCompanyReviews}>
+                                    Thử lại
+                                </button>
+                            </div>
+                        </div>
+                    ) : null}
+
+                    {loadingReviews ? (
+                        <div className="employer-company-review-loading">
+                            <div className="spinner-border spinner-border-sm text-primary" role="status"></div>
+                            <span>Đang tải bình luận...</span>
+                        </div>
+                    ) : null}
+
+                    {!loadingReviews && !reviewsError && companyComments.length === 0 ? (
+                        <div className="employer-company-review-empty">
+                            Chưa có bình luận nào cho công ty. Khi ứng viên bắt đầu phản hồi, danh sách sẽ hiển thị tại đây.
+                        </div>
+                    ) : null}
+
+                    {!loadingReviews && companyComments.length > 0 ? (
+                        <div className="employer-company-review-list">
+                            {companyComments.map((comment) => (
+                                <article className="employer-company-review-item" key={comment.id || `${comment.userId}-${comment.createdAt}`}>
+                                    <div className="employer-company-review-item-head">
+                                        <div className="employer-company-review-avatar">{getDisplayInitial(comment.userName)}</div>
+                                        <div>
+                                            <h6>{comment.userName || 'Ứng viên'}</h6>
+                                            <p className="mb-0">{formatReviewDate(comment.createdAt)}</p>
+                                        </div>
+                                    </div>
+                                    <p className="employer-company-review-content mb-0">{comment.content}</p>
+                                </article>
+                            ))}
+                        </div>
+                    ) : null}
                 </div>
             </div>
         </div>

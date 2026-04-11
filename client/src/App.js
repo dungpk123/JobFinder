@@ -36,6 +36,7 @@ import AIAssistantWidget from './components/AIAssistantWidget';
 import CareerGuide from './features/career-guide/CareerGuide';
 import CareerGuideDetail from './features/career-guide/CareerGuideDetail';
 import CareerGuideManage from './features/career-guide/CareerGuideManage';
+import CareerGuideMyPosts from './features/career-guide/CareerGuideMyPosts';
 import MessagesPage from './features/messages/MessagesPage';
 import SupportCenterPage from './features/support/SupportCenterPage';
 import PWAUpdatePrompt from './components/pwa/PWAUpdatePrompt';
@@ -123,9 +124,10 @@ function AppContent() {
       return !blockedJobSubRoutes.has(segments[1]);
     }
 
-    // Allow only article detail path like /career-guide/:id (not /career-guide/create)
+    // Allow only article detail path like /career-guide/:id (not /career-guide/create|my-posts)
     if (segments[0] === 'career-guide' && segments.length === 2) {
-      return segments[1] !== 'create';
+      const blockedCareerSubRoutes = new Set(['create', 'my-posts']);
+      return !blockedCareerSubRoutes.has(segments[1]);
     }
 
     return false;
@@ -196,6 +198,14 @@ function AppContent() {
             element={(
               isAuthenticated
                 ? (canCreateCareerGuidePost ? <CareerGuideManage /> : <Navigate to="/career-guide" replace />)
+                : <Navigate to="/login" replace state={{ from: location }} />
+            )}
+          />
+          <Route
+            path="/career-guide/my-posts"
+            element={(
+              isAuthenticated
+                ? (canCreateCareerGuidePost ? <CareerGuideMyPosts /> : <Navigate to="/career-guide" replace />)
                 : <Navigate to="/login" replace state={{ from: location }} />
             )}
           />

@@ -493,30 +493,33 @@ const AdminUsersPage = ({
                                             <div className="d-flex flex-wrap gap-2">
                                                 <button
                                                     type="button"
-                                                    className="btn btn-sm btn-outline-info d-inline-flex align-items-center gap-1"
+                                                    className="btn btn-sm btn-outline-info admin-action-icon-btn"
                                                     onClick={() => openViewModal(user)}
                                                     disabled={busy}
+                                                    title="Xem chi tiết"
+                                                    aria-label="Xem chi tiết"
                                                 >
                                                     <Eye size={14} />
-                                                    Xem
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    className="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1"
+                                                    className="btn btn-sm btn-outline-primary admin-action-icon-btn"
                                                     onClick={() => openEditModal(user)}
                                                     disabled={!permissions.canEdit || busy}
+                                                    title="Sửa người dùng"
+                                                    aria-label="Sửa người dùng"
                                                 >
                                                     <PencilLine size={14} />
-                                                    Sửa
                                                 </button>
                                                 <button
                                                     type="button"
-                                                    className={`btn btn-sm d-inline-flex align-items-center gap-1 ${isDeleted ? 'btn-outline-success' : 'btn-outline-danger'}`}
+                                                    className={`btn btn-sm admin-action-icon-btn ${isDeleted ? 'btn-outline-success' : 'btn-outline-danger'}`}
                                                     onClick={() => handleDeleteOrRestore(user)}
                                                     disabled={!permissions.canDelete || busy}
+                                                    title={isDeleted ? 'Khôi phục người dùng' : 'Xóa người dùng'}
+                                                    aria-label={isDeleted ? 'Khôi phục người dùng' : 'Xóa người dùng'}
                                                 >
                                                     {isDeleted ? <RotateCcw size={14} /> : <Trash2 size={14} />}
-                                                    {isDeleted ? 'Khôi phục' : 'Xóa'}
                                                 </button>
                                             </div>
                                             {rowErrors[userId] ? <div className="text-danger small mt-1">{rowErrors[userId]}</div> : null}

@@ -127,6 +127,7 @@ db.serialize(() => {
 
     db.run('CREATE INDEX IF NOT EXISTS IDX_BinhLuanCamNang_MaBaiViet ON BinhLuanCamNangNgheNghiep(MaBaiViet)');
     db.run('CREATE INDEX IF NOT EXISTS IDX_BinhLuanCamNang_MaNguoiDung ON BinhLuanCamNangNgheNghiep(MaNguoiDung)');
+    db.run('ALTER TABLE BinhLuanCamNangNgheNghiep ADD COLUMN BiAn INTEGER DEFAULT 0', () => {});
 
     // DanhMucCongViec table
     db.run(`

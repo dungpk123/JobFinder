@@ -114,11 +114,11 @@
   box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
-.cgrte.job-create-career-editor .cgrte-toolbar {
+.cgrte.job-create-career-editor .ck.ck-toolbar {
   background: linear-gradient(180deg, #f8fbff 0%, #f1f7ff 100%);
 }
 
-.cgrte.job-create-career-editor .cgrte-content {
+.cgrte.job-create-career-editor .ck.ck-editor__main > .ck-editor__editable {
   min-height: 160px;
 }
 

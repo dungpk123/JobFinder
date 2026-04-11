@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import CareerRichTextEditor from './components/CareerRichTextEditor';
 import {
   sanitizeCareerHtml,
@@ -29,20 +29,58 @@ const INITIAL_CONTENT = `
 <p>Nội dung nên có ví dụ cụ thể và lời khuyên có thể áp dụng ngay.</p>
 `;
 
+const INITIAL_FORM = {
+  title: '',
+  excerpt: '',
+  category: CATEGORY_OPTIONS[0],
+  tags: '',
+  coverImage: '',
+  status: STATUS_OPTIONS[0].value,
+  content: INITIAL_CONTENT
+};
+
+const normalizeTagsForInput = (value) => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => String(item || '').trim())
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  const asText = String(value || '').trim();
+  if (!asText) return '';
+
+  try {
+    const parsed = JSON.parse(asText);
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map((item) => String(item || '').trim())
+        .filter(Boolean)
+        .join(', ');
+    }
+  } catch {
+    // Keep raw string fallback for legacy formats.
+  }
+
+  return asText;
+};
+
 function CareerGuideManage() {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [form, setForm] = useState({
-    title: '',
-    excerpt: '',
-    category: CATEGORY_OPTIONS[0],
-    tags: '',
-    coverImage: '',
-    status: STATUS_OPTIONS[0].value,
-    content: INITIAL_CONTENT
-  });
+  const editingPostId = useMemo(() => {
+    const params = new URLSearchParams(location.search || '');
+    const parsed = Number(params.get('postId') || 0);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }, [location.search]);
+
+  const isEditMode = Boolean(editingPostId);
+
+  const [form, setForm] = useState(INITIAL_FORM);
 
   const [submitting, setSubmitting] = useState(false);
+  const [loadingExistingPost, setLoadingExistingPost] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
   const sanitizedContent = useMemo(
@@ -72,6 +110,67 @@ function CareerGuideManage() {
     }));
   };
 
+  useEffect(() => {
+    if (!isEditMode) {
+      setForm(INITIAL_FORM);
+      setMessage({ type: '', text: '' });
+      setLoadingExistingPost(false);
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setMessage({ type: 'error', text: 'Vui lòng đăng nhập lại để chỉnh sửa bài viết' });
+      return;
+    }
+
+    let active = true;
+
+    const loadPostDetail = async () => {
+      try {
+        setLoadingExistingPost(true);
+        setMessage({ type: '', text: '' });
+
+        const response = await fetch(`/api/career-guide/${editingPostId}`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+
+        const data = await response.json().catch(() => null);
+        if (!active) return;
+
+        if (!response.ok || !data?.success || !data?.post) {
+          throw new Error(data?.error || 'Không tải được bài viết để chỉnh sửa');
+        }
+
+        const post = data.post;
+        setForm({
+          title: String(post.title || ''),
+          excerpt: String(post.excerpt || ''),
+          category: String(post.category || CATEGORY_OPTIONS[0]),
+          tags: normalizeTagsForInput(post.tags),
+          coverImage: String(post.coverImage || ''),
+          status: String(post.status || STATUS_OPTIONS[0].value),
+          content: String(post.content || INITIAL_CONTENT)
+        });
+      } catch (error) {
+        if (!active) return;
+        setMessage({ type: 'error', text: error?.message || 'Không tải được bài viết để chỉnh sửa' });
+      } finally {
+        if (active) {
+          setLoadingExistingPost(false);
+        }
+      }
+    };
+
+    loadPostDetail();
+
+    return () => {
+      active = false;
+    };
+  }, [editingPostId, isEditMode]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -85,8 +184,11 @@ function CareerGuideManage() {
       setMessage({ type: '', text: '' });
       
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/career-guide', {
-        method: 'POST',
+      const endpoint = isEditMode
+        ? `/api/career-guide/${editingPostId}`
+        : '/api/career-guide';
+      const response = await fetch(endpoint, {
+        method: isEditMode ? 'PATCH' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
@@ -106,26 +208,32 @@ function CareerGuideManage() {
       const data = await response.json();
 
       if (data.success) {
-        setMessage({ type: 'success', text: 'Đăng bài thành công!' });
-        setForm({
-          title: '',
-          excerpt: '',
-          category: CATEGORY_OPTIONS[0],
-          tags: '',
-          coverImage: '',
-          status: STATUS_OPTIONS[0].value,
-          content: INITIAL_CONTENT
+        const targetPostId = Number(data.postId || data.post?.id || editingPostId || 0);
+        setMessage({
+          type: 'success',
+          text: isEditMode ? 'Cập nhật bài viết thành công!' : 'Đăng bài thành công!'
         });
 
+        if (!isEditMode) {
+          setForm(INITIAL_FORM);
+        }
+
         setTimeout(() => {
-          navigate(`/career-guide/${data.postId}`);
-        }, 1200);
+          if (targetPostId > 0) {
+            navigate(`/career-guide/${targetPostId}`);
+          } else {
+            navigate('/career-guide/my-posts');
+          }
+        }, 900);
       } else {
-        setMessage({ type: 'error', text: data.error || 'Không thể đăng bài' });
+        setMessage({
+          type: 'error',
+          text: data.error || (isEditMode ? 'Không thể cập nhật bài viết' : 'Không thể đăng bài')
+        });
       }
     } catch (err) {
       console.error('Error creating post:', err);
-      setMessage({ type: 'error', text: 'Lỗi khi đăng bài viết' });
+      setMessage({ type: 'error', text: isEditMode ? 'Lỗi khi cập nhật bài viết' : 'Lỗi khi đăng bài viết' });
     } finally {
       setSubmitting(false);
     }
@@ -136,17 +244,35 @@ function CareerGuideManage() {
       <div className="cgm-shell">
         <div className="cgm-header">
           <span className="cgm-header-badge">Career Guide Studio</span>
+          <div className="cgm-header-actions">
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm"
+              onClick={() => navigate('/career-guide/my-posts')}
+            >
+              <i className="bi bi-journal-text me-1" aria-hidden="true"></i>
+              Bài đã đăng
+            </button>
+          </div>
           <h1>
             <i className="bi bi-pencil-square" aria-hidden="true"></i>
-            Tạo bài viết mới
+            {isEditMode ? 'Chỉnh sửa bài viết' : 'Tạo bài viết mới'}
           </h1>
-          <p>Soạn bài với trình editor trực quan, thêm metadata rõ ràng và xem trước trước khi đăng.</p>
+          <p>
+            {isEditMode
+              ? 'Cập nhật nội dung bài viết và lưu thay đổi ngay khi bạn hoàn tất.'
+              : 'Soạn bài với trình editor trực quan, thêm metadata rõ ràng và xem trước trước khi đăng.'}
+          </p>
         </div>
 
         {message.text && (
           <div className={`alert alert-${message.type === 'success' ? 'success' : 'danger'} cgm-alert`}>
             {message.text}
           </div>
+        )}
+
+        {loadingExistingPost && (
+          <div className="alert alert-info cgm-alert mb-3">Đang tải dữ liệu bài viết...</div>
         )}
 
         <form onSubmit={handleSubmit} className="cgm-layout">
@@ -160,7 +286,7 @@ function CareerGuideManage() {
                 placeholder="Ví dụ: 5 cách chuẩn bị phỏng vấn cho vị trí Data Analyst"
                 value={form.title}
                 onChange={(event) => updateForm('title', event.target.value)}
-                disabled={submitting}
+                disabled={submitting || loadingExistingPost}
                 maxLength={200}
               />
               <div className="cgm-hint-row">
@@ -177,7 +303,7 @@ function CareerGuideManage() {
                 placeholder="Tóm tắt ngắn 1-2 câu để hiển thị ở danh sách bài viết..."
                 value={form.excerpt}
                 onChange={(event) => updateForm('excerpt', event.target.value)}
-                disabled={submitting}
+                disabled={submitting || loadingExistingPost}
                 maxLength={240}
               />
               <small>{form.excerpt.length}/240 ký tự</small>
@@ -235,7 +361,7 @@ function CareerGuideManage() {
                 className="form-select"
                 value={form.category}
                 onChange={(event) => updateForm('category', event.target.value)}
-                disabled={submitting}
+                disabled={submitting || loadingExistingPost}
               >
                 {CATEGORY_OPTIONS.map((option) => (
                   <option key={option} value={option}>{option}</option>
@@ -252,7 +378,7 @@ function CareerGuideManage() {
                 placeholder="Ví dụ: CV, phỏng vấn, thực tập"
                 value={form.tags}
                 onChange={(event) => updateForm('tags', event.target.value)}
-                disabled={submitting}
+                disabled={submitting || loadingExistingPost}
               />
               {tagList.length > 0 && (
                 <div className="cgm-tag-preview">
@@ -272,7 +398,7 @@ function CareerGuideManage() {
                 placeholder="https://..."
                 value={form.coverImage}
                 onChange={(event) => updateForm('coverImage', event.target.value)}
-                disabled={submitting}
+                disabled={submitting || loadingExistingPost}
               />
             </div>
 
@@ -283,7 +409,7 @@ function CareerGuideManage() {
                 className="form-select"
                 value={form.status}
                 onChange={(event) => updateForm('status', event.target.value)}
-                disabled={submitting}
+                disabled={submitting || loadingExistingPost}
               >
                 {STATUS_OPTIONS.map((status) => (
                   <option key={status.value} value={status.value}>{status.label}</option>
@@ -305,12 +431,12 @@ function CareerGuideManage() {
               <button
                 type="button"
                 className="btn btn-light"
-                onClick={() => navigate('/career-guide')}
-                disabled={submitting}
+                onClick={() => navigate(isEditMode ? '/career-guide/my-posts' : '/career-guide')}
+                disabled={submitting || loadingExistingPost}
               >
                 Hủy
               </button>
-              <button type="submit" className="btn btn-primary" disabled={submitting}>
+              <button type="submit" className="btn btn-primary" disabled={submitting || loadingExistingPost}>
                 {submitting ? (
                   <>
                     <span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>
@@ -319,7 +445,7 @@ function CareerGuideManage() {
                 ) : (
                   <>
                     <i className="bi bi-send me-2" aria-hidden="true"></i>
-                    Đăng bài viết
+                    {isEditMode ? 'Lưu thay đổi' : 'Đăng bài viết'}
                   </>
                 )}
               </button>

@@ -40,6 +40,24 @@
   background: #ffffff;
 }
 
+.cgm-header-actions {
+  margin-top: 10px;
+}
+
+.cgm-header-actions .btn {
+  border-radius: 999px;
+  font-weight: 700;
+  border-color: #c7ddf0;
+  color: #2b5f88;
+  background: #ffffff;
+}
+
+.cgm-header-actions .btn:hover {
+  border-color: #93c2e6;
+  color: #184e78;
+  background: #f4fbff;
+}
+
 .cgm-header h1 {
   margin: 10px 0 0;
   display: flex;

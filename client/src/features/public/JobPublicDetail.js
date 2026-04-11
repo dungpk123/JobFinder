@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useNotification } from '../../components/NotificationProvider';
+import { sanitizeCareerHtml } from '../career-guide/richTextUtils';
 
 const formatCurrency = (value) => {
     if (value === null || value === undefined) return null;
@@ -48,12 +49,15 @@ const normalizeWebsiteUrl = (value) => {
     return `https://${raw}`;
 };
 
-const RichBlock = ({ html }) => (
-    <div
-        className="job-detail-rich-block"
-        dangerouslySetInnerHTML={{ __html: html || '<em>Chưa cập nhật</em>' }}
-    />
-);
+const RichBlock = ({ html }) => {
+    const safeHtml = sanitizeCareerHtml(html || '');
+    return (
+        <div
+            className="job-detail-rich-block"
+            dangerouslySetInnerHTML={{ __html: safeHtml || '<em>Chưa cập nhật</em>' }}
+        />
+    );
+};
 
 const buildMapUrl = (query) => {
     if (!query) return '';

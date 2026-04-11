@@ -70,6 +70,88 @@ const toInt = (v, def) => {
 
 const isMysql = /^mysql:\/\//i.test(process.env.DATABASE_URL || '');
 
+let ensureAdminAuditTablePromise = null;
+const ensureAdminAuditTable = async () => {
+  if (ensureAdminAuditTablePromise) return ensureAdminAuditTablePromise;
+
+  ensureAdminAuditTablePromise = (async () => {
+    if (isMysql) {
+      await dbRun(
+        `CREATE TABLE IF NOT EXISTS NhatKyQuanTri (
+          MaNhatKy INT AUTO_INCREMENT PRIMARY KEY,
+          MaQuanTri INT NULL,
+          HanhDong VARCHAR(255) NULL,
+          DoiTuong VARCHAR(255) NULL,
+          MaDoiTuong INT NULL,
+          GhiChu LONGTEXT NULL,
+          NgayThucHien DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          KEY IDX_NhatKyQuanTri_MaQuanTri (MaQuanTri),
+          CONSTRAINT FK_NhatKyQuanTri_NguoiDung
+            FOREIGN KEY (MaQuanTri) REFERENCES NguoiDung(MaNguoiDung)
+            ON DELETE SET NULL ON UPDATE CASCADE
+        )`
+      );
+      return;
+    }
+
+    await dbRun(
+      `CREATE TABLE IF NOT EXISTS NhatKyQuanTri (
+        MaNhatKy INTEGER PRIMARY KEY AUTOINCREMENT,
+        MaQuanTri INTEGER NULL,
+        HanhDong TEXT,
+        DoiTuong TEXT,
+        MaDoiTuong INTEGER NULL,
+        GhiChu TEXT,
+        NgayThucHien TEXT DEFAULT (datetime('now', 'localtime')),
+        FOREIGN KEY (MaQuanTri) REFERENCES NguoiDung(MaNguoiDung) ON DELETE SET NULL
+      )`
+    );
+  })();
+
+  try {
+    await ensureAdminAuditTablePromise;
+  } catch (err) {
+    ensureAdminAuditTablePromise = null;
+    throw err;
+  }
+};
+
+const normalizeAuditNote = (note) => {
+  if (note == null) return '';
+  if (typeof note === 'string') return note.trim();
+  try {
+    return JSON.stringify(note);
+  } catch {
+    return String(note);
+  }
+};
+
+const writeAdminAuditLog = async ({ adminId, action, object, objectId = null, note = '' }) => {
+  const actionText = String(action || '').trim();
+  const objectText = String(object || '').trim();
+  if (!actionText || !objectText) return;
+
+  await ensureAdminAuditTable();
+
+  const rawNote = normalizeAuditNote(note);
+  const auditNote = rawNote.length > 4000 ? `${rawNote.slice(0, 3997)}...` : rawNote;
+  const normalizedObjectId = Number.isFinite(Number(objectId)) ? Number(objectId) : null;
+
+  await dbRun(
+    `INSERT INTO NhatKyQuanTri (MaQuanTri, HanhDong, DoiTuong, MaDoiTuong, GhiChu, NgayThucHien)
+     VALUES (?, ?, ?, ?, ?, datetime('now', 'localtime'))`,
+    [adminId || null, actionText, objectText, normalizedObjectId, auditNote || null]
+  );
+};
+
+const logAdminAction = async (payload) => {
+  try {
+    await writeAdminAuditLog(payload);
+  } catch (err) {
+    console.warn('[admin] Failed to write audit log:', err?.message || err);
+  }
+};
+
 let ensureNguoiDungNgayXoaColumnPromise = null;
 const ensureNguoiDungNgayXoaColumn = async () => {
   if (ensureNguoiDungNgayXoaColumnPromise) return ensureNguoiDungNgayXoaColumnPromise;
@@ -297,6 +379,102 @@ router.get('/overview', async (req, res) => {
   return res.json({ success: true, counts });
 });
 
+router.get('/audit-logs', async (req, res) => {
+  try {
+    await ensureAdminAuditTable();
+
+    const limit = Math.min(Math.max(toInt(req.query.limit, 30), 1), 200);
+    const offset = Math.max(toInt(req.query.offset, 0), 0);
+    const adminId = req.query.adminId != null ? toInt(req.query.adminId, NaN) : NaN;
+    const action = String(req.query.action || '').trim();
+    const object = String(req.query.object || '').trim();
+    const keyword = String(req.query.keyword || '').trim().toLowerCase();
+    const fromDate = String(req.query.fromDate || '').trim();
+    const toDate = String(req.query.toDate || '').trim();
+
+    const whereParts = [];
+    const params = [];
+
+    if (Number.isFinite(adminId)) {
+      whereParts.push('nk.MaQuanTri = ?');
+      params.push(adminId);
+    }
+
+    if (action) {
+      whereParts.push('lower(IFNULL(nk.HanhDong, "")) = ?');
+      params.push(action.toLowerCase());
+    }
+
+    if (object) {
+      whereParts.push('lower(IFNULL(nk.DoiTuong, "")) = ?');
+      params.push(object.toLowerCase());
+    }
+
+    if (fromDate) {
+      whereParts.push('nk.NgayThucHien >= ?');
+      params.push(`${fromDate} 00:00:00`);
+    }
+
+    if (toDate) {
+      whereParts.push('nk.NgayThucHien <= ?');
+      params.push(`${toDate} 23:59:59`);
+    }
+
+    if (keyword) {
+      const like = `%${keyword}%`;
+      whereParts.push(`(
+        lower(IFNULL(nk.HanhDong, "")) LIKE ?
+        OR lower(IFNULL(nk.DoiTuong, "")) LIKE ?
+        OR lower(IFNULL(nk.GhiChu, "")) LIKE ?
+        OR lower(IFNULL(nd.HoTen, "")) LIKE ?
+        OR lower(IFNULL(nd.Email, "")) LIKE ?
+      )`);
+      params.push(like, like, like, like, like);
+    }
+
+    const whereSql = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
+
+    const rows = await dbAll(
+      `SELECT
+          nk.MaNhatKy,
+          nk.MaQuanTri,
+          nd.HoTen AS TenQuanTri,
+          nd.Email AS EmailQuanTri,
+          nk.HanhDong,
+          nk.DoiTuong,
+          nk.MaDoiTuong,
+          nk.GhiChu,
+          nk.NgayThucHien
+       FROM NhatKyQuanTri nk
+       LEFT JOIN NguoiDung nd ON nd.MaNguoiDung = nk.MaQuanTri
+       ${whereSql}
+       ORDER BY datetime(nk.NgayThucHien) DESC, nk.MaNhatKy DESC
+       LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+
+    const totalRow = await dbGet(
+      `SELECT COUNT(*) AS c
+       FROM NhatKyQuanTri nk
+       LEFT JOIN NguoiDung nd ON nd.MaNguoiDung = nk.MaQuanTri
+       ${whereSql}`,
+      params
+    );
+
+    return res.json({
+      success: true,
+      logs: rows,
+      pagination: {
+        limit,
+        offset,
+        total: Number(totalRow?.c || 0)
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message || 'Server error' });
+  }
+});
+
 router.get('/users', async (req, res) => {
   try {
     await ensureNguoiDungNgayXoaColumn();
@@ -475,6 +653,17 @@ router.patch('/users/:id', async (req, res) => {
 
     await dbRun(`UPDATE NguoiDung SET ${fields.join(', ')} WHERE MaNguoiDung = ?`, [...params, id]);
 
+    await logAdminAction({
+      adminId: req.user?.id,
+      action: 'Cập nhật người dùng',
+      object: 'NguoiDung',
+      objectId: id,
+      note: {
+        role: role ?? undefined,
+        status: status ?? undefined
+      }
+    });
+
     const user = await getUserById(id);
 
     return res.json({ success: true, user });
@@ -513,6 +702,16 @@ router.delete('/users/:id', async (req, res) => {
       [id]
     );
 
+    await logAdminAction({
+      adminId: req.user?.id,
+      action: 'Xóa mềm người dùng',
+      object: 'NguoiDung',
+      objectId: id,
+      note: {
+        email: target.Email || ''
+      }
+    });
+
     const user = await getUserById(id);
     return res.json({ success: true, user });
   } catch (err) {
@@ -545,6 +744,13 @@ router.post('/users/:id/restore', async (req, res) => {
        WHERE MaNguoiDung = ?`,
       [id]
     );
+
+    await logAdminAction({
+      adminId: req.user?.id,
+      action: 'Khôi phục người dùng',
+      object: 'NguoiDung',
+      objectId: id
+    });
 
     const user = await getUserById(id);
     return res.json({ success: true, user });
@@ -599,6 +805,16 @@ router.patch('/jobs/:id', async (req, res) => {
       [status, id]
     );
 
+    await logAdminAction({
+      adminId: req.user?.id,
+      action: 'Cập nhật trạng thái tin tuyển dụng',
+      object: 'TinTuyenDung',
+      objectId: id,
+      note: {
+        status
+      }
+    });
+
     const job = await dbGet(
       `SELECT MaTin, TieuDe, ThanhPho, TrangThai, NgayDang, MaNhaTuyenDung
        FROM TinTuyenDung
@@ -621,6 +837,14 @@ router.delete('/jobs/:id', requireSuperAdmin, async (req, res) => {
     if (!existing) return res.status(404).json({ success: false, error: 'Không tìm thấy tin tuyển dụng' });
 
     await dbRun('DELETE FROM TinTuyenDung WHERE MaTin = ?', [id]);
+
+    await logAdminAction({
+      adminId: req.user?.id,
+      action: 'Xóa tin tuyển dụng',
+      object: 'TinTuyenDung',
+      objectId: id
+    });
+
     return res.json({ success: true });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || 'Server error' });
@@ -677,6 +901,17 @@ router.patch('/companies/:id', requireSuperAdmin, async (req, res) => {
       );
     }
 
+    await logAdminAction({
+      adminId: req.user?.id,
+      action: 'Cập nhật trạng thái công ty',
+      object: 'CongTy',
+      objectId: id,
+      note: {
+        status,
+        representativeUserId: company.NguoiDaiDien || null
+      }
+    });
+
     const updated = await getCompanyWithOwner(id);
     return res.json({ success: true, company: updated });
   } catch (err) {
@@ -693,6 +928,14 @@ router.delete('/companies/:id', requireSuperAdmin, async (req, res) => {
     if (!company) return res.status(404).json({ success: false, error: 'Không tìm thấy công ty' });
 
     await dbRun('DELETE FROM CongTy WHERE MaCongTy = ?', [id]);
+
+    await logAdminAction({
+      adminId: req.user?.id,
+      action: 'Xóa công ty',
+      object: 'CongTy',
+      objectId: id
+    });
+
     return res.json({ success: true });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || 'Server error' });
@@ -740,6 +983,16 @@ router.patch('/reports/:id', async (req, res) => {
     if (!existing) return res.status(404).json({ success: false, error: 'Không tìm thấy báo cáo' });
 
     await dbRun('UPDATE BaoCao SET TrangThai = ? WHERE MaBaoCao = ?', [status, id]);
+
+    await logAdminAction({
+      adminId: req.user?.id,
+      action: 'Cập nhật trạng thái báo cáo',
+      object: 'BaoCao',
+      objectId: id,
+      note: {
+        status
+      }
+    });
 
     const report = await dbGet(
       `SELECT MaBaoCao, MaNguoiBaoCao, LoaiDoiTuong, MaDoiTuong, LyDo, ChiTiet, TrangThai, NgayBaoCao
@@ -905,6 +1158,17 @@ router.post('/templates', async (req, res) => {
       [slug]
     );
 
+    await logAdminAction({
+      adminId: req.user?.id,
+      action: 'Tạo template CV',
+      object: 'CvTemplate',
+      objectId: template?.MaTemplateCV || null,
+      note: {
+        name,
+        slug
+      }
+    });
+
     return res.status(201).json({ success: true, template });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || 'Server error' });
@@ -993,6 +1257,16 @@ router.patch('/templates/:id', async (req, res) => {
       [id]
     );
 
+    await logAdminAction({
+      adminId: req.user?.id,
+      action: 'Cập nhật template CV',
+      object: 'CvTemplate',
+      objectId: id,
+      note: {
+        updatedFields: fields.filter((field) => !field.includes('NgayCapNhat') && !field.includes('NguoiCapNhat'))
+      }
+    });
+
     return res.json({ success: true, template });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || 'Server error' });
@@ -1010,6 +1284,14 @@ router.delete('/templates/:id', async (req, res) => {
     if (!existing) return res.status(404).json({ success: false, error: 'Không tìm thấy template' });
 
     await dbRun('DELETE FROM CvTemplate WHERE MaTemplateCV = ?', [id]);
+
+    await logAdminAction({
+      adminId: req.user?.id,
+      action: 'Xóa template CV',
+      object: 'CvTemplate',
+      objectId: id
+    });
+
     return res.json({ success: true });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || 'Server error' });

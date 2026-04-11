@@ -1,0 +1,205 @@
+.career-guide-my-posts-page {
+  min-height: 100vh;
+  padding: 94px 0 52px;
+  background:
+    radial-gradient(circle at 12% 9%, rgba(113, 190, 239, 0.22), transparent 34%),
+    radial-gradient(circle at 88% 12%, rgba(57, 154, 220, 0.16), transparent 36%),
+    linear-gradient(180deg, #f5fafe 0%, #ffffff 44%, #f7fbff 100%);
+}
+
+.cgmp-shell {
+  width: min(1180px, 92vw);
+  margin: 0 auto;
+}
+
+.cgmp-header {
+  border: 1px solid #d6e5f2;
+  border-radius: 20px;
+  background: linear-gradient(138deg, #f8fcff 0%, #eef6ff 100%);
+  box-shadow: 0 16px 34px rgba(17, 79, 122, 0.1);
+  padding: clamp(20px, 2.7vw, 28px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.cgmp-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #b9d7ee;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #175e96;
+  padding: 6px 11px;
+  font-size: 0.74rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+
+.cgmp-header h1 {
+  margin: 10px 0 0;
+  color: #0f2d48;
+  font-size: clamp(1.55rem, 2.4vw, 2.1rem);
+  line-height: 1.2;
+  font-weight: 800;
+}
+
+.cgmp-header p {
+  margin: 9px 0 0;
+  color: #567390;
+  line-height: 1.6;
+}
+
+.cgmp-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cgmp-header-actions .btn {
+  border-radius: 11px;
+  height: 40px;
+  font-weight: 700;
+}
+
+.cgmp-alert {
+  margin: 14px 0;
+  border-radius: 12px;
+}
+
+.cgmp-card {
+  margin-top: 14px;
+  border: 1px solid #d6e5f2;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 16px 34px rgba(17, 79, 122, 0.08);
+  padding: 12px;
+}
+
+.cgmp-loading {
+  min-height: 320px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cgmp-empty {
+  min-height: 320px;
+  display: grid;
+  place-items: center;
+  gap: 8px;
+  text-align: center;
+  color: #5a7591;
+  padding: 16px;
+}
+
+.cgmp-empty i {
+  font-size: 2rem;
+  color: #7ca4c6;
+}
+
+.cgmp-empty h2 {
+  margin: 0;
+  color: #12314d;
+  font-size: 1.24rem;
+  font-weight: 800;
+}
+
+.cgmp-empty p {
+  margin: 0;
+}
+
+.cgmp-table thead th {
+  font-size: 0.8rem;
+  color: #4f6d89;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom-color: #dce9f5;
+}
+
+.cgmp-table tbody tr {
+  border-bottom-color: #ecf3fa;
+}
+
+.cgmp-title {
+  color: #14324d;
+  font-weight: 700;
+}
+
+.cgmp-excerpt {
+  margin-top: 4px;
+  color: #63809b;
+  font-size: 0.86rem;
+  line-height: 1.45;
+}
+
+.cgmp-status {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  border: 1px solid transparent;
+}
+
+.cgmp-status-published {
+  color: #1f7f48;
+  background: #e8f8ef;
+  border-color: #bfe9cf;
+}
+
+.cgmp-status-draft {
+  color: #8c6500;
+  background: #fff4db;
+  border-color: #f3deac;
+}
+
+.cgmp-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cgmp-icon-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cgmp-pagination {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  color: #4f6a84;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+@media (max-width: 860px) {
+  .career-guide-my-posts-page {
+    padding: 82px 0 42px;
+  }
+
+  .cgmp-shell {
+    width: min(1180px, 94vw);
+  }
+
+  .cgmp-card,
+  .cgmp-header {
+    border-radius: 16px;
+  }
+
+  .cgmp-pagination {
+    justify-content: center;
+  }
+}

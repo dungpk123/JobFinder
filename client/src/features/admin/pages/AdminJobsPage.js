@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { BriefcaseBusiness } from 'lucide-react';
+import { BriefcaseBusiness, Trash2 } from 'lucide-react';
+
+const getStatusBadgeClass = (status) => {
+    const normalized = String(status || '').trim();
+
+    if (normalized === 'Đã đăng') return 'bg-success-subtle text-success border border-success-subtle';
+    if (normalized === 'Đã đóng') return 'bg-warning-subtle text-warning-emphasis border border-warning-subtle';
+    if (normalized === 'Lưu trữ') return 'bg-dark-subtle text-secondary border border-secondary-subtle';
+    return 'bg-secondary-subtle text-secondary border border-secondary-subtle';
+};
 
 const AdminJobRow = ({ job, onDelete, canDelete, requestConfirm }) => {
     const status = job.TrangThai || 'Nháp';
@@ -32,12 +41,19 @@ const AdminJobRow = ({ job, onDelete, canDelete, requestConfirm }) => {
             <td>{job.TenCongTy || '-'}</td>
             <td>{job.ThanhPho || '-'}</td>
             <td>
-                <span className="badge bg-secondary-subtle text-secondary">{status}</span>
+                <span className={`badge ${getStatusBadgeClass(status)}`}>{status}</span>
             </td>
             <td>
                 <div className="d-flex flex-wrap gap-2">
-                    <button className="btn btn-sm btn-outline-danger" disabled={!canDelete || deleting} onClick={handleDelete}>
-                        Xóa
+                    <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger admin-action-icon-btn"
+                        disabled={!canDelete || deleting}
+                        onClick={handleDelete}
+                        title="Xóa tin tuyển dụng"
+                        aria-label="Xóa tin tuyển dụng"
+                    >
+                        <Trash2 size={14} />
                     </button>
                 </div>
                 {err ? <div className="text-danger small mt-1">{err}</div> : null}

@@ -9,6 +9,7 @@ import {
     ChevronDown,
     ClipboardList,
     FileStack,
+    History,
     House,
     LayoutDashboard,
     LogOut,
@@ -24,6 +25,7 @@ import AdminOverviewPage from './pages/AdminOverviewPage';
 import AdminNotificationsPage from './pages/AdminNotificationsPage';
 import AdminProfilePage from './pages/AdminProfilePage';
 import AdminReportsPage from './pages/AdminReportsPage';
+import AdminAuditLogsPage from './pages/AdminAuditLogsPage';
 import AdminTemplatesPage from './pages/AdminTemplatesPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import './AdminDashboard.css';
@@ -105,7 +107,8 @@ const menuItems = [
             { key: 'templates-create', label: 'Tạo template mới', to: '/admin/templates/create' }
         ]
     },
-    { key: 'reports', icon: ClipboardList, label: 'Báo cáo', to: '/admin/reports' }
+    { key: 'reports', icon: ClipboardList, label: 'Báo cáo', to: '/admin/reports' },
+    { key: 'audit-logs', icon: History, label: 'Nhật ký quản trị', to: '/admin/audit-logs' }
 ];
 
 const SIDEBAR_LOGO_URL = 'https://i.postimg.cc/nhWfcVvh/logo.png';
@@ -118,6 +121,7 @@ const resolvePageTitle = (pathname) => {
     if (pathname.startsWith('/admin/companies')) return 'Quản lý công ty';
     if (pathname.startsWith('/admin/templates')) return 'Quản lý template CV';
     if (pathname.startsWith('/admin/reports')) return 'Báo cáo';
+    if (pathname.startsWith('/admin/audit-logs')) return 'Nhật ký quản trị';
     return 'Dashboard';
 };
 
@@ -767,6 +771,15 @@ const AdminDashboard = () => {
                             }
                         />
                         <Route
+                            path="audit-logs"
+                            element={
+                                <AdminAuditLogsPage
+                                    API_BASE={API_BASE}
+                                    authHeaders={authHeaders}
+                                />
+                            }
+                        />
+                        <Route
                             path="profile"
                             element={
                                 <AdminProfilePage
@@ -776,6 +789,7 @@ const AdminDashboard = () => {
                                 />
                             }
                         />
+                        <Route path="notifications" element={<AdminNotificationsPage />} />
                         <Route path="*" element={<Navigate to="dashboard" replace />} />
                     </Routes>
                 </div>
@@ -785,7 +799,6 @@ const AdminDashboard = () => {
                 <div className="admin-confirm-backdrop" role="dialog" aria-modal="true">
                     <div className="admin-confirm-dialog card border-0 shadow-sm">
                         <div className="card-body">
-                        <Route path="notifications" element={<AdminNotificationsPage />} />
                             <h5 className="mb-3">{confirmState.title}</h5>
                             <div className="mb-4">{confirmState.message}</div>
                             <div className="d-flex justify-content-end gap-2">

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Eye, PencilLine, Trash2 } from 'lucide-react';
 import './AdminTemplateManager.css';
 
 const EMPTY_TEMPLATE_FORM = {
@@ -494,27 +495,33 @@ const AdminTemplateManager = ({ API_BASE, authHeaders, requestConfirm, mode = 'l
                                                     <div className="d-flex flex-wrap gap-2">
                                                         <button
                                                             type="button"
-                                                            className="btn btn-sm btn-outline-primary"
+                                                            className="btn btn-sm btn-outline-primary admin-action-icon-btn"
                                                             disabled={workingTemplateId === template.MaTemplateCV}
                                                             onClick={() => goToCreatePage(template.MaTemplateCV)}
+                                                            title="Sửa template"
+                                                            aria-label="Sửa template"
                                                         >
-                                                            Sửa
+                                                            <PencilLine size={14} />
                                                         </button>
                                                         <button
                                                             type="button"
-                                                            className="btn btn-sm btn-outline-info"
+                                                            className="btn btn-sm btn-outline-info admin-action-icon-btn"
                                                             disabled={workingTemplateId === template.MaTemplateCV}
                                                             onClick={() => handleOpenPreview(template.MaTemplateCV)}
+                                                            title="Xem template"
+                                                            aria-label="Xem template"
                                                         >
-                                                            Preview
+                                                            <Eye size={14} />
                                                         </button>
                                                         <button
                                                             type="button"
-                                                            className="btn btn-sm btn-outline-danger"
+                                                            className="btn btn-sm btn-outline-danger admin-action-icon-btn"
                                                             disabled={workingTemplateId === template.MaTemplateCV}
                                                             onClick={() => handleDelete(template)}
+                                                            title="Xóa template"
+                                                            aria-label="Xóa template"
                                                         >
-                                                            Xóa
+                                                            <Trash2 size={14} />
                                                         </button>
                                                     </div>
                                                 </td>

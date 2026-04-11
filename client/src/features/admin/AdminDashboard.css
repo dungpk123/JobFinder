@@ -432,6 +432,16 @@
     z-index: 980;
 }
 
+.admin-action-icon-btn {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+}
+
 .admin-header-dropdown-item {
     width: 100%;
     border: 0;
@@ -811,6 +821,42 @@
     color: #1e293b;
     font-size: 0.9rem;
     vertical-align: middle;
+}
+
+.admin-audit-filter-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.65rem;
+    align-items: end;
+}
+
+.admin-audit-filter-grid .form-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.admin-audit-filter-actions {
+    display: inline-flex;
+    gap: 0.45rem;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+}
+
+.admin-audit-meta {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    color: #475569;
+    font-size: 0.82rem;
+}
+
+.admin-audit-note {
+    max-width: 420px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: #334155;
 }
 
 .admin-profile-shell {
@@ -1197,6 +1243,10 @@
     .admin-panels-grid {
         grid-template-columns: minmax(0, 1fr);
     }
+
+    .admin-audit-filter-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 @media (max-width: 991px) {
@@ -1259,5 +1309,9 @@
 
     .admin-hero-banner h1 {
         font-size: 1.33rem;
+    }
+
+    .admin-audit-filter-grid {
+        grid-template-columns: minmax(0, 1fr);
     }
 }

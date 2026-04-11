@@ -420,14 +420,24 @@ function CareerGuide() {
               </div>
 
               {user && canCreatePost ? (
-                <button
-                  type="button"
-                  className="cg-create-post-btn"
-                  onClick={() => navigate('/career-guide/create')}
-                >
-                  <i className="bi bi-plus-circle"></i>
-                  Viết bài mới
-                </button>
+                <div className="cg-author-actions">
+                  <button
+                    type="button"
+                    className="cg-create-post-btn"
+                    onClick={() => navigate('/career-guide/create')}
+                  >
+                    <i className="bi bi-plus-circle"></i>
+                    Viết bài mới
+                  </button>
+                  <button
+                    type="button"
+                    className="cg-manage-post-btn"
+                    onClick={() => navigate('/career-guide/my-posts')}
+                  >
+                    <i className="bi bi-journal-text"></i>
+                    Quản lý bài đã đăng
+                  </button>
+                </div>
               ) : user ? (
                 <div className="cg-sidebar-card cg-sidebar-auth">
                   <h3>Quyền của bạn</h3>

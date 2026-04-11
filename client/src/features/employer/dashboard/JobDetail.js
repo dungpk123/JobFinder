@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
+import { sanitizeCareerHtml } from '../../career-guide/richTextUtils';
 
 const formatCurrencyVnd = (value) => {
     if (value === null || value === undefined) return '';
@@ -42,7 +43,7 @@ const JobDetail = () => {
         <div
             className="border rounded p-3 bg-light"
             style={{ minHeight: 80 }}
-            dangerouslySetInnerHTML={{ __html: html || '<em>Chưa cập nhật</em>' }}
+            dangerouslySetInnerHTML={{ __html: sanitizeCareerHtml(html || '') || '<em>Chưa cập nhật</em>' }}
         />
     );
 

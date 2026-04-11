@@ -12,7 +12,7 @@ import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 
 if (API_BASE && typeof window !== 'undefined' && typeof window.fetch === 'function') {
   const nativeFetch = window.fetch.bind(window);
-  // Prefix relative API paths in production builds where CRA dev proxy is unavailable.
+  // Prefix relative API paths in production builds where CRA dev proxy is unavailable
   window.fetch = (input, init) => {
     if (typeof input === 'string' && input.startsWith('/') && !input.startsWith('//')) {
       return nativeFetch(`${API_BASE}${input}`, init);

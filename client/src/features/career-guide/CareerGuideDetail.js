@@ -86,7 +86,10 @@ function CareerGuideDetail() {
       
       if (data.success) {
         setCommentContent('');
-        fetchPostDetail(); // Reload comments
+        await fetchPostDetail(); // Reload comments
+        if (data.hidden) {
+          alert(data.message || 'Bình luận chứa từ ngữ không phù hợp nên đã được ẩn.');
+        }
       } else {
         alert(data.error || 'Không thể thêm bình luận');
       }
