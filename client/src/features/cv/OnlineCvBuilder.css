@@ -327,6 +327,10 @@
   justify-content: flex-end;
 }
 
+.cv-builder-pagination {
+  justify-content: flex-end;
+}
+
 .cv-gallery-pagination-summary {
   color: #0f172a;
   font-size: 0.85rem;
@@ -919,6 +923,10 @@
     justify-content: flex-start;
   }
 
+  .cv-builder-pagination {
+    justify-content: flex-start;
+  }
+
   .cv-gallery-search-wrap {
     width: min(100%, 290px);
     max-width: 100%;
@@ -1015,6 +1023,11 @@
   }
 
   .cv-gallery-pagination-wrap {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .cv-builder-pagination {
     width: 100%;
     justify-content: space-between;
   }

@@ -285,6 +285,7 @@ const ensureCvTemplateTable = async () => {
         Slug VARCHAR(191) NOT NULL UNIQUE,
         MoTa TEXT NULL,
         ThumbnailUrl TEXT NULL,
+        PhongCachCV VARCHAR(50) NULL,
         HtmlContent LONGTEXT NOT NULL,
         TrangThai TINYINT DEFAULT 1,
         NguoiTao INT NULL,
@@ -301,6 +302,7 @@ const ensureCvTemplateTable = async () => {
         Slug TEXT NOT NULL UNIQUE,
         MoTa TEXT,
         ThumbnailUrl TEXT,
+        PhongCachCV TEXT,
         HtmlContent TEXT NOT NULL,
         TrangThai INTEGER DEFAULT 1,
         NguoiTao INTEGER,
@@ -324,6 +326,18 @@ const ensureCvTemplateTable = async () => {
       if (Number(row?.c || 0) === 0) {
         await dbRun('ALTER TABLE CvTemplate ADD COLUMN ThumbnailUrl TEXT NULL');
       }
+
+      const styleRow = await dbGet(
+        `SELECT COUNT(*) AS c
+         FROM INFORMATION_SCHEMA.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'CvTemplate'
+           AND COLUMN_NAME = 'PhongCachCV'`
+      );
+
+      if (Number(styleRow?.c || 0) === 0) {
+        await dbRun('ALTER TABLE CvTemplate ADD COLUMN PhongCachCV VARCHAR(50) NULL');
+      }
       return;
     }
 
@@ -331,6 +345,11 @@ const ensureCvTemplateTable = async () => {
     const hasThumbnailUrl = columns.some((col) => String(col?.name || '').toLowerCase() === 'thumbnailurl');
     if (!hasThumbnailUrl) {
       await dbRun('ALTER TABLE CvTemplate ADD COLUMN ThumbnailUrl TEXT');
+    }
+
+    const hasTemplateStyle = columns.some((col) => String(col?.name || '').toLowerCase() === 'phongcachcv');
+    if (!hasTemplateStyle) {
+      await dbRun('ALTER TABLE CvTemplate ADD COLUMN PhongCachCV TEXT');
     }
   })();
 
@@ -431,6 +450,13 @@ const normalizeSlug = (value) => String(value || '')
   .replace(/\s+/g, '-')
   .replace(/-+/g, '-')
   .replace(/^-|-$/g, '');
+
+const TEMPLATE_STYLE_KEYS = new Set(['professional', 'creative', 'minimal', 'modern']);
+const normalizeTemplateStyle = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (!normalized) return 'professional';
+  return TEMPLATE_STYLE_KEYS.has(normalized) ? normalized : 'professional';
+};
 
 const mapUserRow = (row) => {
   if (!row) return null;
@@ -1529,6 +1555,7 @@ router.get('/templates', async (req, res) => {
           Slug,
           MoTa,
           ThumbnailUrl,
+          PhongCachCV,
           TrangThai,
           NgayTao,
           NgayCapNhat
@@ -1566,6 +1593,7 @@ router.get('/templates/:id', async (req, res) => {
           Slug,
           MoTa,
           ThumbnailUrl,
+          PhongCachCV,
           HtmlContent,
           TrangThai,
           NgayTao,
@@ -1626,6 +1654,7 @@ router.post('/templates', async (req, res) => {
     const slug = normalizeSlug(req.body?.slug || name);
     const description = String(req.body?.description || '').trim();
     const thumbnailUrl = String(req.body?.thumbnailUrl || req.body?.ThumbnailUrl || '').trim();
+    const style = normalizeTemplateStyle(req.body?.style ?? req.body?.PhongCachCV);
     const htmlContent = String(req.body?.htmlContent || '');
     const status = req.body?.status != null ? toInt(req.body.status, null) : 1;
 
@@ -1642,13 +1671,13 @@ router.post('/templates', async (req, res) => {
 
     await dbRun(
       `INSERT INTO CvTemplate (
-        TenTemplate, Slug, MoTa, ThumbnailUrl, HtmlContent, TrangThai, NguoiTao, NguoiCapNhat, NgayTao, NgayCapNhat
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime("now", "localtime"), datetime("now", "localtime"))`,
-      [name, slug, description || null, thumbnailUrl || null, htmlContent, status, req.user?.id || null, req.user?.id || null]
+        TenTemplate, Slug, MoTa, ThumbnailUrl, PhongCachCV, HtmlContent, TrangThai, NguoiTao, NguoiCapNhat, NgayTao, NgayCapNhat
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now", "localtime"), datetime("now", "localtime"))`,
+      [name, slug, description || null, thumbnailUrl || null, style, htmlContent, status, req.user?.id || null, req.user?.id || null]
     );
 
     const template = await dbGet(
-      `SELECT MaTemplateCV, TenTemplate, Slug, MoTa, ThumbnailUrl, HtmlContent, TrangThai, NgayTao, NgayCapNhat
+      `SELECT MaTemplateCV, TenTemplate, Slug, MoTa, ThumbnailUrl, PhongCachCV, HtmlContent, TrangThai, NgayTao, NgayCapNhat
        FROM CvTemplate
        WHERE lower(Slug) = ?`,
       [slug]
@@ -1713,6 +1742,11 @@ router.patch('/templates/:id', async (req, res) => {
       params.push(String(req.body.description || '').trim() || null);
     }
 
+    if (req.body?.style != null || req.body?.PhongCachCV != null) {
+      fields.push('PhongCachCV = ?');
+      params.push(normalizeTemplateStyle(req.body?.style ?? req.body?.PhongCachCV));
+    }
+
     if (req.body?.thumbnailUrl != null || req.body?.ThumbnailUrl != null) {
       const nextThumbnailUrl = String(req.body?.thumbnailUrl ?? req.body?.ThumbnailUrl ?? '').trim();
       if (nextThumbnailUrl && !isAbsoluteUrl(nextThumbnailUrl)) {
@@ -1747,7 +1781,7 @@ router.patch('/templates/:id', async (req, res) => {
     await dbRun(`UPDATE CvTemplate SET ${fields.join(', ')} WHERE MaTemplateCV = ?`, [...params, id]);
 
     const template = await dbGet(
-      `SELECT MaTemplateCV, TenTemplate, Slug, MoTa, ThumbnailUrl, HtmlContent, TrangThai, NgayTao, NgayCapNhat
+      `SELECT MaTemplateCV, TenTemplate, Slug, MoTa, ThumbnailUrl, PhongCachCV, HtmlContent, TrangThai, NgayTao, NgayCapNhat
        FROM CvTemplate
        WHERE MaTemplateCV = ?`,
       [id]

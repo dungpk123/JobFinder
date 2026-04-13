@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useNotification } from '../../components/NotificationProvider';
+import SmartPagination from '../../components/SmartPagination';
 import { API_BASE } from '../../config/apiBase';
 import './OnlineCvBuilder.css';
 
 const GRID_PAGE_SIZE = 12;
 const LIST_PAGE_SIZE = 10;
-const FETCH_BATCH_SIZE = 80;
 
 const CATEGORY_OPTIONS = [
   { key: 'all', label: 'Tất cả' },
@@ -22,6 +22,12 @@ const SORT_OPTIONS = [
   { key: 'used', label: 'Dùng nhiều nhất' }
 ];
 
+const TEMPLATE_STYLE_KEYS = new Set(['professional', 'creative', 'minimal', 'modern']);
+const normalizeStyleKey = (value) => {
+  const normalized = String(value || '').trim().toLowerCase();
+  return TEMPLATE_STYLE_KEYS.has(normalized) ? normalized : '';
+};
+
 const toSearchText = (value = '') => String(value)
   .toLowerCase()
   .normalize('NFD')
@@ -29,6 +35,11 @@ const toSearchText = (value = '') => String(value)
   .replace(/đ/g, 'd');
 
 const getCategoryKey = (template) => {
+  const explicitStyle = normalizeStyleKey(
+    template?.PhongCachCV || template?.phongCachCV || template?.style || template?.styleKey
+  );
+  if (explicitStyle) return explicitStyle;
+
   const haystack = toSearchText(`${template?.TenTemplate || ''} ${template?.Slug || ''} ${template?.MoTa || ''}`);
 
   if (/sang tao|creative|designer|art/.test(haystack)) return 'creative';
@@ -68,6 +79,7 @@ const normalizeTemplate = (template) => {
     createdAt,
     updatedAt,
     updatedMs: normalizedUpdatedMs,
+    styleKey: categoryKey,
     categoryKey,
     viewCount,
     useCount
@@ -77,79 +89,6 @@ const normalizeTemplate = (template) => {
 const formatCompactNumber = (value) => new Intl.NumberFormat('vi-VN', { notation: 'compact' }).format(safeNumber(value));
 
 const getCategoryLabel = (key) => CATEGORY_OPTIONS.find((item) => item.key === key)?.label || 'CV chuyên nghiệp';
-
-const buildPageItems = (currentPage, totalPages, siblingCount = 1) => {
-  const total = Math.max(1, Number(totalPages) || 1);
-  const current = Math.min(Math.max(1, Number(currentPage) || 1), total);
-
-  if (total <= 7) {
-    return Array.from({ length: total }, (_, index) => index + 1);
-  }
-
-  const start = Math.max(2, current - siblingCount);
-  const end = Math.min(total - 1, current + siblingCount);
-  const items = [1];
-
-  if (start > 2) items.push('ellipsis-left');
-  for (let page = start; page <= end; page += 1) items.push(page);
-  if (end < total - 1) items.push('ellipsis-right');
-  items.push(total);
-  return items;
-};
-
-const CompactPagination = ({ currentPage, totalPages, rangeLabel, onPageChange }) => {
-  const pages = buildPageItems(currentPage, totalPages);
-
-  return (
-    <div className="cv-gallery-pagination-wrap" aria-label="Pagination">
-      <span className="cv-gallery-pagination-summary">{rangeLabel}</span>
-
-      {totalPages > 1 ? (
-        <div className="cv-gallery-pagination-pages">
-          <button
-            type="button"
-            className="nav"
-            onClick={() => onPageChange(currentPage - 1)}
-            disabled={currentPage <= 1}
-            aria-label="Trang trước"
-          >
-            ‹
-          </button>
-
-          {pages.map((item) => {
-            if (item === 'ellipsis-left' || item === 'ellipsis-right') {
-              return <span key={item} className="ellipsis">…</span>;
-            }
-
-            const page = item;
-            return (
-              <button
-                type="button"
-                key={page}
-                className={page === currentPage ? 'active' : ''}
-                onClick={() => onPageChange(page)}
-                aria-current={page === currentPage ? 'page' : undefined}
-                aria-label={`Trang ${page}`}
-              >
-                {page}
-              </button>
-            );
-          })}
-
-          <button
-            type="button"
-            className="nav"
-            onClick={() => onPageChange(currentPage + 1)}
-            disabled={currentPage >= totalPages}
-            aria-label="Trang sau"
-          >
-            ›
-          </button>
-        </div>
-      ) : null}
-    </div>
-  );
-};
 
 const CVTemplateCard = ({ template, onOpenActions }) => {
   const handleActivate = () => onOpenActions(template);
@@ -396,45 +335,96 @@ const OnlineCvBuilder = () => {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [sortBy, setSortBy] = useState('popular');
   const [viewMode, setViewMode] = useState('grid');
-  const [currentPage, setCurrentPage] = useState(1);
   const [activeGridTemplate, setActiveGridTemplate] = useState(null);
+
+  const [totalTemplates, setTotalTemplates] = useState(0);
+  const [categoryCounts, setCategoryCounts] = useState({
+    all: 0,
+    professional: 0,
+    creative: 0,
+    minimal: 0,
+    modern: 0
+  });
+  const [rangeSize, setRangeSize] = useState(GRID_PAGE_SIZE);
+  const [rangeFrom, setRangeFrom] = useState(1);
+  const [rangeTo, setRangeTo] = useState(GRID_PAGE_SIZE);
+
+  useEffect(() => {
+    const nextSize = viewMode === 'grid' ? GRID_PAGE_SIZE : LIST_PAGE_SIZE;
+    setRangeSize(nextSize);
+    setRangeFrom(1);
+    setRangeTo(nextSize);
+  }, [viewMode]);
 
   useEffect(() => {
     let active = true;
+    const controller = new AbortController();
 
     const loadTemplates = async () => {
       setLoading(true);
       setError('');
 
       try {
-        let offset = 0;
-        let total = Number.POSITIVE_INFINITY;
-        let allRows = [];
+        const requestedFrom = Math.max(1, safeNumber(rangeFrom) || 1);
+        const fallbackTo = requestedFrom + Math.max(1, safeNumber(rangeSize) || 1) - 1;
+        const requestedTo = Math.max(requestedFrom, safeNumber(rangeTo) || fallbackTo);
 
-        while (offset < total) {
-          const res = await fetch(`${API_BASE}/api/cvs/templates?limit=${FETCH_BATCH_SIZE}&offset=${offset}`);
-          const data = await res.json().catch(() => null);
-          if (!res.ok || !data?.success) {
-            throw new Error(data?.error || 'Không tải được danh sách template');
-          }
+        const query = new URLSearchParams({
+          from: String(requestedFrom),
+          to: String(requestedTo),
+          sort: sortBy
+        });
 
-          const rows = Array.isArray(data?.templates) ? data.templates : [];
-          const nextTotal = Number(data?.total || rows.length);
+        const keyword = searchText.trim();
+        if (keyword) query.set('search', keyword);
+        if (categoryFilter !== 'all') query.set('style', categoryFilter);
 
-          allRows = allRows.concat(rows);
-          total = Number.isFinite(nextTotal) && nextTotal >= 0 ? nextTotal : allRows.length;
-
-          if (!rows.length || allRows.length >= total || rows.length < FETCH_BATCH_SIZE) {
-            break;
-          }
-
-          offset += rows.length;
+        const res = await fetch(`${API_BASE}/api/cvs/templates?${query.toString()}`, {
+          signal: controller.signal
+        });
+        const data = await res.json().catch(() => null);
+        if (!res.ok || !data?.success) {
+          throw new Error(data?.error || 'Không tải được danh sách template');
         }
 
         if (!active) return;
-        setTemplates(allRows.map(normalizeTemplate).filter((item) => item.id && item.name));
+
+        const rows = Array.isArray(data?.templates) ? data.templates : [];
+        const normalizedRows = rows.map(normalizeTemplate).filter((item) => item.id && item.name);
+        const nextTotal = safeNumber(data?.total || normalizedRows.length);
+
+        setTemplates(normalizedRows);
+        setTotalTemplates(nextTotal);
+
+        const nextCounts = {
+          all: safeNumber(data?.styleCounts?.all),
+          professional: safeNumber(data?.styleCounts?.professional),
+          creative: safeNumber(data?.styleCounts?.creative),
+          minimal: safeNumber(data?.styleCounts?.minimal),
+          modern: safeNumber(data?.styleCounts?.modern)
+        };
+
+        if (nextCounts.all <= 0) {
+          nextCounts.all = nextCounts.professional + nextCounts.creative + nextCounts.minimal + nextCounts.modern;
+        }
+        if (nextCounts.all <= 0) {
+          nextCounts.all = nextTotal;
+        }
+
+        setCategoryCounts(nextCounts);
+
+        const serverFrom = safeNumber(data?.from);
+        const serverTo = safeNumber(data?.to);
+        if (nextTotal > 0) {
+          if (serverFrom > 0 && serverFrom !== requestedFrom) {
+            setRangeFrom(serverFrom);
+          }
+          if (serverTo > 0 && serverTo !== requestedTo) {
+            setRangeTo(serverTo);
+          }
+        }
       } catch (err) {
-        if (!active) return;
+        if (!active || err?.name === 'AbortError') return;
         setError(err?.message || 'Không tải được danh sách template');
       } finally {
         if (active) setLoading(false);
@@ -444,60 +434,27 @@ const OnlineCvBuilder = () => {
     loadTemplates();
     return () => {
       active = false;
+      controller.abort();
     };
-  }, []);
+  }, [searchText, categoryFilter, sortBy, rangeFrom, rangeTo, rangeSize]);
 
-  const categoryCounts = useMemo(() => {
-    return templates.reduce((acc, item) => {
-      const key = item.categoryKey || 'professional';
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
-  }, [templates]);
+  const safeRangeSize = Math.max(1, safeNumber(rangeSize) || 1);
+  const safeRangeFrom = totalTemplates > 0
+    ? Math.min(Math.max(1, safeNumber(rangeFrom) || 1), totalTemplates)
+    : 0;
+  const safeRangeTo = totalTemplates > 0
+    ? Math.min(Math.max(safeRangeFrom, safeNumber(rangeTo) || safeRangeFrom), totalTemplates)
+    : 0;
+  const safeCurrentPage = totalTemplates > 0
+    ? Math.max(1, Math.ceil(safeRangeFrom / safeRangeSize))
+    : 1;
+  const hasTemplates = totalTemplates > 0;
 
-  const filteredTemplates = useMemo(() => {
-    const keyword = toSearchText(searchText.trim());
-
-    return templates.filter((item) => {
-      const passCategory = categoryFilter === 'all' ? true : item.categoryKey === categoryFilter;
-      if (!passCategory) return false;
-      if (!keyword) return true;
-
-      const haystack = toSearchText(`${item.name} ${item.slug} ${item.description}`);
-      return haystack.includes(keyword);
-    });
-  }, [categoryFilter, searchText, templates]);
-
-  const sortedTemplates = useMemo(() => {
-    const rows = [...filteredTemplates];
-
-    if (sortBy === 'newest') {
-      rows.sort((a, b) => (b.updatedMs - a.updatedMs) || (b.id - a.id));
-      return rows;
-    }
-
-    if (sortBy === 'used') {
-      rows.sort((a, b) => (b.useCount - a.useCount) || (b.viewCount - a.viewCount) || (b.updatedMs - a.updatedMs));
-      return rows;
-    }
-
-    rows.sort((a, b) => ((b.useCount * 2 + b.viewCount) - (a.useCount * 2 + a.viewCount)) || (b.updatedMs - a.updatedMs));
-    return rows;
-  }, [filteredTemplates, sortBy]);
-
-  const pageSize = viewMode === 'grid' ? GRID_PAGE_SIZE : LIST_PAGE_SIZE;
-  const totalTemplates = sortedTemplates.length;
-  const totalPages = Math.max(1, Math.ceil(totalTemplates / pageSize));
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchText, categoryFilter, sortBy, viewMode]);
-
-  useEffect(() => {
-    if (currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
+  const resetRangeToFirst = () => {
+    const span = Math.max(1, safeNumber(rangeSize) || 1);
+    setRangeFrom(1);
+    setRangeTo(span);
+  };
 
   useEffect(() => {
     if (!activeGridTemplate) return undefined;
@@ -518,27 +475,34 @@ const OnlineCvBuilder = () => {
     };
   }, [activeGridTemplate]);
 
-  const pagedTemplates = useMemo(() => {
-    const from = (currentPage - 1) * pageSize;
-    return sortedTemplates.slice(from, from + pageSize);
-  }, [currentPage, pageSize, sortedTemplates]);
+  const handleRangeChange = (nextFrom, nextTo) => {
+    const normalizedFrom = Math.max(1, safeNumber(nextFrom) || 1);
+    const normalizedTo = Math.max(normalizedFrom, safeNumber(nextTo) || normalizedFrom);
+    setRangeSize(Math.max(1, normalizedTo - normalizedFrom + 1));
+    setRangeFrom(normalizedFrom);
+    setRangeTo(normalizedTo);
+  };
 
-  const rangeFrom = totalTemplates === 0 ? 0 : (currentPage - 1) * pageSize + 1;
-  const rangeTo = totalTemplates === 0 ? 0 : Math.min(currentPage * pageSize, totalTemplates);
-  const hasTemplates = totalTemplates > 0;
+  const handleSearchTextChange = (value) => {
+    setSearchText(value);
+    resetRangeToFirst();
+  };
+
+  const handleCategoryFilterChange = (value) => {
+    setCategoryFilter(value);
+    resetRangeToFirst();
+  };
+
+  const handleSortChange = (value) => {
+    setSortBy(value);
+    resetRangeToFirst();
+  };
 
   const pageSubtitle = useMemo(() => {
     if (loading) return 'Đang tải template CV...';
     if (hasTemplates) return `Khám phá các mẫu CV hiện đại, tối ưu cho tuyển dụng.`;
     return 'Hiện chưa có template CV khả dụng.';
   }, [hasTemplates, loading]);
-
-  const rangeLabel = `${rangeFrom}-${rangeTo} / ${totalTemplates}`;
-
-  const handlePageChange = (page) => {
-    const next = Math.max(1, Math.min(totalPages, Number(page) || 1));
-    setCurrentPage(next);
-  };
 
   const handlePreviewTemplate = (template) => {
     if (!template) return;
@@ -602,13 +566,15 @@ const OnlineCvBuilder = () => {
               <h3>Phong cách CV</h3>
               <div className="cv-gallery-filter-list">
                 {CATEGORY_OPTIONS.map((option) => {
-                  const count = option.key === 'all' ? templates.length : (categoryCounts[option.key] || 0);
+                  const count = option.key === 'all'
+                    ? (safeNumber(categoryCounts.all) || totalTemplates)
+                    : (safeNumber(categoryCounts[option.key]) || 0);
                   return (
                     <button
                       key={option.key}
                       type="button"
                       className={`cv-gallery-filter-pill ${categoryFilter === option.key ? 'active' : ''}`}
-                      onClick={() => setCategoryFilter(option.key)}
+                      onClick={() => handleCategoryFilterChange(option.key)}
                     >
                       <span>{option.label}</span>
                       <small>{count}</small>
@@ -634,17 +600,20 @@ const OnlineCvBuilder = () => {
                       <input
                         type="text"
                         value={searchText}
-                        onChange={(e) => setSearchText(e.target.value)}
+                        onChange={(e) => handleSearchTextChange(e.target.value)}
                         placeholder="Tìm kiếm mẫu CV..."
                         className="cv-gallery-search-input"
                       />
                     </div>
 
-                    <CompactPagination
-                      currentPage={currentPage}
-                      totalPages={totalPages}
-                      rangeLabel={rangeLabel}
-                      onPageChange={handlePageChange}
+                    <SmartPagination
+                      from={safeRangeFrom}
+                      to={safeRangeTo}
+                      totalItems={totalTemplates}
+                      currentPage={safeCurrentPage}
+                      pageSize={safeRangeSize}
+                      onRangeChange={handleRangeChange}
+                      className="cv-builder-pagination"
                     />
                   </div>
 
@@ -655,7 +624,7 @@ const OnlineCvBuilder = () => {
                 <p className="cv-gallery-header-subtitle">{pageSubtitle}</p>
                 <div className="cv-gallery-header-bottom-controls">
                   <div className="cv-gallery-sort-select-wrap header">
-                    <select className="cv-gallery-sort-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                    <select className="cv-gallery-sort-select" value={sortBy} onChange={(e) => handleSortChange(e.target.value)}>
                       {SORT_OPTIONS.map((option) => (
                         <option key={option.key} value={option.key}>{option.label}</option>
                       ))}
@@ -715,7 +684,7 @@ const OnlineCvBuilder = () => {
 
             {!loading && hasTemplates && viewMode === 'grid' ? (
               <section className="cv-gallery-grid">
-                {pagedTemplates.map((template) => (
+                {templates.map((template) => (
                   <CVTemplateCard key={template.id} template={template} onOpenActions={openGridTemplateModal} />
                 ))}
               </section>
@@ -723,7 +692,7 @@ const OnlineCvBuilder = () => {
 
             {!loading && hasTemplates && viewMode === 'list' ? (
               <section className="cv-gallery-list">
-                {pagedTemplates.map((template) => (
+                {templates.map((template) => (
                   <CVTemplateListItem
                     key={template.id}
                     template={template}

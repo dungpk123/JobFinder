@@ -1250,9 +1250,47 @@ router.post('/forgot-password', async (req, res) => {
     });
 });
 
+// Verify reset password OTP before allowing password change step
+router.post('/verify-reset-password-otp', async (req, res) => {
+    const { email, otp } = req.body;
+
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedOtp = String(otp || '').trim();
+
+    if (!normalizedEmail) {
+        return res.status(400).json({ error: 'Thiếu email xác thực' });
+    }
+
+    if (!/^\d{6}$/.test(normalizedOtp)) {
+        return res.status(400).json({ error: 'Mã xác thực không đúng định dạng' });
+    }
+
+    db.get('SELECT * FROM NguoiDung WHERE lower(Email) = lower(?)', [normalizedEmail], async (err, user) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!user) return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
+
+        const now = new Date();
+        const otpExpiry = user.ThoiGianMaXacThuc ? new Date(user.ThoiGianMaXacThuc) : null;
+        if (!otpExpiry || Number.isNaN(otpExpiry.getTime()) || now > otpExpiry) {
+            return res.status(400).json({ error: 'Mã đặt lại mật khẩu đã hết hạn. Vui lòng yêu cầu lại.' });
+        }
+
+        if (String(user.MaXacThuc || '') !== normalizedOtp) {
+            return res.status(400).json({ error: 'Mã đặt lại mật khẩu không đúng' });
+        }
+
+        return res.json({
+            success: true,
+            message: 'Mã xác thực hợp lệ. Bạn có thể đặt mật khẩu mới.'
+        });
+    });
+});
+
 // Reset password using OTP (from email)
 router.post('/reset-password', async (req, res) => {
     const { email, otp, newPassword } = req.body;
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedOtp = String(otp || '').trim();
 
     if (!newPassword || newPassword.length < 8) {
         return res.status(400).json({ error: 'Mật khẩu mới phải có ít nhất 8 ký tự' });
@@ -1264,7 +1302,11 @@ router.post('/reset-password', async (req, res) => {
         return res.status(400).json({ error: 'Mật khẩu mới phải bao gồm cả chữ và số' });
     }
 
-    db.get('SELECT * FROM NguoiDung WHERE lower(Email) = lower(?)', [normalizeEmail(email)], async (err, user) => {
+    if (!/^\d{6}$/.test(normalizedOtp)) {
+        return res.status(400).json({ error: 'Mã đặt lại mật khẩu không đúng định dạng' });
+    }
+
+    db.get('SELECT * FROM NguoiDung WHERE lower(Email) = lower(?)', [normalizedEmail], async (err, user) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!user) return res.status(404).json({ error: 'Không tìm thấy tài khoản' });
 
@@ -1274,7 +1316,7 @@ router.post('/reset-password', async (req, res) => {
             return res.status(400).json({ error: 'Mã đặt lại mật khẩu đã hết hạn. Vui lòng yêu cầu lại.' });
         }
 
-        if (user.MaXacThuc !== otp) {
+        if (String(user.MaXacThuc || '') !== normalizedOtp) {
             return res.status(400).json({ error: 'Mã đặt lại mật khẩu không đúng' });
         }
 

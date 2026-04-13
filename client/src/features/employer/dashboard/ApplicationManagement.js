@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { API_BASE as CLIENT_API_BASE } from '../../../config/apiBase';
+import SmartPagination from '../../../components/SmartPagination';
+
+const PAGE_SIZE = 10;
 
 const APPLICATION_FILTERS = [
     { key: 'all', label: 'Tất cả', icon: 'bi-collection' },
@@ -31,6 +34,7 @@ const ApplicationManagement = () => {
     const [messageText, setMessageText] = useState('');
     const [messages, setMessages] = useState([]);
     const [messagesLoading, setMessagesLoading] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
 
     const loadApplications = useCallback(async () => {
         setLoading(true);
@@ -85,6 +89,28 @@ const ApplicationManagement = () => {
         if (filter === 'rejected') return applications.filter((app) => getStatusValue(app) === 'Từ chối');
         return applications;
     }, [applications, filter]);
+
+    const totalFilteredApps = filteredApps.length;
+    const totalPages = Math.max(1, Math.ceil(totalFilteredApps / PAGE_SIZE));
+    const safeCurrentPage = Math.min(Math.max(1, Number(currentPage) || 1), totalPages);
+
+    const pagedFilteredApps = useMemo(() => {
+        const offset = (safeCurrentPage - 1) * PAGE_SIZE;
+        return filteredApps.slice(offset, offset + PAGE_SIZE);
+    }, [filteredApps, safeCurrentPage]);
+
+    const rangeFrom = totalFilteredApps === 0 ? 0 : (safeCurrentPage - 1) * PAGE_SIZE + 1;
+    const rangeTo = totalFilteredApps === 0 ? 0 : Math.min(safeCurrentPage * PAGE_SIZE, totalFilteredApps);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [filter]);
+
+    useEffect(() => {
+        if (currentPage !== safeCurrentPage) {
+            setCurrentPage(safeCurrentPage);
+        }
+    }, [currentPage, safeCurrentPage]);
 
     const openDetails = async (app) => {
         setSelectedApp(app);
@@ -226,7 +252,7 @@ const ApplicationManagement = () => {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {filteredApps.map((app) => {
+                                    {pagedFilteredApps.map((app) => {
                                         const statusValue = getStatusValue(app);
                                         return (
                                             <tr key={app.MaUngTuyen}>
@@ -276,6 +302,19 @@ const ApplicationManagement = () => {
                                     })}
                                 </tbody>
                             </table>
+                        </div>
+                    )}
+
+                    {!loading && filteredApps.length > 0 && (
+                        <div className="d-flex justify-content-end mt-3">
+                            <SmartPagination
+                                from={rangeFrom}
+                                to={rangeTo}
+                                totalItems={totalFilteredApps}
+                                currentPage={safeCurrentPage}
+                                pageSize={PAGE_SIZE}
+                                onPageChange={setCurrentPage}
+                            />
                         </div>
                     )}
                 </div>

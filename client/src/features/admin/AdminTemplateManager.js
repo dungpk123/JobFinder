@@ -9,10 +9,23 @@ const EMPTY_TEMPLATE_FORM = {
     Slug: '',
     MoTa: '',
     ThumbnailUrl: '',
+    PhongCachCV: 'professional',
     HtmlContent: '',
     TrangThai: 1,
     NgayTao: '',
     NgayCapNhat: ''
+};
+
+const TEMPLATE_STYLE_OPTIONS = [
+    { value: 'professional', label: 'Chuyên nghiệp' },
+    { value: 'creative', label: 'Sáng tạo' },
+    { value: 'minimal', label: 'Tối giản' },
+    { value: 'modern', label: 'Hiện đại' }
+];
+
+const normalizeTemplateStyle = (value) => {
+    const normalized = String(value || '').trim().toLowerCase();
+    return TEMPLATE_STYLE_OPTIONS.some((item) => item.value === normalized) ? normalized : 'professional';
 };
 
 const slugify = (value) => String(value || '')
@@ -32,6 +45,7 @@ const normalizeTemplate = (template) => ({
     Slug: String(template?.Slug || template?.slug || ''),
     MoTa: String(template?.MoTa || template?.description || ''),
     ThumbnailUrl: String(template?.ThumbnailUrl || template?.thumbnailUrl || template?.thumbnail_url || ''),
+    PhongCachCV: normalizeTemplateStyle(template?.PhongCachCV || template?.style),
     HtmlContent: String(template?.HtmlContent || template?.htmlContent || ''),
     TrangThai: Number(template?.TrangThai ?? template?.status ?? 1) === 0 ? 0 : 1,
     NgayTao: String(template?.NgayTao || template?.createdAt || ''),
@@ -386,6 +400,7 @@ const AdminTemplateManager = ({ API_BASE, authHeaders, requestConfirm, mode = 'l
                 slug: slugify(form.Slug || form.TenTemplate),
                 description: String(form.MoTa || '').trim(),
                 thumbnailUrl: String(form.ThumbnailUrl || '').trim(),
+                style: normalizeTemplateStyle(form.PhongCachCV),
                 htmlContent: String(form.HtmlContent || ''),
                 status: Number(form.TrangThai) === 0 ? 0 : 1
             };
@@ -482,9 +497,9 @@ const AdminTemplateManager = ({ API_BASE, authHeaders, requestConfirm, mode = 'l
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {templates.map((template) => (
+                                        {templates.map((template, index) => (
                                             <tr key={template.MaTemplateCV}>
-                                                <td>{template.MaTemplateCV}</td>
+                                                <td>{index + 1}</td>
                                                 <td>
                                                     <div className="fw-semibold text-truncate" title={template.TenTemplate}>{template.TenTemplate}</div>
                                                     <div className="text-muted small text-truncate" title={template.MoTa || ''}>{template.MoTa || 'Không có mô tả'}</div>
@@ -624,6 +639,19 @@ const AdminTemplateManager = ({ API_BASE, authHeaders, requestConfirm, mode = 'l
                                             >
                                                 <option value={1}>Hoạt động</option>
                                                 <option value={0}>Tạm tắt</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="form-label">Phong cách CV</label>
+                                            <select
+                                                className="form-select"
+                                                value={normalizeTemplateStyle(form.PhongCachCV)}
+                                                onChange={(e) => handleFormChange('PhongCachCV', normalizeTemplateStyle(e.target.value))}
+                                            >
+                                                {TEMPLATE_STYLE_OPTIONS.map((option) => (
+                                                    <option key={option.value} value={option.value}>{option.label}</option>
+                                                ))}
                                             </select>
                                         </div>
 

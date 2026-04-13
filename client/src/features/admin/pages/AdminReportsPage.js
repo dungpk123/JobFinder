@@ -17,6 +17,12 @@ const shortText = (value, maxLen = 120) => {
     return `${text.slice(0, maxLen)}...`;
 };
 
+const formatCode = (prefix, value) => {
+    const raw = String(value ?? '').trim();
+    if (!raw) return '-';
+    return `${prefix}-${raw}`;
+};
+
 const normalizeStatusClass = (status) => {
     const text = toText(status).toLowerCase();
     if (!text) return 'neutral';
@@ -107,10 +113,10 @@ const AdminReportsPage = ({ reports, loading, onApproveReport, onDeleteReport, r
                     <table className="table table-hover align-middle mb-0">
                         <thead>
                             <tr>
-                                <th style={{ width: 90 }}>Mã báo cáo</th>
-                                <th style={{ width: 140 }}>Mã người báo cáo</th>
+                                <th style={{ width: 90 }}>ID</th>
+                                <th style={{ width: 125 }}>Người báo</th>
                                 <th style={{ width: 180 }}>Loại đối tượng</th>
-                                <th style={{ width: 120 }}>Mã đối tượng</th>
+                                <th style={{ width: 125 }}>Đối tượng</th>
                                 <th style={{ width: 210 }}>Lý do</th>
                                 <th>Chi tiết</th>
                                 <th style={{ width: 140 }}>Trạng thái</th>
@@ -119,12 +125,12 @@ const AdminReportsPage = ({ reports, loading, onApproveReport, onDeleteReport, r
                             </tr>
                         </thead>
                         <tbody>
-                            {reports.map((report) => (
+                            {reports.map((report, index) => (
                                 <tr key={report.MaBaoCao}>
-                                    <td>{report.MaBaoCao}</td>
-                                    <td>{report.MaNguoiBaoCao ?? '-'}</td>
+                                    <td>{index + 1}</td>
+                                    <td><span className="admin-code-chip">{formatCode('NB', report.MaNguoiBaoCao)}</span></td>
                                     <td>{toText(report.LoaiDoiTuong) || '-'}</td>
-                                    <td>{report.MaDoiTuong ?? '-'}</td>
+                                    <td><span className="admin-code-chip">{formatCode('DT', report.MaDoiTuong)}</span></td>
                                     <td>{shortText(report.LyDo, 70)}</td>
                                     <td className="admin-report-detail-cell">{shortText(report.ChiTiet, 150)}</td>
                                     <td>
@@ -185,7 +191,7 @@ const AdminReportsPage = ({ reports, loading, onApproveReport, onDeleteReport, r
                             <div className="admin-report-detail-grid">
                                 <div className="admin-report-detail-item">
                                     <span>Mã người báo cáo</span>
-                                    <strong>{activeReport.MaNguoiBaoCao ?? '-'}</strong>
+                                    <strong>{formatCode('NB', activeReport.MaNguoiBaoCao)}</strong>
                                 </div>
                                 <div className="admin-report-detail-item">
                                     <span>Email người báo cáo</span>
@@ -197,7 +203,7 @@ const AdminReportsPage = ({ reports, loading, onApproveReport, onDeleteReport, r
                                 </div>
                                 <div className="admin-report-detail-item">
                                     <span>Mã đối tượng</span>
-                                    <strong>{activeReport.MaDoiTuong ?? '-'}</strong>
+                                    <strong>{formatCode('DT', activeReport.MaDoiTuong)}</strong>
                                 </div>
                                 <div className="admin-report-detail-item">
                                     <span>Lý do</span>

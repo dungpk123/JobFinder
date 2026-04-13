@@ -3,7 +3,9 @@
   border: 1px solid #cfe0f1;
   border-radius: 16px;
   background: #ffffff;
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
+  z-index: 1;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -17,6 +19,12 @@
   border-bottom: 1px solid #e2edf7;
   background: linear-gradient(180deg, #fbfdff 0%, #f3f8ff 100%);
   padding: 8px 10px;
+  overflow: visible;
+}
+
+.cgrte .ck.ck-dropdown .ck-dropdown__panel,
+.cgrte .ck.ck-list {
+  z-index: 1300;
 }
 
 .cgrte .ck.ck-editor__main > .ck-editor__editable {

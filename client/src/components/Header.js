@@ -2,10 +2,32 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useNotification } from './NotificationProvider';
 
+const readStoredUser = () => {
+    try {
+        return JSON.parse(localStorage.getItem('user') || 'null');
+    } catch {
+        return null;
+    }
+};
+
+const withAvatarVersion = (url, version) => {
+    const raw = String(url || '').trim();
+    if (!raw) return '';
+
+    const versionNumber = Number(version || 0);
+    if (!Number.isFinite(versionNumber) || versionNumber <= 0) {
+        return raw;
+    }
+
+    const separator = raw.includes('?') ? '&' : '?';
+    return `${raw}${separator}v=${versionNumber}`;
+};
+
 const Header = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { requestConfirm } = useNotification();
+    const [currentUser, setCurrentUser] = useState(() => readStoredUser());
     const [showJobManagement, setShowJobManagement] = useState(false);
     const [showMobileJobsMenu, setShowMobileJobsMenu] = useState(false);
 
@@ -54,6 +76,24 @@ const Header = () => {
         collapseMobileNavbar();
     }, [location.pathname]);
 
+    useEffect(() => {
+        const syncUserFromStorage = (event) => {
+            if (event?.detail && typeof event.detail === 'object') {
+                setCurrentUser(event.detail);
+                return;
+            }
+            setCurrentUser(readStoredUser());
+        };
+
+        window.addEventListener('storage', syncUserFromStorage);
+        window.addEventListener('jobfinder:user-updated', syncUserFromStorage);
+
+        return () => {
+            window.removeEventListener('storage', syncUserFromStorage);
+            window.removeEventListener('jobfinder:user-updated', syncUserFromStorage);
+        };
+    }, []);
+
     const normalize = (value) => String(value || '').trim().toLowerCase();
 
     const resolveRoleLabel = (rawRole, isSuperAdmin) => {
@@ -65,13 +105,7 @@ const Header = () => {
     };
     
     // Kiểm tra trạng thái đăng nhập
-    const user = (() => {
-        try {
-            return JSON.parse(localStorage.getItem('user'));
-        } catch {
-            return null;
-        }
-    })();
+    const user = currentUser;
 
     const userRole = String(user?.role || user?.vaiTro || user?.VaiTro || '').trim();
     const isSuperAdmin = (
@@ -90,7 +124,8 @@ const Header = () => {
         || isSuperAdmin
     );
     const profileTitle = String(user?.HoTen || user?.name || user?.fullName || user?.username || user?.email || '').trim() || 'Tài khoản của tôi';
-    const avatarUrl = String(user?.avatar || user?.avatarAbsoluteUrl || user?.AnhDaiDien || user?.avatarUrl || '').trim();
+    const avatarUrlRaw = String(user?.avatar || user?.avatarAbsoluteUrl || user?.AnhDaiDien || user?.avatarUrl || '').trim();
+    const avatarUrl = withAvatarVersion(avatarUrlRaw, user?.avatarUpdatedAt);
     const profileIcon = isAdmin
         ? 'bi-shield-check'
         : (isEmployer ? 'bi-building-check' : 'bi-person-check');
@@ -100,15 +135,15 @@ const Header = () => {
 
     return (
         <nav className="navbar navbar-expand-lg bg-white border-bottom shadow-sm jf-main-navbar">
-            <div className="container-fluid px-3 px-lg-4 jf-main-navbar__container">
+            <div className="container jf-main-navbar__container">
                 <Link className="navbar-brand d-flex align-items-center gap-3 text-decoration-none jf-main-navbar__brand" to="/">
                     <img src="/images/logo.png" alt="JobFinder Logo" className="jf-main-navbar__logo" />
                 </Link>
                 <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar" aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
                     <span className="navbar-toggler-icon"></span>
                 </button>
-                <div className="collapse navbar-collapse justify-content-between" id="mainNavbar">
-                    <ul className="navbar-nav align-items-lg-center gap-lg-4 mb-3 mb-lg-0">
+                <div className="collapse navbar-collapse justify-content-between jf-main-navbar__collapse" id="mainNavbar">
+                    <ul className="navbar-nav align-items-lg-center gap-lg-4 mb-3 mb-lg-0 jf-main-navbar__menu">
                         <li className="nav-item">
                             <Link className="nav-link fw-semibold fs-6" to="/" onClick={collapseMobileNavbar}>Trang chủ</Link>
                         </li>
@@ -153,11 +188,6 @@ const Header = () => {
                             </ul>
                         </li>
                         <li className="nav-item">
-                            <Link className="nav-link fw-semibold fs-6" to="/career-guide" onClick={collapseMobileNavbar}>
-                                Cẩm nang nghề nghiệp
-                            </Link>
-                        </li>
-                        <li className="nav-item">
                             <Link className="nav-link fw-semibold fs-6" to="/create-cv/templates" onClick={collapseMobileNavbar}>
                                 Mẫu CV
                             </Link>
@@ -167,8 +197,13 @@ const Header = () => {
                                 Quản lý CV
                             </Link>
                         </li>
+                        <li className="nav-item">
+                            <Link className="nav-link fw-semibold fs-6" to="/career-guide" onClick={collapseMobileNavbar}>
+                                Cẩm nang nghề nghiệp
+                            </Link>
+                        </li>
                     </ul>
-                    <div className="d-flex align-items-center gap-3 ms-lg-auto me-lg-2">
+                    <div className="d-flex align-items-center gap-3 jf-main-navbar__actions">
                         {!user ? (
                             <>
                                 <Link className="btn btn-outline-primary fw-semibold fs-6 px-4 py-1" to="/login" onClick={collapseMobileNavbar}>
@@ -270,7 +305,7 @@ const Header = () => {
                                     <li className="jf-user-dropdown-row">
                                         <Link className="dropdown-item jf-user-dropdown-item" to="/support" onClick={collapseMobileNavbar}>
                                             <i className="bi bi-bell text-primary"></i>
-                                            <span>Hỗ trợ và thông báo</span>
+                                            <span>Thông báo</span>
                                         </Link>
                                     </li>
                                     <li><hr className="dropdown-divider" /></li>

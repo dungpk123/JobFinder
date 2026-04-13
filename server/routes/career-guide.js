@@ -805,6 +805,7 @@ router.post('/', authenticateToken, async (req, res) => {
 router.post('/:id/comments', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { content } = req.body;
+  const rawIdentifier = String(id || '').trim();
   
   // Get user info from JWT token
   const userId = req.user.id;
@@ -828,21 +829,40 @@ router.post('/:id/comments', authenticateToken, async (req, res) => {
   }
 
   let isHidden = 0;
-  try {
-    await ensureCareerCommentModerationColumn();
-    const moderationResult = detectForbiddenCareerTerms(normalizedContent);
-    isHidden = moderationResult.blocked ? 1 : 0;
-  } catch {
-    return res.status(500).json({ success: false, error: 'Lỗi khi xử lý kiểm duyệt bình luận' });
+
+  const userIdAsNumber = Number(userId || 0);
+  if (!Number.isInteger(userIdAsNumber) || userIdAsNumber <= 0) {
+    return res.status(401).json({ success: false, error: 'Thông tin tài khoản không hợp lệ' });
   }
 
-  const sql = `
-    INSERT INTO BinhLuanCamNangNgheNghiep (MaBaiViet, MaNguoiDung, LoaiNguoiDung, NoiDung, BiAn, NgayTao)
-    VALUES (?, ?, ?, ?, ?, datetime('now'))
-  `;
-
   try {
-    const inserted = await dbRun(sql, [id, userId, userType, normalizedContent, isHidden]);
+    await ensureCareerGuideSchema();
+    await ensureCareerCommentModerationColumn();
+    const columnSet = await loadCareerGuideColumnSet();
+    const moderationResult = detectForbiddenCareerTerms(normalizedContent);
+    isHidden = moderationResult.blocked ? 1 : 0;
+
+    const isNumericId = /^[0-9]+$/.test(rawIdentifier);
+    let postId = 0;
+
+    if (isNumericId) {
+      postId = Number(rawIdentifier);
+    } else if (columnSet.has('slug')) {
+      const matchedPost = await dbGet('SELECT MaBaiViet AS id FROM CamNangNgheNghiep WHERE Slug = ? LIMIT 1', [rawIdentifier]);
+      postId = Number(matchedPost?.id || 0);
+    }
+
+    if (!Number.isInteger(postId) || postId <= 0) {
+      return res.status(404).json({ success: false, error: 'Không tìm thấy bài viết để bình luận' });
+    }
+
+    const nowExpression = isMysql ? 'NOW()' : "datetime('now')";
+    const sql = `
+      INSERT INTO BinhLuanCamNangNgheNghiep (MaBaiViet, MaNguoiDung, LoaiNguoiDung, NoiDung, BiAn, NgayTao)
+      VALUES (?, ?, ?, ?, ?, ${nowExpression})
+    `;
+
+    const inserted = await dbRun(sql, [postId, userIdAsNumber, userType, normalizedContent, isHidden]);
 
     if (isHidden) {
       return res.json({

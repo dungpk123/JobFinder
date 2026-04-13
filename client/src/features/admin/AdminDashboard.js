@@ -2,11 +2,10 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { NavLink, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import {
     BarChart3,
+    Bell,
     BookOpen,
     BriefcaseBusiness,
     Building2,
-    Bell,
-    CircleHelp,
     ChevronDown,
     ClipboardList,
     FileStack,
@@ -23,7 +22,6 @@ import { API_BASE as CLIENT_API_BASE } from '../../config/apiBase';
 import AdminCompaniesPage from './pages/AdminCompaniesPage';
 import AdminJobsPage from './pages/AdminJobsPage';
 import AdminOverviewPage from './pages/AdminOverviewPage';
-import AdminNotificationsPage from './pages/AdminNotificationsPage';
 import AdminProfilePage from './pages/AdminProfilePage';
 import AdminReportsPage from './pages/AdminReportsPage';
 import AdminAuditLogsPage from './pages/AdminAuditLogsPage';
@@ -31,6 +29,27 @@ import AdminCareerGuidePostsPage from './pages/AdminCareerGuidePostsPage';
 import AdminTemplatesPage from './pages/AdminTemplatesPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import './AdminDashboard.css';
+
+const readStoredUser = () => {
+    try {
+        return JSON.parse(localStorage.getItem('user') || '{}');
+    } catch {
+        return {};
+    }
+};
+
+const withAvatarVersion = (url, version) => {
+    const raw = String(url || '').trim();
+    if (!raw) return '';
+
+    const versionNumber = Number(version || 0);
+    if (!Number.isFinite(versionNumber) || versionNumber <= 0) {
+        return raw;
+    }
+
+    const separator = raw.includes('?') ? '&' : '?';
+    return `${raw}${separator}v=${versionNumber}`;
+};
 
 const safeNumber = (value) => {
     const numeric = Number(value);
@@ -118,7 +137,6 @@ const SIDEBAR_LOGO_URL = 'https://i.postimg.cc/nhWfcVvh/logo.png';
 
 const resolvePageTitle = (pathname) => {
     if (pathname.startsWith('/admin/profile')) return 'Hồ sơ';
-    if (pathname.startsWith('/admin/notifications')) return 'Thông báo';
     if (pathname.startsWith('/admin/usersmanament')) return 'Quản lý người dùng';
     if (pathname.startsWith('/admin/jobs')) return 'Quản lý tin tuyển dụng';
     if (pathname.startsWith('/admin/companies')) return 'Quản lý công ty';
@@ -136,16 +154,36 @@ const AdminDashboard = () => {
     const API_BASE = CLIENT_API_BASE;
     const token = String(localStorage.getItem('token') || '').trim();
 
-    const user = useMemo(() => {
-        try {
-            return JSON.parse(localStorage.getItem('user') || '{}');
-        } catch {
-            return {};
-        }
+    const [user, setUser] = useState(() => readStoredUser());
+
+    useEffect(() => {
+        const refreshUser = (event) => {
+            if (event?.detail && typeof event.detail === 'object') {
+                setUser(event.detail);
+                return;
+            }
+            setUser(readStoredUser());
+        };
+
+        window.addEventListener('storage', refreshUser);
+        window.addEventListener('jobfinder:user-updated', refreshUser);
+
+        return () => {
+            window.removeEventListener('storage', refreshUser);
+            window.removeEventListener('jobfinder:user-updated', refreshUser);
+        };
     }, []);
 
-    const isSuperAdmin = !!user?.isSuperAdmin;
-    const isAdmin = isSuperAdmin || user?.role === 'Quản trị';
+    const isSuperAdmin = (
+        user?.isSuperAdmin === true
+        || user?.isSuperAdmin === 1
+        || user?.isSuperAdmin === '1'
+        || user?.IsSuperAdmin === true
+        || user?.IsSuperAdmin === 1
+        || user?.IsSuperAdmin === '1'
+    );
+    const currentRole = user?.role || user?.VaiTro || user?.vaiTro || user?.LoaiNguoiDung || '';
+    const isAdmin = isSuperAdmin || currentRole === 'Quản trị';
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -464,8 +502,10 @@ const AdminDashboard = () => {
         setCareerGuidePosts((prev) => prev.filter((item) => item.MaBaiViet !== postId));
     };
 
-    const greetingName = user?.name || user?.full_name || user?.email || 'Admin';
-    const roleLabel = isSuperAdmin ? 'Siêu quản trị viên' : (user?.role || 'Quản trị');
+    const greetingName = user?.HoTen || user?.name || user?.full_name || user?.email || 'Admin';
+    const roleLabel = isSuperAdmin ? 'Siêu quản trị viên' : (currentRole || 'Quản trị');
+    const adminAvatarRaw = String(user?.avatar || user?.avatarAbsoluteUrl || user?.AnhDaiDien || user?.avatarUrl || '').trim();
+    const adminAvatarUrl = withAvatarVersion(adminAvatarRaw, user?.avatarUpdatedAt);
 
     const totalTemplateCount = Math.max(safeNumber(counts?.CvTemplate), templates.length);
     const usedTemplateCount = templates.filter((template) => getTemplateUsage(template) > 0).length;
@@ -693,7 +733,18 @@ const AdminDashboard = () => {
                                 aria-expanded={profileMenuOpen}
                             >
                                 <div className="admin-header-avatar">
-                                    <ShieldCheck size={15} />
+                                    {adminAvatarUrl ? (
+                                        <img
+                                            src={adminAvatarUrl}
+                                            alt={greetingName}
+                                            onError={(event) => {
+                                                event.currentTarget.onerror = null;
+                                                event.currentTarget.src = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
+                                            }}
+                                        />
+                                    ) : (
+                                        <ShieldCheck size={15} />
+                                    )}
                                 </div>
                                 <div className="admin-header-user-info">
                                     <strong>{greetingName}</strong>
@@ -705,15 +756,11 @@ const AdminDashboard = () => {
                             {profileMenuOpen && (
                                 <div className="admin-header-dropdown" role="menu">
                                     <button type="button" className="admin-header-dropdown-item" onClick={() => handleProfileMenuNavigate('/support')}>
-                                        <CircleHelp size={16} />
-                                        <span>Hỗ trợ</span>
-                                    </button>
-                                    <button type="button" className="admin-header-dropdown-item" onClick={() => handleProfileMenuNavigate('/admin/notifications')}>
                                         <Bell size={16} />
                                         <span>Thông báo</span>
                                     </button>
                                     <button type="button" className="admin-header-dropdown-item" onClick={() => handleProfileMenuNavigate('/admin/profile')}>
-                                        Hồ sơ
+                                        Hồ sơ của tôi
                                     </button>
                                     <button type="button" className="admin-header-dropdown-item" onClick={() => handleProfileMenuNavigate('/admin/dashboard')}>
                                         Dashboard
@@ -856,7 +903,6 @@ const AdminDashboard = () => {
                                 />
                             }
                         />
-                        <Route path="notifications" element={<AdminNotificationsPage />} />
                         <Route path="*" element={<Navigate to="dashboard" replace />} />
                     </Routes>
                 </div>

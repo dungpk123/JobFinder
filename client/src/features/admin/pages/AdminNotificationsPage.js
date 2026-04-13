@@ -29,14 +29,14 @@ const AdminNotificationsPage = () => {
       <section className="admin-notification-hero">
         <div>
           <span className="admin-notification-eyebrow">Trang quản trị</span>
-          <h1>Thông báo & hỗ trợ</h1>
+          <h1>Thông báo hệ thống</h1>
           <p>
-            Đây là nơi tập trung các tín hiệu quan trọng cho quản trị viên: thông báo hệ thống, hỗ trợ vận hành và truy cập nhanh đến khu vực cần kiểm tra.
+            Đây là nơi tập trung các tín hiệu quan trọng cho quản trị viên: thông báo hệ thống, trạng thái vận hành và truy cập nhanh đến khu vực cần kiểm tra.
           </p>
         </div>
         <Link className="btn btn-light admin-notification-hero-btn" to="/support">
           <i className="bi bi-life-preserver me-2"></i>
-          Mở trung tâm hỗ trợ
+          Mở trung tâm thông báo
         </Link>
       </section>
 

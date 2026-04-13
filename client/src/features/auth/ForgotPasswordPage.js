@@ -10,7 +10,7 @@ const ForgotPasswordPage = () => {
     <AuthLayout
       mode="forgot"
       title="Khôi phục mật khẩu"
-      subtitle="Nhập email đã đăng ký để nhận mã xác minh và tạo mật khẩu mới."
+      subtitle="Nhập email, xác thực OTP rồi đặt mật khẩu mới."
       switchText="Đã nhớ mật khẩu?"
       switchLabel="Đăng nhập"
       switchTo="/login"

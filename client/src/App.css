@@ -27,6 +27,32 @@
   align-items: center;
 }
 
+.jf-main-navbar__menu {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.jf-main-navbar__actions {
+  margin-left: 0;
+  margin-right: 0;
+}
+
+@media (min-width: 992px) {
+  .jf-main-navbar__collapse {
+    display: flex !important;
+    align-items: center;
+    flex: 1 1 auto;
+  }
+
+  .jf-main-navbar__menu {
+    justify-content: center;
+  }
+
+  .jf-main-navbar__actions {
+    flex-shrink: 0;
+  }
+}
+
 .jf-main-navbar__brand {
   padding-top: 0;
   padding-bottom: 0;

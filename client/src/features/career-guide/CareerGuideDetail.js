@@ -70,10 +70,17 @@ function CareerGuideDetail() {
       return;
     }
 
+    const token = String(localStorage.getItem('token') || '').trim();
+    if (!token) {
+      alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại để bình luận.');
+      navigate('/login');
+      return;
+    }
+
     try {
       setSubmitting(true);
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/career-guide/${id}/comments`, {
+      const targetPostId = Number(post?.id || 0) > 0 ? Number(post.id) : id;
+      const response = await fetch(`/api/career-guide/${encodeURIComponent(String(targetPostId))}/comments`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -82,16 +89,16 @@ function CareerGuideDetail() {
         body: JSON.stringify({ content: commentContent })
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
       
-      if (data.success) {
+      if (response.ok && data?.success) {
         setCommentContent('');
         await fetchPostDetail(); // Reload comments
         if (data.hidden) {
           alert(data.message || 'Bình luận chứa từ ngữ không phù hợp nên đã được ẩn.');
         }
       } else {
-        alert(data.error || 'Không thể thêm bình luận');
+        alert(data?.error || 'Không thể thêm bình luận');
       }
     } catch (err) {
       console.error('Error submitting comment:', err);
@@ -107,20 +114,27 @@ function CareerGuideDetail() {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/career-guide/${id}/comments/${commentId}`, {
+      const token = String(localStorage.getItem('token') || '').trim();
+      if (!token) {
+        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        navigate('/login');
+        return;
+      }
+
+      const targetPostId = Number(post?.id || 0) > 0 ? Number(post.id) : id;
+      const response = await fetch(`/api/career-guide/${encodeURIComponent(String(targetPostId))}/comments/${commentId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
       
-      if (data.success) {
+      if (response.ok && data?.success) {
         fetchPostDetail(); // Reload comments
       } else {
-        alert(data.error || 'Không thể xóa bình luận');
+        alert(data?.error || 'Không thể xóa bình luận');
       }
     } catch (err) {
       console.error('Error deleting comment:', err);
@@ -134,21 +148,28 @@ function CareerGuideDetail() {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`/api/career-guide/${id}`, {
+      const token = String(localStorage.getItem('token') || '').trim();
+      if (!token) {
+        alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+        navigate('/login');
+        return;
+      }
+
+      const targetPostId = Number(post?.id || 0) > 0 ? Number(post.id) : id;
+      const response = await fetch(`/api/career-guide/${encodeURIComponent(String(targetPostId))}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
       
-      if (data.success) {
+      if (response.ok && data?.success) {
         alert('Xóa bài viết thành công');
         navigate('/career-guide');
       } else {
-        alert(data.error || 'Không thể xóa bài viết');
+        alert(data?.error || 'Không thể xóa bài viết');
       }
     } catch (err) {
       console.error('Error deleting post:', err);

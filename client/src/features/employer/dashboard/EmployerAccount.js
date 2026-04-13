@@ -329,6 +329,7 @@ const EmployerAccount = () => {
       setForm(nextForm);
       setAvatarPreview(uploadedAvatar || AVATAR_FALLBACK);
       setAvatarFile(null);
+      const avatarUpdatedAt = Date.now();
 
       if (draftKey) {
         try {
@@ -348,7 +349,8 @@ const EmployerAccount = () => {
         avatar: uploadedAvatar,
         AnhDaiDien: uploadedAvatar,
         avatarAbsoluteUrl: uploadedAvatar,
-        avatarUrl: uploadedAvatar
+        avatarUrl: uploadedAvatar,
+        avatarUpdatedAt
       });
 
       setMessage('Đã cập nhật ảnh đại diện.');
@@ -376,7 +378,8 @@ const EmployerAccount = () => {
         avatar: form.avatarUrl || user?.avatar || user?.AnhDaiDien || '',
         AnhDaiDien: form.avatarUrl || user?.AnhDaiDien || user?.avatar || '',
         avatarAbsoluteUrl: form.avatarUrl || user?.avatarAbsoluteUrl || user?.avatarUrl || '',
-        avatarUrl: form.avatarUrl || user?.avatarUrl || user?.avatarAbsoluteUrl || ''
+        avatarUrl: form.avatarUrl || user?.avatarUrl || user?.avatarAbsoluteUrl || '',
+        avatarUpdatedAt: Date.now()
       });
       if (draftKey) {
         try {

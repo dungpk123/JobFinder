@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { History, Trash2 } from 'lucide-react';
+import SmartPagination from '../../../components/SmartPagination';
 
 const PAGE_LIMIT = 30;
 
@@ -39,6 +40,8 @@ const AdminAuditLogsPage = ({ API_BASE, authHeaders }) => {
 
     const page = Math.floor(offset / PAGE_LIMIT) + 1;
     const totalPages = Math.max(1, Math.ceil(Math.max(0, total) / PAGE_LIMIT));
+    const fromRecord = total === 0 ? 0 : offset + 1;
+    const toRecord = total === 0 ? 0 : Math.min(offset + Math.max(1, logs.length), total);
 
     const fetchLogs = async () => {
         setLoading(true);
@@ -107,6 +110,11 @@ const AdminAuditLogsPage = ({ API_BASE, authHeaders }) => {
         }
     };
 
+    const handlePageChange = (nextPage) => {
+        const safePage = Math.max(1, Math.min(totalPages, Number(nextPage) || 1));
+        setOffset((safePage - 1) * PAGE_LIMIT);
+    };
+
     return (
         <div className="card border-0 shadow-sm admin-module-card mb-4">
             <div className="card-header bg-white border-0 py-3 d-flex align-items-center gap-2">
@@ -128,7 +136,7 @@ const AdminAuditLogsPage = ({ API_BASE, authHeaders }) => {
                     <table className="table table-hover align-middle mb-0">
                         <thead>
                             <tr>
-                                <th style={{ width: 90 }}>Mã</th>
+                                <th style={{ width: 90 }}>ID</th>
                                 <th style={{ width: 220 }}>Người thực hiện</th>
                                 <th style={{ width: 240 }}>Nội dung hành động</th>
                                 <th style={{ width: 180 }}>Đối tượng</th>
@@ -143,9 +151,9 @@ const AdminAuditLogsPage = ({ API_BASE, authHeaders }) => {
                                 </tr>
                             ) : null}
 
-                            {logs.map((row) => (
+                            {logs.map((row, index) => (
                                 <tr key={row.id}>
-                                    <td>{row.id}</td>
+                                    <td>{offset + index + 1}</td>
                                     <td>
                                         <div className="fw-semibold">{formatUserLabel(row)}</div>
                                         {row.user_email ? <small className="text-muted">{row.user_email}</small> : null}
@@ -172,22 +180,15 @@ const AdminAuditLogsPage = ({ API_BASE, authHeaders }) => {
                 </div>
 
                 <div className="d-flex justify-content-between align-items-center gap-2 mt-3 flex-wrap">
-                    <button
-                        type="button"
-                        className="btn btn-sm btn-outline-secondary"
-                        onClick={() => setOffset((prev) => Math.max(0, prev - PAGE_LIMIT))}
-                        disabled={loading || offset <= 0}
-                    >
-                        Trang trước
-                    </button>
-                    <button
-                        type="button"
-                        className="btn btn-sm btn-outline-secondary"
-                        onClick={() => setOffset((prev) => prev + PAGE_LIMIT)}
-                        disabled={loading || offset + PAGE_LIMIT >= total}
-                    >
-                        Trang sau
-                    </button>
+                    <SmartPagination
+                        from={fromRecord}
+                        to={toRecord}
+                        currentPage={page}
+                        totalItems={total}
+                        pageSize={PAGE_LIMIT}
+                        onPageChange={handlePageChange}
+                        loading={loading}
+                    />
                 </div>
             </div>
         </div>

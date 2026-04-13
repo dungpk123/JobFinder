@@ -10,16 +10,11 @@ const formatDateTime = (value) => {
     return date.toLocaleString('vi-VN');
 };
 
-const shortenText = (value, maxLen = 160) => {
-    const text = toText(value)
-        .replace(/<[^>]*>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-
-    if (!text) return '-';
-    if (text.length <= maxLen) return text;
-    return `${text.slice(0, maxLen)}...`;
-};
+    const formatCode = (prefix, value) => {
+        const raw = String(value ?? '').trim();
+        if (!raw) return '-';
+        return `${prefix}-${raw}`;
+    };
 
 const formatAuthorType = (value) => {
     const type = toText(value).toLowerCase();
@@ -81,10 +76,9 @@ const AdminCareerGuidePostsPage = ({ posts, loading, onDeletePost, requestConfir
                 <table className="table table-hover align-middle mb-0">
                     <thead>
                         <tr>
-                            <th style={{ width: 100 }}>Mã bài viết</th>
+                            <th style={{ width: 100 }}>ID</th>
                             <th style={{ width: 220 }}>Tiêu đề</th>
-                            <th>Nội dung</th>
-                            <th style={{ width: 120 }}>Mã tác giả</th>
+                            <th style={{ width: 130 }}>Tác giả</th>
                             <th style={{ width: 150 }}>Loại tác giả</th>
                             <th style={{ width: 185 }}>Ngày tạo</th>
                             <th style={{ width: 185 }}>Ngày cập nhật</th>
@@ -93,14 +87,13 @@ const AdminCareerGuidePostsPage = ({ posts, loading, onDeletePost, requestConfir
                         </tr>
                     </thead>
                     <tbody>
-                        {posts.map((post) => {
+                        {posts.map((post, index) => {
                             const postPath = buildPostPath(post);
                             return (
                                 <tr key={post.MaBaiViet}>
-                                    <td>{post.MaBaiViet}</td>
+                                    <td>{index + 1}</td>
                                     <td className="admin-career-post-title">{toText(post.TieuDe) || '-'}</td>
-                                    <td className="admin-career-content-cell">{shortenText(post.NoiDung, 220)}</td>
-                                    <td>{post.MaTacGia ?? '-'}</td>
+                                    <td><span className="admin-code-chip">{formatCode('TG', post.MaTacGia)}</span></td>
                                     <td>{formatAuthorType(post.LoaiTacGia)}</td>
                                     <td>{formatDateTime(post.NgayTao)}</td>
                                     <td>{formatDateTime(post.NgayCapNhat)}</td>
@@ -138,7 +131,7 @@ const AdminCareerGuidePostsPage = ({ posts, loading, onDeletePost, requestConfir
                         })}
 
                         {posts.length === 0 && !loading && (
-                            <tr><td colSpan={9} className="text-center text-muted py-4">Chưa có dữ liệu</td></tr>
+                            <tr><td colSpan={8} className="text-center text-muted py-4">Chưa có dữ liệu</td></tr>
                         )}
                     </tbody>
                 </table>

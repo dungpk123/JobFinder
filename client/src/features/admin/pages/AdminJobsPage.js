@@ -10,7 +10,7 @@ const getStatusBadgeClass = (status) => {
     return 'bg-secondary-subtle text-secondary border border-secondary-subtle';
 };
 
-const AdminJobRow = ({ job, onDelete, canDelete, requestConfirm }) => {
+const AdminJobRow = ({ job, onDelete, canDelete, requestConfirm, displayIndex }) => {
     const status = job.TrangThai || 'Nháp';
     const [deleting, setDeleting] = useState(false);
     const [err, setErr] = useState('');
@@ -36,7 +36,7 @@ const AdminJobRow = ({ job, onDelete, canDelete, requestConfirm }) => {
 
     return (
         <tr>
-            <td>{job.MaTin}</td>
+            <td>{displayIndex}</td>
             <td className="fw-semibold">{job.TieuDe}</td>
             <td>{job.TenCongTy || '-'}</td>
             <td>{job.ThanhPho || '-'}</td>
@@ -75,7 +75,7 @@ const AdminJobsPage = ({ jobs, loading, canDelete, requestConfirm, onDeleteJob }
                 <table className="table table-hover align-middle mb-0">
                     <thead>
                         <tr>
-                            <th style={{ width: 90 }}>Mã tin</th>
+                            <th style={{ width: 90 }}>ID</th>
                             <th>Tiêu đề</th>
                             <th style={{ width: 200 }}>Công ty</th>
                             <th style={{ width: 140 }}>Tỉnh/TP</th>
@@ -84,10 +84,11 @@ const AdminJobsPage = ({ jobs, loading, canDelete, requestConfirm, onDeleteJob }
                         </tr>
                     </thead>
                     <tbody>
-                        {jobs.map((j) => (
+                        {jobs.map((j, index) => (
                             <AdminJobRow
                                 key={j.MaTin}
                                 job={j}
+                                displayIndex={index + 1}
                                 requestConfirm={requestConfirm}
                                 onDelete={() => onDeleteJob(j.MaTin)}
                                 canDelete={canDelete}

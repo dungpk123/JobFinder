@@ -680,8 +680,16 @@ const Profile = ({ initialTab = 'overview' }) => {
                     // Đồng bộ vào localStorage để tránh mất avatar sau đăng nhập lại
                     try {
                         const current = JSON.parse(localStorage.getItem('user')) || {};
-                        const updated = { ...current, avatar: avatarFromServer, AnhDaiDien: avatarFromServer };
+                        const updated = {
+                            ...current,
+                            avatar: avatarFromServer,
+                            avatarUrl: avatarFromServer,
+                            avatarAbsoluteUrl: avatarFromServer,
+                            AnhDaiDien: avatarFromServer,
+                            avatarUpdatedAt: Date.now()
+                        };
                         localStorage.setItem('user', JSON.stringify(updated));
+                        window.dispatchEvent(new CustomEvent('jobfinder:user-updated', { detail: updated }));
                     } catch {}
                 }
 
@@ -870,9 +878,11 @@ const Profile = ({ initialTab = 'overview' }) => {
                 avatar: finalAvatar,
                 avatarUrl: finalAvatar,
                 avatarAbsoluteUrl: finalAvatar,
-                AnhDaiDien: finalAvatar
+                AnhDaiDien: finalAvatar,
+                avatarUpdatedAt: Date.now()
             };
             localStorage.setItem('user', JSON.stringify(updatedUser));
+            window.dispatchEvent(new CustomEvent('jobfinder:user-updated', { detail: updatedUser }));
             console.log('Updated localStorage with avatar:', updatedUser.avatar);
 
             notify({ type: 'success', message: 'Cập nhật thông tin thành công!' });

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Ban, Building2, ShieldCheck, Trash2 } from 'lucide-react';
 
-const AdminCompanyRow = ({ company, onSaveStatus, onDelete, canEdit, requestConfirm }) => {
+const AdminCompanyRow = ({ company, onSaveStatus, onDelete, canEdit, requestConfirm, displayIndex }) => {
     const initialStatus = Number(company.TrangThaiDaiDien ?? 1);
     const [status, setStatus] = useState(initialStatus);
     const [saving, setSaving] = useState(false);
@@ -45,7 +45,7 @@ const AdminCompanyRow = ({ company, onSaveStatus, onDelete, canEdit, requestConf
 
     return (
         <tr>
-            <td>{company.MaCongTy}</td>
+            <td>{displayIndex}</td>
             <td className="fw-semibold">{company.TenCongTy}</td>
             <td>{company.MaSoThue || '-'}</td>
             <td>{company.ThanhPho || '-'}</td>
@@ -116,7 +116,7 @@ const AdminCompaniesPage = ({ companies, loading, canEdit, requestConfirm, onSav
                 <table className="table table-hover align-middle mb-0">
                     <thead>
                         <tr>
-                            <th style={{ width: 90 }}>Mã</th>
+                            <th style={{ width: 90 }}>ID</th>
                             <th>Tên công ty</th>
                             <th style={{ width: 170 }}>Mã số thuế</th>
                             <th style={{ width: 140 }}>Tỉnh/TP</th>
@@ -126,10 +126,11 @@ const AdminCompaniesPage = ({ companies, loading, canEdit, requestConfirm, onSav
                         </tr>
                     </thead>
                     <tbody>
-                        {companies.map((c) => (
+                        {companies.map((c, index) => (
                             <AdminCompanyRow
                                 key={c.MaCongTy}
                                 company={c}
+                                displayIndex={index + 1}
                                 canEdit={canEdit}
                                 requestConfirm={requestConfirm}
                                 onSaveStatus={(status) => onSaveCompanyStatus(c.MaCongTy, status)}

@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Building2, Eye, Mail, MapPin, PencilLine, RotateCcw, Trash2, Users } from 'lucide-react';
+import SmartPagination from '../../../components/SmartPagination';
 
 const formatDateTime = (value) => {
     if (!value) return '-';
@@ -187,8 +188,10 @@ const AdminUsersPage = ({
     onRestoreUser,
     onViewUserDetail
 }) => {
+    const pageSize = 10;
     const [rowBusyId, setRowBusyId] = useState(null);
     const [rowErrors, setRowErrors] = useState({});
+    const [currentPage, setCurrentPage] = useState(1);
     const [viewModal, setViewModal] = useState({
         open: false,
         user: null,
@@ -222,6 +225,26 @@ const AdminUsersPage = ({
             .filter((u) => Number(u.IsSuperAdmin) !== 1)
             .filter((u) => (roleFilter === 'all' ? true : u.VaiTro === roleFilter))
     ), [users, roleFilter]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [roleFilter]);
+
+    const totalUsers = filteredUsers.length;
+    const totalPages = Math.max(1, Math.ceil(totalUsers / pageSize));
+    const safeCurrentPage = Math.min(Math.max(currentPage, 1), totalPages);
+
+    useEffect(() => {
+        if (safeCurrentPage !== currentPage) {
+            setCurrentPage(safeCurrentPage);
+        }
+    }, [currentPage, safeCurrentPage]);
+
+    const startIndex = (safeCurrentPage - 1) * pageSize;
+    const pagedUsers = useMemo(
+        () => filteredUsers.slice(startIndex, startIndex + pageSize),
+        [filteredUsers, startIndex]
+    );
 
     const setRowError = (userId, message) => {
         setRowErrors((prev) => ({ ...prev, [userId]: message }));
@@ -450,7 +473,10 @@ const AdminUsersPage = ({
                             className="form-select form-select-sm"
                             style={{ minWidth: 170 }}
                             value={roleFilter}
-                            onChange={(e) => onRoleFilterChange(e.target.value)}
+                            onChange={(e) => {
+                                setCurrentPage(1);
+                                onRoleFilterChange(e.target.value);
+                            }}
                             aria-label="Lọc vai trò"
                         >
                             <option value="all">Tất cả</option>
@@ -474,14 +500,14 @@ const AdminUsersPage = ({
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredUsers.map((user) => {
+                            {pagedUsers.map((user, index) => {
                                 const userId = user.MaNguoiDung;
                                 const isDeleted = isUserSoftDeleted(user);
                                 const permissions = getUserPermissions(user, isSuperAdmin, isAdmin);
                                 const busy = rowBusyId === userId;
                                 return (
                                     <tr key={userId}>
-                                        <td>{userId}</td>
+                                        <td>{startIndex + index + 1}</td>
                                         <td>{user.Email}</td>
                                         <td>{user.HoTen || '-'}</td>
                                         <td>
@@ -527,12 +553,23 @@ const AdminUsersPage = ({
                                     </tr>
                                 );
                             })}
-                            {filteredUsers.length === 0 && !loading && (
+                            {pagedUsers.length === 0 && !loading && (
                                 <tr><td colSpan={7} className="text-center text-muted py-4">Chưa có dữ liệu</td></tr>
                             )}
                         </tbody>
                     </table>
                 </div>
+                {totalUsers > 0 && (
+                    <div className="d-flex justify-content-end p-3 border-top bg-white">
+                        <SmartPagination
+                            currentPage={safeCurrentPage}
+                            pageSize={pageSize}
+                            totalItems={totalUsers}
+                            onPageChange={setCurrentPage}
+                            showPageNumbers={false}
+                        />
+                    </div>
+                )}
             </div>
 
             {viewModal.open && (

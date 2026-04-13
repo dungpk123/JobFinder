@@ -117,6 +117,21 @@ const toInt = (value, fallback) => {
     return Number.isFinite(num) ? num : fallback;
 };
 
+const TEMPLATE_STYLE_KEYS = new Set(['professional', 'creative', 'minimal', 'modern']);
+const normalizeTemplateStyle = (value) => {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (!normalized) return '';
+    return TEMPLATE_STYLE_KEYS.has(normalized) ? normalized : '';
+};
+
+const getTemplateSortSql = (value) => {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (normalized === 'newest') return 'NgayCapNhat DESC, MaTemplateCV DESC';
+    if (normalized === 'popular') return 'MaTemplateCV DESC';
+    if (normalized === 'used') return 'MaTemplateCV DESC';
+    return 'MaTemplateCV DESC';
+};
+
 const sqlGet = (sql, params = []) => new Promise((resolve, reject) => {
     db.get(sql, params, (err, row) => (err ? reject(err) : resolve(row)));
 });
@@ -144,6 +159,7 @@ const ensureCvTemplateTable = async () => {
                 Slug VARCHAR(191) NOT NULL UNIQUE,
                 MoTa TEXT NULL,
                 ThumbnailUrl TEXT NULL,
+                PhongCachCV VARCHAR(50) NULL,
                 HtmlContent LONGTEXT NOT NULL,
                 TrangThai TINYINT DEFAULT 1,
                 NguoiTao INT NULL,
@@ -160,6 +176,7 @@ const ensureCvTemplateTable = async () => {
                 Slug TEXT NOT NULL UNIQUE,
                 MoTa TEXT,
                 ThumbnailUrl TEXT,
+                PhongCachCV TEXT,
                 HtmlContent TEXT NOT NULL,
                 TrangThai INTEGER DEFAULT 1,
                 NguoiTao INTEGER,
@@ -183,6 +200,18 @@ const ensureCvTemplateTable = async () => {
             if (Number(row?.c || 0) === 0) {
                 await sqlRun('ALTER TABLE CvTemplate ADD COLUMN ThumbnailUrl TEXT NULL');
             }
+
+            const styleRow = await sqlGet(
+                `SELECT COUNT(*) AS c
+                 FROM INFORMATION_SCHEMA.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME = 'CvTemplate'
+                   AND COLUMN_NAME = 'PhongCachCV'`
+            );
+
+            if (Number(styleRow?.c || 0) === 0) {
+                await sqlRun('ALTER TABLE CvTemplate ADD COLUMN PhongCachCV VARCHAR(50) NULL');
+            }
             return;
         }
 
@@ -190,6 +219,11 @@ const ensureCvTemplateTable = async () => {
         const hasThumbnailUrl = columns.some((col) => String(col?.name || '').toLowerCase() === 'thumbnailurl');
         if (!hasThumbnailUrl) {
             await sqlRun('ALTER TABLE CvTemplate ADD COLUMN ThumbnailUrl TEXT');
+        }
+
+        const hasTemplateStyle = columns.some((col) => String(col?.name || '').toLowerCase() === 'phongcachcv');
+        if (!hasTemplateStyle) {
+            await sqlRun('ALTER TABLE CvTemplate ADD COLUMN PhongCachCV TEXT');
         }
     })();
 
@@ -205,34 +239,108 @@ router.get('/templates', async (req, res) => {
     try {
         await ensureCvTemplateTable();
 
-        const limit = Math.min(Math.max(toInt(req.query.limit, 24), 1), 80);
-        const offset = Math.max(toInt(req.query.offset, 0), 0);
+        let limit = Math.min(Math.max(toInt(req.query.limit, 24), 1), 80);
+        let offset = Math.max(toInt(req.query.offset, 0), 0);
 
-        const templates = await sqlAll(
-            `SELECT
-                MaTemplateCV,
-                TenTemplate,
-                Slug,
-                MoTa,
-                ThumbnailUrl,
-                HtmlContent,
-                TrangThai,
-                NgayTao,
-                NgayCapNhat
-             FROM CvTemplate
-             WHERE IFNULL(TrangThai, 1) = 1
-             ORDER BY MaTemplateCV DESC
-             LIMIT ? OFFSET ?`,
-            [limit, offset]
-        );
+        const fromQuery = toInt(req.query.from, null);
+        const toQuery = toInt(req.query.to, null);
+        if (Number.isFinite(fromQuery) && Number.isFinite(toQuery)) {
+            const normalizedFrom = Math.max(fromQuery, 1);
+            const normalizedTo = Math.max(toQuery, normalizedFrom);
+            limit = Math.min(Math.max(normalizedTo - normalizedFrom + 1, 1), 80);
+            offset = Math.max(normalizedFrom - 1, 0);
+        }
+
+        const searchText = String(req.query.search || '').trim().toLowerCase();
+        const styleFilter = normalizeTemplateStyle(req.query.style);
+        const sortSql = getTemplateSortSql(req.query.sort);
+
+        const baseWhereParts = ['IFNULL(TrangThai, 1) = 1'];
+        const baseWhereParams = [];
+
+        if (searchText) {
+            const pattern = `%${searchText}%`;
+            baseWhereParts.push(
+                `(lower(IFNULL(TenTemplate, '')) LIKE ? OR lower(IFNULL(Slug, '')) LIKE ? OR lower(IFNULL(MoTa, '')) LIKE ?)`
+            );
+            baseWhereParams.push(pattern, pattern, pattern);
+        }
+
+        const filteredWhereParts = [...baseWhereParts];
+        const filteredWhereParams = [...baseWhereParams];
+        if (styleFilter) {
+            filteredWhereParts.push(`lower(IFNULL(PhongCachCV, '')) = ?`);
+            filteredWhereParams.push(styleFilter);
+        }
+
+        const filteredWhereSql = `WHERE ${filteredWhereParts.join(' AND ')}`;
 
         const totalRow = await sqlGet(
             `SELECT COUNT(*) AS c
              FROM CvTemplate
-             WHERE IFNULL(TrangThai, 1) = 1`
+             ${filteredWhereSql}`,
+            filteredWhereParams
+        );
+        const total = Number(totalRow?.c || 0);
+
+        const safeOffset = total > 0
+            ? Math.min(offset, Math.max(0, total - 1))
+            : 0;
+
+        const templates = total > 0
+            ? await sqlAll(
+                `SELECT
+                    MaTemplateCV,
+                    TenTemplate,
+                    Slug,
+                    MoTa,
+                    ThumbnailUrl,
+                    PhongCachCV,
+                    HtmlContent,
+                    TrangThai,
+                    NgayTao,
+                    NgayCapNhat
+                 FROM CvTemplate
+                 ${filteredWhereSql}
+                 ORDER BY ${sortSql}
+                 LIMIT ? OFFSET ?`,
+                [...filteredWhereParams, limit, safeOffset]
+            )
+            : [];
+
+        const styleRows = await sqlAll(
+            `SELECT lower(IFNULL(PhongCachCV, '')) AS styleKey, COUNT(*) AS c
+             FROM CvTemplate
+             WHERE ${baseWhereParts.join(' AND ')}
+             GROUP BY lower(IFNULL(PhongCachCV, ''))`,
+            baseWhereParams
         );
 
-        return res.json({ success: true, templates, total: Number(totalRow?.c || 0) });
+        const styleCounts = { professional: 0, creative: 0, minimal: 0, modern: 0 };
+        for (const row of styleRows) {
+            const styleKey = normalizeTemplateStyle(row?.styleKey) || 'professional';
+            styleCounts[styleKey] = Number(styleCounts[styleKey] || 0) + Number(row?.c || 0);
+        }
+
+        const from = total > 0 ? safeOffset + 1 : 0;
+        const to = total > 0 ? Math.min(safeOffset + templates.length, total) : 0;
+
+        return res.json({
+            success: true,
+            templates,
+            total,
+            from,
+            to,
+            limit,
+            offset: safeOffset,
+            styleCounts: {
+                ...styleCounts,
+                all: Number(styleCounts.professional || 0)
+                    + Number(styleCounts.creative || 0)
+                    + Number(styleCounts.minimal || 0)
+                    + Number(styleCounts.modern || 0)
+            }
+        });
     } catch (err) {
         console.error('Lỗi lấy danh sách template công khai:', err);
         return res.status(500).json({ success: false, error: 'Không tải được danh sách template' });

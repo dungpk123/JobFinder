@@ -1,0 +1,141 @@
+.smart-pagination {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.smart-pagination-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.smart-pagination-arrow {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #cfe0f2;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1f4c7b;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.smart-pagination-arrow:disabled {
+  color: #94a3b8;
+  border-color: #e2e8f0;
+}
+
+.smart-pagination-range {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #0f172a;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 7px 12px;
+  border: 1px solid #dbeafe;
+  border-radius: 12px;
+  background: #ffffff;
+  white-space: nowrap;
+}
+
+.smart-pagination-range-button {
+  cursor: pointer;
+}
+
+.smart-pagination-range-button:hover:not(:disabled) {
+  background: #f8fbff;
+  border-color: #bfd9f5;
+}
+
+.smart-pagination-range-button:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.smart-pagination-range-edit {
+  padding: 4px 8px;
+}
+
+.smart-pagination-range-input {
+  width: 48px;
+  height: 28px;
+  border: 1px solid #cfe0f2;
+  border-radius: 8px;
+  padding: 0 6px;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #0f172a;
+  background: #ffffff;
+}
+
+.smart-pagination-range-input:focus {
+  outline: none;
+  border-color: #93c5fd;
+  box-shadow: 0 0 0 2px rgba(147, 197, 253, 0.25);
+}
+
+.smart-pagination-range-separator {
+  color: #64748b;
+}
+
+.smart-pagination-range strong {
+  color: #0f172a;
+}
+
+.smart-pagination-range span {
+  color: #475569;
+}
+
+.smart-pagination-pages {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.smart-pagination-pages button {
+  min-width: 32px;
+  height: 32px;
+  border: 1px solid #cfe0f2;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1f4c7b;
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 0 8px;
+}
+
+.smart-pagination-pages button.active {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+.smart-pagination-pages button:disabled {
+  color: #94a3b8;
+  border-color: #e2e8f0;
+}
+
+.smart-pagination-ellipsis {
+  color: #64748b;
+  font-size: 0.9rem;
+  font-weight: 700;
+  padding: 0 2px;
+}
+
+@media (max-width: 767.98px) {
+  .smart-pagination {
+    justify-content: flex-start;
+  }
+
+  .smart-pagination-pages {
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+}

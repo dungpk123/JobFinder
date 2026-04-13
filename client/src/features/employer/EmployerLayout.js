@@ -11,6 +11,19 @@ const readStoredUser = () => {
     }
 };
 
+const withAvatarVersion = (url, version) => {
+    const raw = String(url || '').trim();
+    if (!raw) return '';
+
+    const versionNumber = Number(version || 0);
+    if (!Number.isFinite(versionNumber) || versionNumber <= 0) {
+        return raw;
+    }
+
+    const separator = raw.includes('?') ? '&' : '?';
+    return `${raw}${separator}v=${versionNumber}`;
+};
+
 const EmployerLayout = () => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -21,9 +34,10 @@ const EmployerLayout = () => {
     const [showProfileDropdown, setShowProfileDropdown] = useState(false);
     const profileDropdownRef = useRef(null);
 
-    const displayName = user?.name || user?.hoTen || user?.fullName || user?.email || 'Nhà tuyển dụng';
-    const roleLabel = user?.role || user?.vaiTro || 'Nhà tuyển dụng';
-    const avatarUrl = String(user?.avatar || user?.avatarAbsoluteUrl || user?.AnhDaiDien || user?.avatarUrl || '').trim();
+    const displayName = user?.name || user?.HoTen || user?.hoTen || user?.fullName || user?.full_name || user?.email || 'Nhà tuyển dụng';
+    const roleLabel = user?.role || user?.VaiTro || user?.vaiTro || user?.LoaiNguoiDung || 'Nhà tuyển dụng';
+    const avatarRaw = String(user?.avatar || user?.avatarAbsoluteUrl || user?.AnhDaiDien || user?.avatarUrl || '').trim();
+    const avatarUrl = withAvatarVersion(avatarRaw, user?.avatarUpdatedAt);
     const initial = String(displayName || 'N').trim().charAt(0).toUpperCase();
 
     const handleLogout = async () => {
@@ -46,7 +60,11 @@ const EmployerLayout = () => {
     }, [location.pathname]);
 
     useEffect(() => {
-        const refreshUser = () => {
+        const refreshUser = (event) => {
+            if (event?.detail && typeof event.detail === 'object') {
+                setUser(event.detail);
+                return;
+            }
             setUser(readStoredUser());
         };
 

@@ -3,6 +3,7 @@
   background: #f6f7f9;
   min-height: 100vh;
   padding: 100px 0 60px;
+  text-align: left;
 }
 
 .career-guide-detail-container .container {
@@ -153,6 +154,7 @@
   font-size: 1.1rem;
   line-height: 1.8;
   color: #374151;
+  text-align: left;
 }
 
 .post-detail-content h1,

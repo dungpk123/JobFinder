@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import CareerRichTextEditor from './components/CareerRichTextEditor';
 import {
@@ -27,7 +27,11 @@ const INITIAL_CONTENT = `
 <p>Hãy bắt đầu bài viết bằng một đoạn ngắn nêu vấn đề và bối cảnh thực tế.</p>
 <h3>Ý chính 1</h3>
 <p>Nội dung nên có ví dụ cụ thể và lời khuyên có thể áp dụng ngay.</p>
+<h3>Kết luận</h3>
+<p>Tóm tắt lại thông điệp chính và gợi ý hành động tiếp theo cho người đọc.</p>
 `;
+
+const MAX_COVER_IMAGE_SIZE = 5 * 1024 * 1024;
 
 const INITIAL_FORM = {
   title: '',
@@ -78,9 +82,11 @@ function CareerGuideManage() {
   const isEditMode = Boolean(editingPostId);
 
   const [form, setForm] = useState(INITIAL_FORM);
+  const coverUploadInputRef = useRef(null);
 
   const [submitting, setSubmitting] = useState(false);
   const [loadingExistingPost, setLoadingExistingPost] = useState(false);
+  const [coverUploading, setCoverUploading] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
 
   const sanitizedContent = useMemo(
@@ -108,6 +114,70 @@ function CareerGuideManage() {
       ...previous,
       [field]: value
     }));
+  };
+
+  const handlePickCoverImage = () => {
+    if (submitting || loadingExistingPost || coverUploading) return;
+    coverUploadInputRef.current?.click();
+  };
+
+  const handleCoverImageUpload = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    const isImageType = String(file.type || '').toLowerCase().startsWith('image/');
+    if (!isImageType) {
+      setMessage({ type: 'error', text: 'Vui lòng chọn tệp ảnh hợp lệ (JPG, PNG, WebP, GIF).' });
+      return;
+    }
+
+    if (file.size > MAX_COVER_IMAGE_SIZE) {
+      setMessage({ type: 'error', text: 'Ảnh bìa vượt quá 5MB. Vui lòng chọn ảnh nhỏ hơn.' });
+      return;
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setMessage({ type: 'error', text: 'Vui lòng đăng nhập lại để tải ảnh bìa.' });
+      return;
+    }
+
+    try {
+      setCoverUploading(true);
+      setMessage({ type: '', text: '' });
+
+      const formData = new FormData();
+      formData.append('upload', file);
+
+      const response = await fetch('/api/career-guide/upload-image?usage=cover', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.success) {
+        throw new Error(data?.error || 'Không thể tải ảnh bìa lên lúc này.');
+      }
+
+      const uploadedUrl = String(data.absoluteUrl || data.url || '').trim();
+      if (!uploadedUrl) {
+        throw new Error('Server chưa trả về URL ảnh bìa hợp lệ.');
+      }
+
+      updateForm('coverImage', uploadedUrl);
+      setMessage({ type: 'success', text: 'Tải ảnh bìa thành công.' });
+    } catch (error) {
+      setMessage({ type: 'error', text: error?.message || 'Không thể tải ảnh bìa lên.' });
+    } finally {
+      setCoverUploading(false);
+    }
   };
 
   useEffect(() => {
@@ -398,8 +468,39 @@ function CareerGuideManage() {
                 placeholder="https://..."
                 value={form.coverImage}
                 onChange={(event) => updateForm('coverImage', event.target.value)}
-                disabled={submitting || loadingExistingPost}
+                disabled={submitting || loadingExistingPost || coverUploading}
               />
+              <div className="cgm-cover-upload-row">
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary btn-sm"
+                  onClick={handlePickCoverImage}
+                  disabled={submitting || loadingExistingPost || coverUploading}
+                >
+                  <i className="bi bi-upload me-1" aria-hidden="true"></i>
+                  {coverUploading ? 'Đang tải ảnh...' : 'Tải ảnh lên'}
+                </button>
+
+                {form.coverImage.trim() && (
+                  <button
+                    type="button"
+                    className="btn btn-light btn-sm"
+                    onClick={() => updateForm('coverImage', '')}
+                    disabled={submitting || loadingExistingPost || coverUploading}
+                  >
+                    Xóa ảnh
+                  </button>
+                )}
+              </div>
+              <input
+                ref={coverUploadInputRef}
+                type="file"
+                className="cgm-hidden-file-input"
+                accept="image/*"
+                onChange={handleCoverImageUpload}
+                disabled={submitting || loadingExistingPost || coverUploading}
+              />
+              <small>Hỗ trợ JPG, PNG, WebP, GIF. Kích thước tối đa 5MB.</small>
             </div>
 
             <div className="cgm-field">
