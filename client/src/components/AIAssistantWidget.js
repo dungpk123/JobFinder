@@ -1,7 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNotification } from './NotificationProvider';
+import { syncAppIconBadge } from './notificationUtils';
 import './AIAssistantWidget.css';
 import { useNavigate } from 'react-router-dom';
+
+const UNREAD_POLL_INTERVAL_MS = 4000;
+const CHAT_REALTIME_POLL_INTERVAL_MS = 2500;
 
 const getUserId = () => {
   try {
@@ -110,6 +114,8 @@ const AIAssistantWidget = () => {
   }, [pendingUploadFile, selectedCv]);
 
   const busy = loading || uploading;
+  const activeChatUserId = Number(activeChatUser?.userId || 0) || null;
+  const showFloatingUnreadBadge = unreadConversations > 0 && !chatOpen;
 
   const requireLogin = (message = 'Bạn cần đăng nhập để dùng trợ lý AI.') => {
     const token = getToken();
@@ -239,30 +245,36 @@ const AIAssistantWidget = () => {
     notify({ type: 'success', message: `Đã đính kèm CV: ${file.name}` });
   };
 
-  const refreshUnreadCount = async () => {
+  const refreshUnreadCount = async ({ silent = true } = {}) => {
     const token = getToken();
     if (!token) {
       setUnreadConversations(0);
-      return;
+      void syncAppIconBadge(0);
+      return 0;
     }
+
     try {
       const data = await apiFetch('/api/messages/unread-count');
-      setUnreadConversations(Number(data?.count || 0));
+      const count = Math.max(0, Number(data?.count || 0));
+      setUnreadConversations(count);
+      void syncAppIconBadge(count);
+      return count;
     } catch (err) {
-      // Silent: badge shouldn't spam toasts, just log the error
-      console.log('Could not fetch unread count:', err.message);
-      setUnreadConversations(0);
+      if (!silent) {
+        console.log('Could not fetch unread count:', err.message);
+      }
+      return 0;
     }
   };
 
-  const refreshInbox = async () => {
+  const refreshInbox = async ({ silent = false, showErrorToast = !silent } = {}) => {
     const token = getToken();
     if (!token) {
       setInbox([]);
       return [];
     }
 
-    setInboxLoading(true);
+    if (!silent) setInboxLoading(true);
     try {
       const data = await apiFetch('/api/messages/inbox');
       const list = Array.isArray(data?.inbox) ? data.inbox : [];
@@ -272,32 +284,59 @@ const AIAssistantWidget = () => {
       // Don't show error if token is invalid - user might not have messages setup
       if (err.message.includes('Invalid token') || err.message.includes('401')) {
         console.log('Message inbox not available:', err.message);
-      } else {
+      } else if (showErrorToast) {
         notify({ type: 'error', message: err.message || 'Không thể tải hộp thư.' });
       }
-      setInbox([]);
       return [];
     } finally {
-      setInboxLoading(false);
+      if (!silent) setInboxLoading(false);
     }
   };
 
-  const openConversation = async (user) => {
+  const hasThreadChanged = (prev, next) => {
+    if (!Array.isArray(prev) || !Array.isArray(next)) return true;
+    if (prev.length !== next.length) return true;
+
+    const prevLast = prev[prev.length - 1];
+    const nextLast = next[next.length - 1];
+    if (!prevLast && !nextLast) return false;
+
+    return (
+      String(prevLast?.id || '') !== String(nextLast?.id || '')
+      || String(prevLast?.createdAt || '') !== String(nextLast?.createdAt || '')
+      || String(prevLast?.content || '') !== String(nextLast?.content || '')
+    );
+  };
+
+  const openConversation = async (user, { markRead = true, silent = false, refreshSidebar = true } = {}) => {
     if (!user?.userId) return;
 
     setActiveChatUser(user);
-    setThreadLoading(true);
+    if (!silent) setThreadLoading(true);
     try {
       const data = await apiFetch(`/api/messages/conversation/${user.userId}`);
-      setThreadMessages(Array.isArray(data?.messages) ? data.messages : []);
+      const nextMessages = Array.isArray(data?.messages) ? data.messages : [];
+      setThreadMessages((prev) => (hasThreadChanged(prev, nextMessages) ? nextMessages : prev));
       setTimeout(scrollThreadToBottom, 0);
 
-      await apiFetch(`/api/messages/mark-read/${user.userId}`, { method: 'PATCH' });
-      await Promise.all([refreshUnreadCount(), refreshInbox()]);
+      if (markRead) {
+        await apiFetch(`/api/messages/mark-read/${user.userId}`, { method: 'PATCH' });
+      }
+
+      const refreshTasks = [refreshUnreadCount({ silent: true })];
+      if (refreshSidebar) {
+        refreshTasks.push(refreshInbox({ silent: true, showErrorToast: false }));
+      }
+      await Promise.all(refreshTasks);
+
+      return nextMessages;
     } catch (err) {
-      notify({ type: 'error', message: err.message || 'Không thể tải hội thoại.' });
+      if (!silent) {
+        notify({ type: 'error', message: err.message || 'Không thể tải hội thoại.' });
+      }
+      return [];
     } finally {
-      setThreadLoading(false);
+      if (!silent) setThreadLoading(false);
     }
   };
 
@@ -330,7 +369,12 @@ const AIAssistantWidget = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ toUserId: activeChatUser.userId, content })
       });
-      await refreshInbox();
+
+      await Promise.all([
+        openConversation(activeChatUser, { markRead: false, silent: true, refreshSidebar: false }),
+        refreshInbox({ silent: true, showErrorToast: false }),
+        refreshUnreadCount({ silent: true })
+      ]);
     } catch (err) {
       notify({ type: 'error', message: err.message || 'Không thể gửi tin nhắn.' });
     }
@@ -450,9 +494,44 @@ const AIAssistantWidget = () => {
   }, []);
 
   useEffect(() => {
-    refreshUnreadCount();
-    const id = setInterval(refreshUnreadCount, 15000);
-    return () => clearInterval(id);
+    const onBridgeUnreadUpdated = (event) => {
+      const nextCount = Math.max(0, Number(event?.detail?.unreadConversations || 0));
+      const nextInbox = Array.isArray(event?.detail?.inbox) ? event.detail.inbox : null;
+
+      setUnreadConversations(nextCount);
+      if (nextInbox) {
+        setInbox(nextInbox);
+      }
+      void syncAppIconBadge(nextCount);
+    };
+
+    window.addEventListener('jobfinder:messages-unread-updated', onBridgeUnreadUpdated);
+    return () => {
+      window.removeEventListener('jobfinder:messages-unread-updated', onBridgeUnreadUpdated);
+    };
+  }, []);
+
+  useEffect(() => {
+    const refreshUnread = () => {
+      void refreshUnreadCount({ silent: true });
+    };
+
+    refreshUnread();
+    const intervalId = window.setInterval(refreshUnread, UNREAD_POLL_INTERVAL_MS);
+
+    const onFocus = () => refreshUnread();
+    const onVisibilityChange = () => {
+      if (!document.hidden) refreshUnread();
+    };
+
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -469,6 +548,8 @@ const AIAssistantWidget = () => {
   useEffect(() => {
     if (!chatOpen) return;
 
+    let cancelled = false;
+
     (async () => {
       const token = getToken();
       if (!token) {
@@ -477,15 +558,62 @@ const AIAssistantWidget = () => {
         return;
       }
 
-      const list = await refreshInbox();
-      if (!activeChatUser && list.length > 0) {
-        await openConversation(list[0]);
-      } else if (activeChatUser) {
-        await openConversation(activeChatUser);
+      const list = await refreshInbox({ silent: false, showErrorToast: true });
+      if (cancelled) return;
+
+      if (!activeChatUserId && list.length > 0) {
+        await openConversation(list[0], { markRead: true, silent: false, refreshSidebar: false });
+      } else if (activeChatUserId) {
+        const currentUser = list.find((item) => Number(item.userId) === Number(activeChatUserId)) || activeChatUser;
+        if (currentUser) {
+          await openConversation(currentUser, { markRead: true, silent: false, refreshSidebar: false });
+        }
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatOpen]);
+  }, [chatOpen, activeChatUserId]);
+
+  useEffect(() => {
+    if (!chatOpen) return undefined;
+
+    let cancelled = false;
+
+    const pollRealtimeChat = async () => {
+      try {
+        const list = await refreshInbox({ silent: true, showErrorToast: false });
+        if (cancelled) return;
+
+        if (activeChatUserId) {
+          const currentUser = list.find((item) => Number(item.userId) === Number(activeChatUserId)) || activeChatUser;
+          if (currentUser) {
+            const shouldMarkRead = Number(currentUser?.unread || 0) > 0;
+            await openConversation(currentUser, {
+              markRead: shouldMarkRead,
+              silent: true,
+              refreshSidebar: false
+            });
+          }
+        }
+
+        await refreshUnreadCount({ silent: true });
+      } catch {
+        // keep polling silently while chat is open
+      }
+    };
+
+    pollRealtimeChat();
+    const intervalId = window.setInterval(pollRealtimeChat, CHAT_REALTIME_POLL_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatOpen, activeChatUserId]);
 
   return (
     <div className={`aiw-root ${open ? 'aiw-open' : ''}`}>
@@ -765,7 +893,7 @@ const AIAssistantWidget = () => {
               </button>
               <button
                 type="button"
-                className="aiw-pill-btn"
+                className="aiw-pill-btn aiw-pill-btn-chat"
                 aria-label="Hỏi đáp"
                 title="Tin nhắn"
                 onClick={() => {
@@ -774,7 +902,7 @@ const AIAssistantWidget = () => {
                 }}
               >
                 <i className="bi bi-chat-dots" />
-                {unreadConversations > 0 && <span className="aiw-badge">{unreadConversations}</span>}
+                {showFloatingUnreadBadge && <span className="aiw-badge">{unreadConversations}</span>}
               </button>
               <button
                 type="button"
@@ -795,6 +923,7 @@ const AIAssistantWidget = () => {
               title="Phóng ra"
             >
               <i className="bi bi-caret-down-fill" />
+              {showFloatingUnreadBadge && <span className="aiw-badge">{unreadConversations}</span>}
             </button>
           )}
         </div>

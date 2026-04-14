@@ -204,19 +204,41 @@ const MessagesPage = () => {
   useEffect(() => {
     if (!token) return undefined;
 
-    const intervalId = window.setInterval(async () => {
+    const pollConversation = async () => {
       try {
         const refreshedInbox = await loadInbox({ silent: true });
         if (activeUser?.userId) {
           const candidate = refreshedInbox.find((item) => Number(item.userId) === Number(activeUser.userId)) || activeUser;
-          await openConversation(candidate, { markRead: false, silent: true });
+          const shouldMarkRead = Number(candidate?.unread || 0) > 0;
+          await openConversation(candidate, { markRead: shouldMarkRead, silent: true });
         }
       } catch {
         // silent polling
       }
-    }, 12000);
+    };
 
-    return () => window.clearInterval(intervalId);
+    const onFocus = () => {
+      void pollConversation();
+    };
+
+    const onVisibilityChange = () => {
+      if (!document.hidden) {
+        void pollConversation();
+      }
+    };
+
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    void pollConversation();
+
+    const intervalId = window.setInterval(pollConversation, 2500);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [token, activeUser, loadInbox, openConversation]);
 
   return (

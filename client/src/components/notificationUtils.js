@@ -54,3 +54,26 @@ export const showBrowserNotification = async ({ title, body, url = '/', tag = 'j
     return false;
   }
 };
+
+export const syncAppIconBadge = async (count = 0) => {
+  if (typeof navigator === 'undefined') return false;
+
+  const unread = Math.max(0, Number(count) || 0);
+  const canSetBadge = typeof navigator.setAppBadge === 'function';
+  const canClearBadge = typeof navigator.clearAppBadge === 'function';
+
+  if (!canSetBadge || !canClearBadge) {
+    return false;
+  }
+
+  try {
+    if (unread > 0) {
+      await navigator.setAppBadge(Math.min(unread, 99));
+    } else {
+      await navigator.clearAppBadge();
+    }
+    return true;
+  } catch {
+    return false;
+  }
+};
