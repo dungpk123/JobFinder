@@ -1,3 +1,5 @@
+import { requestFirebaseMessagingToken } from '../config/firebaseMessaging';
+
 export const isBrowserNotificationSupported = () => {
   return typeof window !== 'undefined' && 'Notification' in window;
 };
@@ -8,11 +10,32 @@ export const requestBrowserNotificationPermission = async () => {
   }
 
   if (Notification.permission === 'granted' || Notification.permission === 'denied') {
+    if (Notification.permission === 'granted') {
+      const fcmResult = await requestFirebaseMessagingToken();
+      return {
+        supported: true,
+        permission: Notification.permission,
+        fcmSupported: fcmResult.supported,
+        fcmToken: fcmResult.token || ''
+      };
+    }
+
     return { supported: true, permission: Notification.permission };
   }
 
   try {
     const permission = await Notification.requestPermission();
+
+    if (permission === 'granted') {
+      const fcmResult = await requestFirebaseMessagingToken();
+      return {
+        supported: true,
+        permission,
+        fcmSupported: fcmResult.supported,
+        fcmToken: fcmResult.token || ''
+      };
+    }
+
     return { supported: true, permission };
   } catch {
     return { supported: true, permission: 'denied' };

@@ -41,6 +41,7 @@ import MessagesPage from './features/messages/MessagesPage';
 import SupportCenterPage from './features/support/SupportCenterPage';
 import PWAUpdatePrompt from './components/pwa/PWAUpdatePrompt';
 import AccountInstallPrompt from './components/pwa/AccountInstallPrompt';
+import FirebaseMessagingBridge from './components/FirebaseMessagingBridge';
 import MessageNotificationBridge from './components/MessageNotificationBridge';
 import { API_BASE } from './config/apiBase';
 import './App.css';
@@ -258,6 +259,7 @@ function AppContent() {
 
       {showPublicChrome && <Footer />}
       {showPublicChrome && <AIAssistantWidget />}
+      <FirebaseMessagingBridge />
       <MessageNotificationBridge />
       <AccountInstallPrompt />
       <PWAUpdatePrompt />

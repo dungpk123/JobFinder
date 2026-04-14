@@ -23,6 +23,65 @@ const API_PREFIXES = [
 
 const STATIC_FILE_RE = /\.(?:js|css|png|jpg|jpeg|svg|webp|ico|json|woff2?|ttf)$/i;
 
+const FIREBASE_MESSAGING_CONFIG = {
+  apiKey: 'AIzaSyB4-ASQPmNbDMVuSxwp33WXqsX0vNlOgto',
+  authDomain: 'jobfinder-fc89f.firebaseapp.com',
+  projectId: 'jobfinder-fc89f',
+  storageBucket: 'jobfinder-fc89f.firebasestorage.app',
+  messagingSenderId: '470606415903',
+  appId: '1:470606415903:web:e8f84eecf9a3844df06d2a',
+  measurementId: 'G-WZGNZ52YHK'
+};
+
+try {
+  importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js');
+  importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js');
+
+  if (self.firebase?.apps?.length === 0) {
+    self.firebase.initializeApp(FIREBASE_MESSAGING_CONFIG);
+  }
+
+  if (self.firebase?.messaging) {
+    const messaging = self.firebase.messaging();
+
+    messaging.onBackgroundMessage((payload) => {
+      const title = String(
+        payload?.notification?.title
+        || payload?.data?.title
+        || 'Thong bao JobFinder'
+      ).trim();
+
+      const body = String(
+        payload?.notification?.body
+        || payload?.data?.body
+        || payload?.data?.message
+        || 'Ban co thong bao moi.'
+      ).trim();
+
+      const targetUrl = String(
+        payload?.fcmOptions?.link
+        || payload?.data?.url
+        || payload?.data?.link
+        || '/messages'
+      ).trim() || '/messages';
+
+      const icon = String(payload?.notification?.icon || '/pwa-192x192.png').trim() || '/pwa-192x192.png';
+      const badge = String(payload?.notification?.badge || '/favicon-32x32.png').trim() || '/favicon-32x32.png';
+
+      self.registration.showNotification(title, {
+        body,
+        icon,
+        badge,
+        tag: String(payload?.messageId || 'jobfinder-fcm'),
+        renotify: true,
+        data: { url: targetUrl }
+      });
+    });
+  }
+} catch (error) {
+  console.warn('Firebase Messaging unavailable in service worker:', error);
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(SHELL_CACHE).then((cache) => cache.addAll(APP_SHELL_FILES)));
 });
