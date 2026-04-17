@@ -18,7 +18,6 @@ model NguoiDung {
   diaChi               String?   @db.Text @map("DiaChi")
   ngayTao              DateTime  @default(now()) @map("NgayTao")
   ngayCapNhat          DateTime  @default(now()) @map("NgayCapNhat")
-  lanDangNhapCuoi      DateTime? @map("LanDangNhapCuoi")
   maXacThuc            String?   @db.VarChar(20) @map("MaXacThuc")
   thoiGianMaXacThuc    DateTime? @map("ThoiGianMaXacThuc")
   isSuperAdmin         Boolean   @default(false) @map("IsSuperAdmin")
@@ -187,19 +186,6 @@ model LuuTin {
 
   @@id([maNguoiDung, maTin])
   @@map("LuuTin")
-}
-
-model ThongBao {
-  maThongBao  Int      @id @default(autoincrement()) @map("MaThongBao")
-  maNguoiDung Int      @map("MaNguoiDung")
-  tieuDe      String?  @db.VarChar(255) @map("TieuDe")
-  noiDung     String?  @db.LongText @map("NoiDung")
-  daDoc       Int      @default(0) @map("DaDoc")
-  loai        String?  @db.VarChar(100) @map("Loai")
-  maLienQuan  Int?     @map("MaLienQuan")
-  ngayTao     DateTime @default(now()) @map("NgayTao")
-
-  @@map("ThongBao")
 }
 
 model BaoCao {

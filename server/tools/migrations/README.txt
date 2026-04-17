@@ -27,3 +27,8 @@ Ghi chú:
    COMMIT;
 
 - Hãy backup file DB trước khi chạy migration trên dữ liệu thật.
+
+Migration đã thêm trong đợt này:
+- 003_drop_unused_notifications_and_last_login.sql
+   - Xóa cột không dùng: LanDangNhapCuoi (NguoiDung)
+   - Xóa bảng không dùng runtime: ThongBao

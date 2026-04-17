@@ -76,7 +76,8 @@ const hasCareerGuideCreatePermission = (user) => {
 
   const normalizedRole = getUserRoleNormalized(user);
   return (
-    normalizedRole === 'nha tuyen dung'
+    normalizedRole === 'ung vien'
+    || normalizedRole === 'nha tuyen dung'
     || normalizedRole === 'quan tri'
     || normalizedRole === 'sieu quan tri vien'
   );

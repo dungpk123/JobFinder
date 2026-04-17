@@ -3,6 +3,9 @@ import { Link, useLocation } from 'react-router-dom';
 import { API_BASE as CLIENT_API_BASE } from '../../config/apiBase';
 import './MessagesPage.css';
 
+const MESSAGES_POLL_INTERVAL_MS = 6000;
+const THREAD_SCROLL_BOTTOM_THRESHOLD_PX = 72;
+
 const parseUserFromStorage = () => {
   try {
     return JSON.parse(localStorage.getItem('user') || '{}');
@@ -22,6 +25,7 @@ const MessagesPage = () => {
   const API_BASE = CLIENT_API_BASE;
   const location = useLocation();
   const threadRef = useRef(null);
+  const pollInFlightRef = useRef(false);
 
   const token = String(localStorage.getItem('token') || '').trim();
   const user = useMemo(() => parseUserFromStorage(), []);
@@ -37,6 +41,7 @@ const MessagesPage = () => {
   const [sending, setSending] = useState(false);
   const [input, setInput] = useState('');
   const [error, setError] = useState('');
+  const activeUserId = Number(activeUser?.userId || 0) || null;
 
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const seededUserId = Number.parseInt(String(searchParams.get('userId') || ''), 10);
@@ -69,6 +74,28 @@ const MessagesPage = () => {
     threadRef.current.scrollTop = threadRef.current.scrollHeight;
   }, []);
 
+  const isThreadNearBottom = useCallback(() => {
+    const el = threadRef.current;
+    if (!el) return true;
+    const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
+    return remaining <= THREAD_SCROLL_BOTTOM_THRESHOLD_PX;
+  }, []);
+
+  const hasThreadChanged = useCallback((prev, next) => {
+    if (!Array.isArray(prev) || !Array.isArray(next)) return true;
+    if (prev.length !== next.length) return true;
+
+    const prevLast = prev[prev.length - 1];
+    const nextLast = next[next.length - 1];
+    if (!prevLast && !nextLast) return false;
+
+    return (
+      String(prevLast?.id || '') !== String(nextLast?.id || '')
+      || String(prevLast?.createdAt || '') !== String(nextLast?.createdAt || '')
+      || String(prevLast?.content || '') !== String(nextLast?.content || '')
+    );
+  }, []);
+
   const loadInbox = useCallback(async ({ silent = false } = {}) => {
     if (!token) {
       setInbox([]);
@@ -89,22 +116,27 @@ const MessagesPage = () => {
   const openConversation = useCallback(async (targetUser, { markRead = true, silent = false } = {}) => {
     if (!targetUser?.userId) return;
 
-    setActiveUser(targetUser);
+    const shouldAutoScroll = !silent || isThreadNearBottom();
+    setActiveUser((prev) => (Number(prev?.userId || 0) === Number(targetUser.userId) ? prev : targetUser));
     if (!silent) setThreadLoading(true);
 
     try {
       const data = await apiFetch(`/api/messages/conversation/${targetUser.userId}`);
-      setThread(Array.isArray(data?.messages) ? data.messages : []);
+      const nextMessages = Array.isArray(data?.messages) ? data.messages : [];
+      setThread((prev) => (hasThreadChanged(prev, nextMessages) ? nextMessages : prev));
 
       if (markRead) {
         await apiFetch(`/api/messages/mark-read/${targetUser.userId}`, { method: 'PATCH' });
+        window.dispatchEvent(new Event('jobfinder:messages-force-refresh'));
       }
 
-      requestAnimationFrame(scrollThreadBottom);
+      if (shouldAutoScroll) {
+        requestAnimationFrame(scrollThreadBottom);
+      }
     } finally {
       if (!silent) setThreadLoading(false);
     }
-  }, [apiFetch, scrollThreadBottom]);
+  }, [apiFetch, hasThreadChanged, isThreadNearBottom, scrollThreadBottom]);
 
   const sendMessage = async () => {
     const content = String(input || '').trim();
@@ -138,6 +170,7 @@ const MessagesPage = () => {
 
       await openConversation(activeUser, { markRead: false, silent: true });
       await loadInbox({ silent: true });
+      window.dispatchEvent(new Event('jobfinder:messages-force-refresh'));
     } catch (err) {
       setError(err?.message || 'Không thể gửi tin nhắn');
     } finally {
@@ -205,6 +238,8 @@ const MessagesPage = () => {
     if (!token) return undefined;
 
     const pollConversation = async () => {
+      if (pollInFlightRef.current || document.hidden) return;
+      pollInFlightRef.current = true;
       try {
         const refreshedInbox = await loadInbox({ silent: true });
         if (activeUser?.userId) {
@@ -214,6 +249,8 @@ const MessagesPage = () => {
         }
       } catch {
         // silent polling
+      } finally {
+        pollInFlightRef.current = false;
       }
     };
 
@@ -232,14 +269,15 @@ const MessagesPage = () => {
 
     void pollConversation();
 
-    const intervalId = window.setInterval(pollConversation, 2500);
+    const intervalId = window.setInterval(pollConversation, MESSAGES_POLL_INTERVAL_MS);
 
     return () => {
       window.clearInterval(intervalId);
+      pollInFlightRef.current = false;
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [token, activeUser, loadInbox, openConversation]);
+  }, [token, activeUser, activeUserId, loadInbox, openConversation]);
 
   return (
     <div className="messages-page">

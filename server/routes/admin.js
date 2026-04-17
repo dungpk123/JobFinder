@@ -566,7 +566,6 @@ router.get('/overview', async (req, res) => {
     'HoSoCV',
     'UngTuyen',
     'LuuTin',
-    'ThongBao',
     'BaoCao',
     'NhatKyQuanTri',
     'DanhMucCongViec',

@@ -25,7 +25,6 @@ db.serialize(() => {
             DiaChi TEXT,
             NgayTao TEXT DEFAULT (datetime('now', 'localtime')),
             NgayCapNhat TEXT DEFAULT (datetime('now', 'localtime')),
-            LanDangNhapCuoi TEXT,
             MaXacThuc TEXT,
             ThoiGianMaXacThuc TEXT,
             IsSuperAdmin INTEGER DEFAULT 0
@@ -214,6 +213,13 @@ db.serialize(() => {
         const message = String(err?.message || '').toLowerCase();
         if (err && !message.includes('no such column') && !message.includes('syntax error')) console.error(err);
     });
+    db.run('ALTER TABLE NguoiDung DROP COLUMN LanDangNhapCuoi', (err) => {
+        const message = String(err?.message || '').toLowerCase();
+        if (err && !message.includes('no such column') && !message.includes('syntax error')) console.error(err);
+    });
+    db.run('DROP TABLE IF EXISTS ThongBao', (err) => {
+        if (err) console.error(err);
+    });
 
     db.run('ALTER TABLE HoSoUngVien RENAME COLUMN EducationListJson TO DanhSachHocVanJson', (err) => {
         const message = String(err?.message || '').toLowerCase();
@@ -312,21 +318,6 @@ db.serialize(() => {
             PRIMARY KEY (MaNguoiDung, MaTin),
             FOREIGN KEY (MaNguoiDung) REFERENCES NguoiDung(MaNguoiDung) ON DELETE CASCADE,
             FOREIGN KEY (MaTin) REFERENCES TinTuyenDung(MaTin)
-        )
-    `);
-
-    // ThongBao table
-    db.run(`
-        CREATE TABLE IF NOT EXISTS ThongBao (
-            MaThongBao INTEGER PRIMARY KEY AUTOINCREMENT,
-            MaNguoiDung INTEGER NOT NULL,
-            TieuDe TEXT,
-            NoiDung TEXT,
-            DaDoc INTEGER DEFAULT 0,
-            Loai TEXT,
-            MaLienQuan INTEGER NULL,
-            NgayTao TEXT DEFAULT (datetime('now', 'localtime')),
-            FOREIGN KEY (MaNguoiDung) REFERENCES NguoiDung(MaNguoiDung) ON DELETE CASCADE
         )
     `);
 

@@ -82,19 +82,22 @@ const normalizeStatusValue = (value = '') =>
 
 const isInterviewInvitationStatus = (value = '') => normalizeStatusValue(value) === 'phong van';
 
+const readStoredUser = () => {
+    try {
+        const parsed = JSON.parse(localStorage.getItem('user') || 'null');
+        if (parsed && !parsed.avatar && parsed.AnhDaiDien) {
+            parsed.avatar = parsed.AnhDaiDien;
+        }
+        return parsed;
+    } catch {
+        return null;
+    }
+};
+
 const Profile = ({ initialTab = 'overview' }) => {
     const location = useLocation();
     const { notify } = useNotification();
-    const user = useMemo(() => {
-        try {
-            const u = JSON.parse(localStorage.getItem('user'));
-            // Ưu tiên avatar, fallback AnhDaiDien
-            if (u && !u.avatar && u.AnhDaiDien) u.avatar = u.AnhDaiDien;
-            return u;
-        } catch {
-            return null;
-        }
-    }, []);
+    const [user, setUser] = useState(() => readStoredUser());
     const userId = user?.id || user?.MaNguoiDung || user?.maNguoiDung || user?.userId || user?.userID;
 
     const [activeTab, setActiveTab] = useState(() => normalizeProfileTab(initialTab));
@@ -206,6 +209,36 @@ const Profile = ({ initialTab = 'overview' }) => {
     const [applications, setApplications] = useState([]);
     const [applicationsLoading, setApplicationsLoading] = useState(false);
     const [applicationsError, setApplicationsError] = useState('');
+
+    useEffect(() => {
+        const syncUser = (event) => {
+            if (event?.detail && typeof event.detail === 'object') {
+                const nextUser = {
+                    ...event.detail,
+                    avatar: event.detail.avatar || event.detail.AnhDaiDien || event.detail.avatarUrl || ''
+                };
+                setUser(nextUser);
+                return;
+            }
+            setUser(readStoredUser());
+        };
+
+        window.addEventListener('storage', syncUser);
+        window.addEventListener('jobfinder:user-updated', syncUser);
+
+        return () => {
+            window.removeEventListener('storage', syncUser);
+            window.removeEventListener('jobfinder:user-updated', syncUser);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (avatarFile) return;
+        const nextAvatar = user?.avatar || user?.avatarAbsoluteUrl || user?.AnhDaiDien || user?.avatarUrl || '';
+        if (nextAvatar) {
+            setAvatarPreview(nextAvatar);
+        }
+    }, [avatarFile, user]);
 
     useEffect(() => {
         const tabFromQuery = new URLSearchParams(location.search).get('tab');
@@ -869,6 +902,7 @@ const Profile = ({ initialTab = 'overview' }) => {
             }
 
             const finalAvatar = newAvatarUrl || formData.avatarUrl || profileSnapshot.AnhDaiDien || user?.avatar || user?.AnhDaiDien || '';
+            const avatarUpdatedAt = Date.now();
 
             // Cập nhật localStorage với dữ liệu mới (bao gồm avatar mới nếu có)
             const updatedUser = {
@@ -879,17 +913,24 @@ const Profile = ({ initialTab = 'overview' }) => {
                 avatarUrl: finalAvatar,
                 avatarAbsoluteUrl: finalAvatar,
                 AnhDaiDien: finalAvatar,
-                avatarUpdatedAt: Date.now()
+                avatarUpdatedAt
             };
             localStorage.setItem('user', JSON.stringify(updatedUser));
             window.dispatchEvent(new CustomEvent('jobfinder:user-updated', { detail: updatedUser }));
+            setUser(updatedUser);
+            setAvatarPreview(finalAvatar || 'https://cdn-icons-png.flaticon.com/512/149/149071.png');
+            setFormData((prev) => ({ ...prev, avatarUrl: finalAvatar }));
+            setProfileSnapshot((prev) => ({
+                ...prev,
+                HoTen: formData.fullName,
+                AnhDaiDien: finalAvatar,
+                NgayCapNhat: new Date(avatarUpdatedAt).toISOString()
+            }));
             console.log('Updated localStorage with avatar:', updatedUser.avatar);
 
             notify({ type: 'success', message: 'Cập nhật thông tin thành công!' });
             setShowEditModal(false);
             setAvatarFile(null); // Reset avatar file after successful upload
-            // Reload để cập nhật avatar và data từ database
-            window.location.reload();
         } catch (err) {
             notify({ type: 'error', message: 'Lỗi cập nhật thông tin: ' + err.message });
         }

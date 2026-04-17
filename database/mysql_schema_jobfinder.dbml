@@ -1,0 +1,352 @@
+Project do_an_jobfinder {
+  database_type: "MySQL"
+}
+
+Table NguoiDung {
+  MaNguoiDung int [pk, increment]
+  Email varchar(191) [not null, unique]
+  MatKhau varchar(255) [not null]
+  HoTen varchar(255)
+  SoDienThoai varchar(50)
+  VaiTro varchar(50) [not null]
+  TrangThai int [not null, default: 1]
+  DiaChi text
+  NgayTao datetime [not null]
+  NgayCapNhat datetime [not null]
+  MaXacThuc varchar(20)
+  ThoiGianMaXacThuc datetime
+  IsSuperAdmin boolean [not null, default: 0]
+}
+
+Table dangky {
+  MaDangKy int [pk, increment]
+  Email varchar(191) [not null, unique]
+  MatKhau varchar(255) [not null]
+  VaiTro varchar(50) [not null]
+  HoTen varchar(255)
+  SoDienThoai varchar(50)
+  DiaChi text
+  NgaySinh datetime
+  GioiTinh varchar(20)
+  TenCongTy varchar(255)
+  MaSoThue varchar(100)
+  MaXacThuc varchar(20) [not null]
+  ThoiGianMaXacThuc datetime [not null]
+  NgayTao datetime [not null]
+}
+
+Table DanhMucCongViec {
+  MaDanhMuc int [pk, increment]
+  TenDanhMuc varchar(255) [not null, unique]
+  MaCha int
+
+  indexes {
+    MaCha [name: "IDX_DanhMucCongViec_MaCha"]
+  }
+}
+
+Table KyNang {
+  MaKyNang int [pk, increment]
+  TenKyNang varchar(255) [not null, unique]
+}
+
+Table CongTy {
+  MaCongTy int [pk, increment]
+  TenCongTy varchar(255) [not null]
+  MaSoThue varchar(100)
+  DiaChi text
+  ThanhPho varchar(191)
+  Website varchar(255)
+  LinhVuc varchar(255)
+  MoTa text
+  Logo varchar(500)
+  NguoiDaiDien int
+  NgayTao datetime [not null]
+  NgayCapNhat datetime [not null]
+
+  indexes {
+    NguoiDaiDien [name: "IDX_CongTy_NguoiDaiDien"]
+  }
+}
+
+Table HoSoUngVien {
+  MaHoSo int [pk, increment]
+  MaNguoiDung int [not null, unique]
+  NgaySinh datetime
+  GioiTinh varchar(20)
+  DiaChi text
+  ThanhPho varchar(191)
+  QuanHuyen varchar(191)
+  GioiThieuBanThan text
+  SoNamKinhNghiem int [not null, default: 0]
+  TrinhDoHocVan varchar(255)
+  AnhDaiDien varchar(500)
+  ChucDanh varchar(255)
+  LinkCaNhan varchar(500)
+  DanhSachHocVanJson text
+  DanhSachKinhNghiemJson text
+  DanhSachNgoaiNguJson text
+  NgayTao datetime [not null]
+  NgayCapNhat datetime [not null]
+}
+
+Table NhaTuyenDung {
+  MaNhaTuyenDung int [pk, increment]
+  MaNguoiDung int [not null, unique]
+  TenCongTy varchar(255) [not null]
+  MaSoThue varchar(100)
+  Website varchar(255)
+  DiaChi text
+  ThanhPho varchar(191)
+  MoTa text
+  Logo varchar(500)
+  NgayTao datetime [not null]
+  NgayCapNhat datetime [not null]
+}
+
+Table HoSoCV {
+  MaCV int [pk, increment]
+  MaNguoiDung int [not null]
+  TieuDe varchar(255)
+  TomTat text
+  TepCV varchar(500)
+  MacDinh int [not null, default: 0]
+  LinhVuc varchar(255)
+  NgayTao datetime [not null]
+  NgayCapNhat datetime [not null]
+
+  indexes {
+    MaNguoiDung [name: "IDX_HoSoCV_MaNguoiDung"]
+  }
+}
+
+Table TinTuyenDung {
+  MaTin int [pk, increment]
+  MaNhaTuyenDung int [not null]
+  TieuDe varchar(255) [not null]
+  MoTa text
+  YeuCau text
+  QuyenLoi text
+  KinhNghiem varchar(255)
+  CapBac varchar(255)
+  LuongTu int
+  LuongDen int
+  KieuLuong varchar(50) [not null]
+  DiaDiem text
+  ThanhPho varchar(191)
+  LinhVucCongViec varchar(255)
+  MaDanhMuc int
+  HinhThuc varchar(50) [not null]
+  TrangThai varchar(50) [not null]
+  NgayDang datetime [not null]
+  HanNopHoSo datetime
+  LuotXem int [not null, default: 0]
+  SoLuongUngTuyen int [not null, default: 0]
+
+  indexes {
+    MaNhaTuyenDung [name: "IDX_TinTuyenDung_MaNhaTuyenDung"]
+    MaDanhMuc [name: "IDX_TinTuyenDung_MaDanhMuc"]
+  }
+}
+
+Table ThongKeCongViec {
+  MaTin int [pk]
+  LuotXem int [not null, default: 0]
+  SoLuongUngTuyen int [not null, default: 0]
+  LanXemCuoi datetime
+}
+
+Table ChiTietTin_KyNang {
+  MaTin int [not null]
+  MaKyNang int [not null]
+  DoQuanTrong int [not null, default: 1]
+
+  indexes {
+    (MaTin, MaKyNang) [pk]
+    MaKyNang [name: "IDX_ChiTietTin_KyNang_MaKyNang"]
+  }
+}
+
+Table ChiTietCV_KyNang {
+  MaCV int [not null]
+  MaKyNang int [not null]
+  MucDo varchar(50) [not null]
+
+  indexes {
+    (MaCV, MaKyNang) [pk]
+    MaKyNang [name: "IDX_ChiTietCV_KyNang_MaKyNang"]
+  }
+}
+
+Table LuuCV {
+  MaLuuCV int [pk, increment]
+  MaNhaTuyenDung int [not null]
+  MaCV int [not null]
+  TrangThai varchar(50) [not null]
+  NgayLuu datetime [not null]
+
+  indexes {
+    (MaNhaTuyenDung, MaCV) [unique, name: "UQ_LuuCV_MaNhaTuyenDung_MaCV"]
+    MaCV [name: "IDX_LuuCV_MaCV"]
+  }
+}
+
+Table UngTuyen {
+  MaUngTuyen int [pk, increment]
+  MaTin int [not null]
+  MaCV int
+  MaUngVien int [not null]
+  ThuGioiThieu text
+  TrangThai varchar(50) [not null]
+  NgayNop datetime [not null]
+  GhiChu text
+
+  indexes {
+    MaTin [name: "IDX_UngTuyen_MaTin"]
+    MaCV [name: "IDX_UngTuyen_MaCV"]
+    MaUngVien [name: "IDX_UngTuyen_MaUngVien"]
+  }
+}
+
+Table LuuTin {
+  MaNguoiDung int [not null]
+  MaTin int [not null]
+  NgayLuu datetime [not null]
+
+  indexes {
+    (MaNguoiDung, MaTin) [pk]
+    MaTin [name: "IDX_LuuTin_MaTin"]
+  }
+}
+
+Table BaoCao {
+  MaBaoCao int [pk, increment]
+  MaNguoiBaoCao int
+  LoaiDoiTuong varchar(100) [not null]
+  MaDoiTuong int [not null]
+  LyDo varchar(255)
+  ChiTiet text
+  TrangThai varchar(50) [not null]
+  NgayBaoCao datetime [not null]
+
+  indexes {
+    MaNguoiBaoCao [name: "IDX_BaoCao_MaNguoiBaoCao"]
+  }
+}
+
+Table NhatKyQuanTri {
+  id int [pk, increment]
+  user_id int
+  action varchar(100)
+  entity_type varchar(100)
+  entity_id int
+  timestamp datetime [not null]
+
+  indexes {
+    user_id [name: "IDX_NhatKyQuanTri_user_id"]
+    timestamp [name: "IDX_NhatKyQuanTri_timestamp"]
+  }
+}
+
+Table TinNhan {
+  MaTinNhan int [pk, increment]
+  MaNguoiGui int [not null]
+  MaNguoiNhan int [not null]
+  MaTin int
+  NoiDung text [not null]
+  DaDoc int [not null, default: 0]
+  NgayGui datetime [not null]
+
+  indexes {
+    MaNguoiGui [name: "IDX_TinNhan_MaNguoiGui"]
+    MaNguoiNhan [name: "IDX_TinNhan_MaNguoiNhan"]
+    MaTin [name: "IDX_TinNhan_MaTin"]
+  }
+}
+
+Table DanhGiaCongTy {
+  MaDanhGia int [pk, increment]
+  MaNhaTuyenDung int [not null]
+  MaUngVien int [not null]
+  SoSao int [not null]
+  NgayDanhGia datetime [not null]
+
+  indexes {
+    (MaNhaTuyenDung, MaUngVien) [unique, name: "UQ_DanhGiaCongTy_NTD_UV"]
+    MaUngVien [name: "IDX_DanhGiaCongTy_MaUngVien"]
+  }
+}
+
+Table BinhLuanCongTy {
+  MaBinhLuan int [pk, increment]
+  MaNhaTuyenDung int [not null]
+  MaNguoiDung int [not null]
+  NoiDung text [not null]
+  NgayTao datetime [not null]
+
+  indexes {
+    MaNhaTuyenDung [name: "IDX_BinhLuanCongTy_MaNhaTuyenDung"]
+    MaNguoiDung [name: "IDX_BinhLuanCongTy_MaNguoiDung"]
+  }
+}
+
+Table CamNangNgheNghiep {
+  MaBaiViet int [pk, increment]
+  TieuDe varchar(255) [not null]
+  NoiDung text [not null]
+  MaTacGia int [not null]
+  LoaiTacGia varchar(50) [not null]
+  NgayTao datetime [not null]
+  NgayCapNhat datetime [not null]
+  LuotXem int [not null, default: 0]
+
+  indexes {
+    MaTacGia [name: "IDX_CamNangNgheNghiep_MaTacGia"]
+  }
+}
+
+Table BinhLuanCamNangNgheNghiep {
+  MaBinhLuan int [pk, increment]
+  MaBaiViet int [not null]
+  MaNguoiDung int [not null]
+  LoaiNguoiDung varchar(50) [not null]
+  NoiDung text [not null]
+  NgayTao datetime [not null]
+
+  indexes {
+    MaBaiViet [name: "IDX_BinhLuanCamNang_MaBaiViet"]
+    MaNguoiDung [name: "IDX_BinhLuanCamNang_MaNguoiDung"]
+  }
+}
+
+Ref: DanhMucCongViec.MaCha > DanhMucCongViec.MaDanhMuc
+Ref: CongTy.NguoiDaiDien > NguoiDung.MaNguoiDung
+Ref: HoSoUngVien.MaNguoiDung > NguoiDung.MaNguoiDung
+Ref: NhaTuyenDung.MaNguoiDung > NguoiDung.MaNguoiDung
+Ref: HoSoCV.MaNguoiDung > NguoiDung.MaNguoiDung
+Ref: TinTuyenDung.MaNhaTuyenDung > NhaTuyenDung.MaNhaTuyenDung
+Ref: TinTuyenDung.MaDanhMuc > DanhMucCongViec.MaDanhMuc
+Ref: ThongKeCongViec.MaTin > TinTuyenDung.MaTin
+Ref: ChiTietTin_KyNang.MaTin > TinTuyenDung.MaTin
+Ref: ChiTietTin_KyNang.MaKyNang > KyNang.MaKyNang
+Ref: ChiTietCV_KyNang.MaCV > HoSoCV.MaCV
+Ref: ChiTietCV_KyNang.MaKyNang > KyNang.MaKyNang
+Ref: LuuCV.MaNhaTuyenDung > NhaTuyenDung.MaNhaTuyenDung
+Ref: LuuCV.MaCV > HoSoCV.MaCV
+Ref: UngTuyen.MaTin > TinTuyenDung.MaTin
+Ref: UngTuyen.MaCV > HoSoCV.MaCV
+Ref: UngTuyen.MaUngVien > NguoiDung.MaNguoiDung
+Ref: LuuTin.MaNguoiDung > NguoiDung.MaNguoiDung
+Ref: LuuTin.MaTin > TinTuyenDung.MaTin
+Ref: BaoCao.MaNguoiBaoCao > NguoiDung.MaNguoiDung
+Ref: NhatKyQuanTri.user_id > NguoiDung.MaNguoiDung
+Ref: TinNhan.MaNguoiGui > NguoiDung.MaNguoiDung
+Ref: TinNhan.MaNguoiNhan > NguoiDung.MaNguoiDung
+Ref: TinNhan.MaTin > TinTuyenDung.MaTin
+Ref: DanhGiaCongTy.MaNhaTuyenDung > NhaTuyenDung.MaNhaTuyenDung
+Ref: DanhGiaCongTy.MaUngVien > NguoiDung.MaNguoiDung
+Ref: BinhLuanCongTy.MaNhaTuyenDung > NhaTuyenDung.MaNhaTuyenDung
+Ref: BinhLuanCongTy.MaNguoiDung > NguoiDung.MaNguoiDung
+Ref: CamNangNgheNghiep.MaTacGia > NguoiDung.MaNguoiDung
+Ref: BinhLuanCamNangNgheNghiep.MaBaiViet > CamNangNgheNghiep.MaBaiViet
+Ref: BinhLuanCamNangNgheNghiep.MaNguoiDung > NguoiDung.MaNguoiDung

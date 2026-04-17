@@ -635,6 +635,8 @@ router.post('/upload-image', authenticateToken, runCareerGuideImageUpload, async
 // Get single post with comments
 router.get('/:id', async (req, res) => {
   const rawIdentifier = String(req.params.id || '').trim();
+  const trackViewFlag = String(req.query?.trackView ?? '1').trim().toLowerCase();
+  const shouldTrackView = !['0', 'false', 'off', 'no'].includes(trackViewFlag);
 
   try {
     await ensureCareerGuideSchema();
@@ -678,7 +680,9 @@ router.get('/:id', async (req, res) => {
       });
     }
 
-    await dbRun('UPDATE CamNangNgheNghiep SET LuotXem = LuotXem + 1 WHERE MaBaiViet = ?', [post.id]);
+    if (shouldTrackView) {
+      await dbRun('UPDATE CamNangNgheNghiep SET LuotXem = LuotXem + 1 WHERE MaBaiViet = ?', [post.id]);
+    }
 
     const comments = await dbAll(
       `SELECT
@@ -704,7 +708,7 @@ router.get('/:id', async (req, res) => {
       success: true,
       post: {
         ...post,
-        views: Number(post.views || 0) + 1
+        views: Number(post.views || 0) + (shouldTrackView ? 1 : 0)
       },
       comments: comments || []
     });

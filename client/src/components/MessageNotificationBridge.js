@@ -3,6 +3,14 @@ import { API_BASE as CLIENT_API_BASE } from '../config/apiBase';
 import { useNotification } from './NotificationProvider';
 import { showBrowserNotification, syncAppIconBadge } from './notificationUtils';
 
+const AUTH_SNAPSHOT_INTERVAL_MS = 5000;
+const INBOX_SYNC_INTERVAL_MS = 30000;
+
+const isMessageScreenPath = (pathname = '') => {
+  const normalizedPath = String(pathname || '').trim().toLowerCase();
+  return normalizedPath === '/messages' || normalizedPath.startsWith('/employer/messages');
+};
+
 const parseUser = () => {
   try {
     return JSON.parse(localStorage.getItem('user') || '{}');
@@ -33,6 +41,7 @@ const MessageNotificationBridge = () => {
 
   const lastSnapshotRef = useRef(new Map());
   const bootstrappedRef = useRef(false);
+  const syncInFlightRef = useRef(false);
 
   useEffect(() => {
     const syncAuthFromStorage = (event) => {
@@ -66,7 +75,7 @@ const MessageNotificationBridge = () => {
         }
         return next;
       });
-    }, 1200);
+    }, AUTH_SNAPSHOT_INTERVAL_MS);
 
     window.addEventListener('storage', syncAuthFromStorage);
     window.addEventListener('jobfinder:user-updated', syncAuthFromStorage);
@@ -84,6 +93,7 @@ const MessageNotificationBridge = () => {
     if (!token || !currentUserId) {
       bootstrappedRef.current = false;
       lastSnapshotRef.current = new Map();
+      syncInFlightRef.current = false;
       window.dispatchEvent(new CustomEvent('jobfinder:messages-unread-updated', {
         detail: {
           unreadConversations: 0,
@@ -131,6 +141,11 @@ const MessageNotificationBridge = () => {
     };
 
     const syncInbox = async ({ initial = false } = {}) => {
+      if (cancelled || syncInFlightRef.current) return;
+      if (!initial && typeof document !== 'undefined' && document.hidden) return;
+      if (!initial && isMessageScreenPath(window.location.pathname)) return;
+
+      syncInFlightRef.current = true;
       const inbox = await fetchInbox();
       const nextSnapshot = new Map();
       let unreadConversations = 0;
@@ -174,23 +189,43 @@ const MessageNotificationBridge = () => {
         }));
       }
       void syncAppIconBadge(unreadConversations);
+      syncInFlightRef.current = false;
     };
 
-    syncInbox({ initial: true }).catch((err) => {
-      if (!cancelled) {
-        console.log('Message notification bootstrap skipped:', err?.message || err);
+    const runSync = ({ initial = false } = {}) => {
+      syncInbox({ initial }).catch((err) => {
+        syncInFlightRef.current = false;
+        if (!cancelled && initial) {
+          console.log('Message notification bootstrap skipped:', err?.message || err);
+        }
+      });
+    };
+
+    const onFocus = () => runSync({ initial: !bootstrappedRef.current });
+    const onVisibilityChange = () => {
+      if (!document.hidden) {
+        runSync({ initial: !bootstrappedRef.current });
       }
-    });
+    };
+    const onForceRefresh = () => runSync({ initial: !bootstrappedRef.current });
+
+    runSync({ initial: true });
+
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('jobfinder:messages-force-refresh', onForceRefresh);
 
     const intervalId = window.setInterval(() => {
-      syncInbox({ initial: !bootstrappedRef.current }).catch(() => {
-        // silent polling; inbox failures should not interrupt the app
-      });
-    }, 3000);
+      runSync({ initial: !bootstrappedRef.current });
+    }, INBOX_SYNC_INTERVAL_MS);
 
     return () => {
       cancelled = true;
+      syncInFlightRef.current = false;
       window.clearInterval(intervalId);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('jobfinder:messages-force-refresh', onForceRefresh);
     };
   }, [API_BASE, currentUserId, isEmployer, notify, token]);
 

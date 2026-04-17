@@ -4,8 +4,71 @@ import { syncAppIconBadge } from './notificationUtils';
 import './AIAssistantWidget.css';
 import { useNavigate } from 'react-router-dom';
 
-const UNREAD_POLL_INTERVAL_MS = 4000;
-const CHAT_REALTIME_POLL_INTERVAL_MS = 2500;
+const CHAT_REALTIME_POLL_INTERVAL_MS = 5000;
+const THREAD_SCROLL_BOTTOM_THRESHOLD_PX = 72;
+const INLINE_LINK_PATTERN = /(https?:\/\/[^\s<>"']+|\/career-guide\/[a-zA-Z0-9\-._~%]+)/gi;
+const INITIAL_AI_MESSAGES = [
+  {
+    role: 'assistant',
+    content:
+      'Mình là AI hỗ trợ JobFinder. Bạn có thể hỏi về cách dùng website, CV, phỏng vấn, việc làm. Bạn cũng có thể chọn CV đã lưu để mình đọc và gợi ý việc phù hợp hơn.'
+  }
+];
+
+const splitTrailingPunctuation = (token = '') => {
+  let link = String(token || '');
+  let trailingText = '';
+
+  while (link && /[),.;!?]$/.test(link)) {
+    trailingText = link.slice(-1) + trailingText;
+    link = link.slice(0, -1);
+  }
+
+  return { link, trailingText };
+};
+
+const renderTextWithLinks = (text = '') => {
+  const value = String(text || '');
+  const lines = value.split('\n');
+
+  return lines.map((line, lineIndex) => {
+    const nodes = [];
+    let cursor = 0;
+
+    line.replace(INLINE_LINK_PATTERN, (match, offset) => {
+      if (offset > cursor) {
+        nodes.push(line.slice(cursor, offset));
+      }
+
+      const { link, trailingText } = splitTrailingPunctuation(match);
+      if (link) {
+        nodes.push(
+          <a key={`line-${lineIndex}-link-${offset}`} href={link} target="_blank" rel="noreferrer">
+            {link}
+          </a>
+        );
+      }
+
+      if (trailingText) {
+        nodes.push(trailingText);
+      }
+
+      cursor = offset + match.length;
+      return match;
+    });
+
+    if (cursor < line.length) {
+      nodes.push(line.slice(cursor));
+    }
+
+    return (
+      <React.Fragment key={`line-${lineIndex}`}>
+        {nodes.length ? nodes : line}
+        {lineIndex < lines.length - 1 ? <br /> : null}
+      </React.Fragment>
+    );
+  });
+};
 
 const getUserId = () => {
   try {
@@ -57,7 +120,7 @@ const normalizeAssistantReply = (text = '') => {
 };
 
 const AIAssistantWidget = () => {
-  const { notify } = useNotification();
+  const { notify, requestConfirm } = useNotification();
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const [pillExpanded, setPillExpanded] = useState(true);
@@ -73,13 +136,7 @@ const AIAssistantWidget = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content:
-        'Mình là AI hỗ trợ JobFinder. Bạn có thể hỏi về cách dùng website, CV, phỏng vấn, việc làm. Bạn cũng có thể chọn CV đã lưu để mình đọc và gợi ý việc phù hợp hơn.'
-    }
-  ]);
+  const [messages, setMessages] = useState(INITIAL_AI_MESSAGES);
   const [cvOptions, setCvOptions] = useState([]);
   const [cvLoading, setCvLoading] = useState(false);
   const [selectedCvId, setSelectedCvId] = useState('');
@@ -89,6 +146,7 @@ const AIAssistantWidget = () => {
   const listRef = useRef(null);
   const threadListRef = useRef(null);
   const fileInputRef = useRef(null);
+  const chatPollInFlightRef = useRef(false);
 
   const title = useMemo(() => 'AI trợ lý', []);
   const selectedCv = useMemo(
@@ -136,6 +194,38 @@ const AIAssistantWidget = () => {
     const el = threadListRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
+  };
+
+  const isThreadNearBottom = () => {
+    const el = threadListRef.current;
+    if (!el) return true;
+    const remaining = el.scrollHeight - el.scrollTop - el.clientHeight;
+    return remaining <= THREAD_SCROLL_BOTTOM_THRESHOLD_PX;
+  };
+
+  const emitMessageRefresh = () => {
+    window.dispatchEvent(new Event('jobfinder:messages-force-refresh'));
+  };
+
+  const clearAiHistory = async () => {
+    if (busy) return;
+
+    const confirmed = await requestConfirm({
+      type: 'warning',
+      title: 'Xóa lịch sử trò chuyện AI',
+      message: 'Bạn có chắc muốn xóa toàn bộ lịch sử chat AI hiện tại?',
+      confirmText: 'Xóa lịch sử',
+      cancelText: 'Giữ lại'
+    });
+
+    if (!confirmed) return;
+
+    setMessages(INITIAL_AI_MESSAGES);
+    setInput('');
+    setPendingUploadFile(null);
+    setSelectedCvId('');
+    notify({ type: 'success', message: 'Đã xóa lịch sử trò chuyện AI.' });
+    setTimeout(scrollToBottom, 0);
   };
 
   const apiFetch = async (path, options = {}) => {
@@ -308,26 +398,36 @@ const AIAssistantWidget = () => {
     );
   };
 
-  const openConversation = async (user, { markRead = true, silent = false, refreshSidebar = true } = {}) => {
+  const openConversation = async (user, { markRead = true, silent = false, refreshSidebar = true, refreshUnread = true } = {}) => {
     if (!user?.userId) return;
 
-    setActiveChatUser(user);
+    const shouldAutoScroll = !silent || isThreadNearBottom();
+    setActiveChatUser((prev) => (Number(prev?.userId || 0) === Number(user.userId) ? prev : user));
     if (!silent) setThreadLoading(true);
     try {
       const data = await apiFetch(`/api/messages/conversation/${user.userId}`);
       const nextMessages = Array.isArray(data?.messages) ? data.messages : [];
       setThreadMessages((prev) => (hasThreadChanged(prev, nextMessages) ? nextMessages : prev));
-      setTimeout(scrollThreadToBottom, 0);
+      if (shouldAutoScroll) {
+        setTimeout(scrollThreadToBottom, 0);
+      }
 
       if (markRead) {
         await apiFetch(`/api/messages/mark-read/${user.userId}`, { method: 'PATCH' });
       }
 
-      const refreshTasks = [refreshUnreadCount({ silent: true })];
+      const refreshTasks = [];
       if (refreshSidebar) {
         refreshTasks.push(refreshInbox({ silent: true, showErrorToast: false }));
       }
+      if (refreshUnread) {
+        refreshTasks.push(refreshUnreadCount({ silent: true }));
+      }
       await Promise.all(refreshTasks);
+
+      if (markRead) {
+        emitMessageRefresh();
+      }
 
       return nextMessages;
     } catch (err) {
@@ -371,10 +471,11 @@ const AIAssistantWidget = () => {
       });
 
       await Promise.all([
-        openConversation(activeChatUser, { markRead: false, silent: true, refreshSidebar: false }),
+        openConversation(activeChatUser, { markRead: false, silent: true, refreshSidebar: false, refreshUnread: false }),
         refreshInbox({ silent: true, showErrorToast: false }),
         refreshUnreadCount({ silent: true })
       ]);
+      emitMessageRefresh();
     } catch (err) {
       notify({ type: 'error', message: err.message || 'Không thể gửi tin nhắn.' });
     }
@@ -512,30 +613,6 @@ const AIAssistantWidget = () => {
   }, []);
 
   useEffect(() => {
-    const refreshUnread = () => {
-      void refreshUnreadCount({ silent: true });
-    };
-
-    refreshUnread();
-    const intervalId = window.setInterval(refreshUnread, UNREAD_POLL_INTERVAL_MS);
-
-    const onFocus = () => refreshUnread();
-    const onVisibilityChange = () => {
-      if (!document.hidden) refreshUnread();
-    };
-
-    window.addEventListener('focus', onFocus);
-    document.addEventListener('visibilitychange', onVisibilityChange);
-
-    return () => {
-      window.clearInterval(intervalId);
-      window.removeEventListener('focus', onFocus);
-      document.removeEventListener('visibilitychange', onVisibilityChange);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
     if (!open) return;
     loadUserCvs(false);
   }, [open, loadUserCvs]);
@@ -562,11 +639,11 @@ const AIAssistantWidget = () => {
       if (cancelled) return;
 
       if (!activeChatUserId && list.length > 0) {
-        await openConversation(list[0], { markRead: true, silent: false, refreshSidebar: false });
+        await openConversation(list[0], { markRead: true, silent: false, refreshSidebar: false, refreshUnread: false });
       } else if (activeChatUserId) {
         const currentUser = list.find((item) => Number(item.userId) === Number(activeChatUserId)) || activeChatUser;
         if (currentUser) {
-          await openConversation(currentUser, { markRead: true, silent: false, refreshSidebar: false });
+          await openConversation(currentUser, { markRead: true, silent: false, refreshSidebar: false, refreshUnread: false });
         }
       }
     })();
@@ -583,6 +660,8 @@ const AIAssistantWidget = () => {
     let cancelled = false;
 
     const pollRealtimeChat = async () => {
+      if (chatPollInFlightRef.current || document.hidden) return;
+      chatPollInFlightRef.current = true;
       try {
         const list = await refreshInbox({ silent: true, showErrorToast: false });
         if (cancelled) return;
@@ -594,14 +673,15 @@ const AIAssistantWidget = () => {
             await openConversation(currentUser, {
               markRead: shouldMarkRead,
               silent: true,
-              refreshSidebar: false
+              refreshSidebar: false,
+              refreshUnread: false
             });
           }
         }
-
-        await refreshUnreadCount({ silent: true });
       } catch {
         // keep polling silently while chat is open
+      } finally {
+        chatPollInFlightRef.current = false;
       }
     };
 
@@ -610,6 +690,7 @@ const AIAssistantWidget = () => {
 
     return () => {
       cancelled = true;
+      chatPollInFlightRef.current = false;
       window.clearInterval(intervalId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -673,7 +754,7 @@ const AIAssistantWidget = () => {
                     return (
                       <div key={m.id} className={`aiw-thread-msg ${isMe ? 'me' : 'other'}`}>
                         <div>
-                          <div className="aiw-thread-bubble" style={{ whiteSpace: 'pre-wrap' }}>{m.content}</div>
+                          <div className="aiw-thread-bubble">{renderTextWithLinks(m.content)}</div>
                           {timeText && <div className="aiw-thread-time">{timeText}</div>}
                         </div>
                       </div>
@@ -711,15 +792,27 @@ const AIAssistantWidget = () => {
                 <div className="aiw-title-sub">Trả lời nhanh, gợi ý rõ ràng</div>
               </div>
             </div>
-            <button type="button" className="aiw-close" onClick={() => setOpen(false)} aria-label="Đóng">
-              <i className="bi bi-x"></i>
-            </button>
+            <div className="aiw-header-actions">
+              <button
+                type="button"
+                className="aiw-clear"
+                onClick={clearAiHistory}
+                aria-label="Xóa lịch sử chat AI"
+                disabled={busy || messages.length <= 1}
+              >
+                <i className="bi bi-trash3"></i>
+                <span>Xóa lịch sử</span>
+              </button>
+              <button type="button" className="aiw-close" onClick={() => setOpen(false)} aria-label="Đóng">
+                <i className="bi bi-x"></i>
+              </button>
+            </div>
           </div>
 
           <div className="aiw-messages" ref={listRef}>
             {messages.map((m, idx) => (
               <div key={idx} className={`aiw-msg ${m.role === 'user' ? 'user' : 'assistant'}`}>
-                <div className="aiw-bubble" style={{ whiteSpace: 'pre-wrap' }}>{m.content}</div>
+                <div className="aiw-bubble">{renderTextWithLinks(m.content)}</div>
               </div>
             ))}
             {uploading && (

@@ -32,6 +32,8 @@ const ProfileMainContent = ({
   passwordStatus
 }) => {
   const currentEmail = user?.email || user?.Email || '';
+  const displayName = user?.name || user?.HoTen || user?.fullName || 'Người dùng';
+  const displayAvatar = user?.avatar || user?.avatarAbsoluteUrl || user?.avatarUrl || user?.AnhDaiDien || avatarFallback;
 
   return (
     <div className="col-lg-9 col-md-8">
@@ -40,7 +42,7 @@ const ProfileMainContent = ({
           <section className="profile-tab-card profile-overview-card mb-3">
             <div className="profile-overview-head">
               <img
-                src={user?.avatar || user?.AnhDaiDien || avatarFallback}
+                src={displayAvatar}
                 alt="avatar"
                 className="profile-overview-avatar"
                 onError={(e) => {
@@ -50,7 +52,7 @@ const ProfileMainContent = ({
               />
               <div className="profile-overview-info">
                 <p className="profile-overview-eyebrow">Hồ sơ ứng viên</p>
-                <h3>{user?.name || 'Người dùng'}</h3>
+                <h3>{displayName}</h3>
                 <div className="profile-overview-meta">
                   <span><i className="bi bi-briefcase"></i>{profileSummary.position || 'Chưa cập nhật chức danh'}</span>
                   <span><i className="bi bi-geo-alt"></i>{profileSummary.city || 'Chưa cập nhật thành phố'}</span>

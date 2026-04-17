@@ -185,6 +185,35 @@
   justify-content: center;
 }
 
+.aiw-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.aiw-clear {
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 10px;
+  height: 34px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.aiw-clear span {
+  white-space: nowrap;
+}
+
+.aiw-clear:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .aiw-toolbar {
   padding: 10px 12px;
   display: flex;
@@ -248,6 +277,22 @@
   box-shadow: 0 6px 14px rgba(15, 23, 42, 0.06);
   color: #111827;
   font-weight: 600;
+}
+
+.aiw-bubble a,
+.aiw-thread-bubble a {
+  color: #1d4ed8;
+  text-decoration: underline;
+  font-weight: 700;
+  word-break: break-all;
+}
+
+.aiw-msg.user .aiw-bubble a {
+  color: #1e3a8a;
+}
+
+.aiw-thread-msg.me .aiw-thread-bubble a {
+  color: #dbeafe;
 }
 
 .aiw-msg.user .aiw-bubble {
@@ -785,6 +830,35 @@
   background: rgba(15, 23, 42, 0.3);
 }
 
+@media (max-width: 980px) {
+  .aiw-chat-body {
+    flex-direction: column;
+  }
+
+  .aiw-chat-inbox {
+    width: 100%;
+    max-height: 118px;
+    border-right: none;
+    border-bottom: 1px solid #dce7f4;
+    overflow-x: auto;
+    overflow-y: hidden;
+    display: flex;
+  }
+
+  .aiw-chat-inbox .aiw-inbox-item {
+    flex: 0 0 220px;
+    max-width: 240px;
+    border-bottom: none;
+    border-right: 1px solid rgba(15, 23, 42, 0.08);
+    padding: 10px 12px;
+  }
+
+  .aiw-chat-inbox .aiw-inbox-item.active {
+    border-left: none;
+    border-top: 3px solid #2563eb;
+  }
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .aiw-chat-panel {
@@ -800,10 +874,21 @@
   }
   
   .aiw-chat-inbox {
-    width: 200px;
+    width: 100%;
+    max-height: 108px;
   }
   
   .aiw-thread-bubble {
     max-width: 240px;
+  }
+
+  .aiw-clear {
+    width: 34px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .aiw-clear span {
+    display: none;
   }
 }

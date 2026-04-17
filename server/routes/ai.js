@@ -24,6 +24,7 @@ const MAX_MESSAGES = 20;
 const MAX_STORED_CV_CHARS = 14000;
 const CV_STORAGE_PATH = path.join(__dirname, '../public/cvs');
 const ONLINE_META_SUFFIX = '__online.json';
+const MAX_CAREER_GUIDE_LINKS = 5;
 
 const VI_STOP_WORDS = new Set([
   'anh', 'chi', 'ban', 'toi', 'la', 'va', 'hoac', 'cua', 'cho', 'voi', 'nhung', 'mot', 'nhieu',
@@ -132,6 +133,116 @@ const dbAll = (sql, params = []) =>
     db.all(sql, params, (err, rows) => (err ? reject(err) : resolve(rows || [])));
   });
 
+const isCareerGuideLinkIntent = (text = '') => {
+  const normalized = normalizeForMatch(text);
+  if (!normalized) return false;
+
+  const hasCareerGuideTopic = /(bai viet|cam nang|career guide|huong nghiep|kinh nghiem)/.test(normalized);
+  if (!hasCareerGuideTopic) return false;
+
+  return /(link|duong dan|goi y|tham khao|xem|doc|gui|cho toi)/.test(normalized);
+};
+
+const fetchCareerGuideRows = async () => {
+  try {
+    return await dbAll(
+      `SELECT MaBaiViet AS id, TieuDe AS title, NoiDung AS content
+       FROM CamNangNgheNghiep
+       WHERE COALESCE(TrangThai, 'published') = 'published'
+       ORDER BY NgayTao DESC
+       LIMIT 120`
+    );
+  } catch (error) {
+    const message = String(error?.message || '').toLowerCase();
+    if (message.includes('no such column') || message.includes('unknown column')) {
+      return dbAll(
+        `SELECT MaBaiViet AS id, TieuDe AS title, NoiDung AS content
+         FROM CamNangNgheNghiep
+         ORDER BY NgayTao DESC
+         LIMIT 120`
+      );
+    }
+    throw error;
+  }
+};
+
+const loadCareerGuideSuggestions = async ({ query = '', limit = MAX_CAREER_GUIDE_LINKS } = {}) => {
+  const boundedLimit = Math.max(1, Math.min(8, Number(limit) || MAX_CAREER_GUIDE_LINKS));
+  const queryTokens = extractKeywordsFromText(query, 14);
+
+  try {
+    const rows = await fetchCareerGuideRows();
+    const list = Array.isArray(rows) ? rows : [];
+    if (!list.length) return [];
+
+    const scored = list.map((row, index) => {
+      const titleNorm = normalizeForMatch(row?.title || '');
+      const contentNorm = normalizeForMatch(String(row?.content || '').slice(0, 3600));
+      let score = queryTokens.length ? 0 : Math.max(0, 120 - index);
+
+      queryTokens.forEach((token, tokenIndex) => {
+        if (!token) return;
+        const depthBoost = tokenIndex < 5 ? 1.15 : 1;
+        if (titleNorm.includes(token)) {
+          score += 9 * depthBoost;
+        } else if (contentNorm.includes(token)) {
+          score += 2.5 * depthBoost;
+        }
+      });
+
+      return {
+        id: row?.id,
+        title: String(row?.title || '').trim() || `Bài viết #${row?.id || index + 1}`,
+        score,
+        orderIndex: index
+      };
+    });
+
+    const ranked = scored
+      .sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return a.orderIndex - b.orderIndex;
+      })
+      .filter((item) => (!queryTokens.length ? true : item.score > 0));
+
+    const selected = (ranked.length ? ranked : scored).slice(0, boundedLimit);
+
+    return selected
+      .filter((item) => item.id != null)
+      .map((item) => ({
+        id: Number(item.id),
+        title: item.title,
+        path: `/career-guide/${encodeURIComponent(String(item.id))}`
+      }));
+  } catch (error) {
+    const message = String(error?.message || '').toLowerCase();
+    if (!message.includes('no such table') && !message.includes("doesn't exist")) {
+      console.warn('AI career-guide suggestions failed:', error?.message || error);
+    }
+    return [];
+  }
+};
+
+const appendCareerGuideLinksToReply = (reply = '', suggestions = []) => {
+  const baseReply = String(reply || '').trim();
+  if (!Array.isArray(suggestions) || suggestions.length === 0) {
+    return baseReply;
+  }
+
+  if (/\/career-guide\/[\w\-._~%]+/i.test(baseReply)) {
+    return baseReply;
+  }
+
+  const linkLines = suggestions.map((item, index) => `${index + 1}. ${item.title}: ${item.path}`);
+  return [
+    baseReply,
+    'Bạn có thể xem thêm các bài viết này trên JobFinder:',
+    ...linkLines
+  ]
+    .filter(Boolean)
+    .join('\n');
+};
+
 const normalizeChatMessages = (messages) => {
   const incomingMessages = Array.isArray(messages) ? messages : null;
   if (!incomingMessages || !incomingMessages.length) return [];
@@ -214,7 +325,12 @@ const extractTextFromStoredCv = async ({ filePath, filename }) => {
       }
     }
 
-    return [metaText, htmlText].filter(Boolean).join(' ');
+    const normalizedHtml = String(htmlText || '').replace(/\s+/g, ' ').trim();
+    // Ưu tiên văn bản HTML thực tế; chỉ fallback sang meta khi HTML quá ngắn.
+    if (normalizedHtml.length >= 280) {
+      return normalizedHtml;
+    }
+    return [metaText, normalizedHtml].filter(Boolean).join(' ').trim();
   }
 
   if (ext === '.doc') {
@@ -269,9 +385,10 @@ const loadPublishedJobs = async (limit = 120) => {
   );
 };
 
-const recommendJobsByCv = ({ jobs = [], keywords = [], preferredCity = '' }) => {
+const recommendJobsByCv = ({ jobs = [], keywords = [], preferredCity = '', priorityKeywords = [] }) => {
   const cityNorm = normalizeForMatch(preferredCity);
   const keywordList = (keywords || []).map((kw) => normalizeForMatch(kw)).filter(Boolean);
+  const priorityList = (priorityKeywords || []).map((kw) => normalizeForMatch(kw)).filter(Boolean);
 
   const scored = (jobs || []).map((job) => {
     const title = normalizeForMatch(job?.title || '');
@@ -281,6 +398,14 @@ const recommendJobsByCv = ({ jobs = [], keywords = [], preferredCity = '' }) => 
 
     let score = 0;
     if (cityNorm && city && cityNorm === city) score += 36;
+
+    priorityList.forEach((kw, idx) => {
+      if (!kw) return;
+      const depthBoost = idx < 4 ? 1.25 : 1;
+      if (title.includes(kw)) score += 16 * depthBoost;
+      else if (field.includes(kw)) score += 12 * depthBoost;
+      else if (body.includes(kw)) score += 5 * depthBoost;
+    });
 
     keywordList.forEach((kw, idx) => {
       if (!kw) return;
@@ -612,6 +737,17 @@ router.post('/chat', async (req, res) => {
     const lastUserText = [...chatMessages].reverse().find((m) => m.role === 'user')?.content || '';
 
     if (modeValue === 'general') {
+      const shouldSuggestCareerGuideLinks = isCareerGuideLinkIntent(lastUserText);
+      const careerGuideSuggestions = shouldSuggestCareerGuideLinks
+        ? await loadCareerGuideSuggestions({ query: lastUserText, limit: MAX_CAREER_GUIDE_LINKS })
+        : [];
+
+      const careerGuideContext = careerGuideSuggestions.length
+        ? `Danh sách bài viết nội bộ (chỉ dùng link trong danh sách này khi cần):\n${careerGuideSuggestions
+          .map((item, index) => `${index + 1}. ${item.title} => ${item.path}`)
+          .join('\n')}`
+        : '';
+
       // Free-form chat. Keep it general-purpose and helpful.
       const system =
         'Bạn là trợ lý của website JobFinder. Bạn có thể trả lời 2 nhóm câu hỏi: ' +
@@ -620,6 +756,8 @@ router.post('/chat', async (req, res) => {
         'Nếu người dùng hỏi chủ đề không liên quan đến JobFinder hoặc sự nghiệp (sức khỏe, tài chính cá nhân, đời tư, code, chính trị, v.v.), hãy từ chối lịch sự và gợi ý họ hỏi về JobFinder/CV/việc làm. ' +
         'Chỉ mô tả những tính năng chắc chắn có trong JobFinder; nếu không chắc, hãy hỏi lại 1-2 câu hoặc hướng dẫn người dùng kiểm tra trên menu. ' +
         'Gợi ý điều hướng phổ biến (nếu phù hợp với câu hỏi): Trang chủ (/), Tìm việc (/jobs), Xem chi tiết việc (/jobs/:id), Tạo CV (/create-cv), Hồ sơ (/profile), Đăng nhập/Đăng ký. ' +
+        'Khi người dùng xin bài viết tham khảo/cẩm nang, hãy ưu tiên gửi kèm đường dẫn cụ thể theo định dạng /career-guide/:id. ' +
+        (careerGuideContext ? `${careerGuideContext}\n` : '') +
         'Trả lời tiếng Việt, ngắn gọn, không dùng markdown, không dùng dấu *, -, #, không dùng tiêu đề. ' +
         'Viết tối đa 6 câu; có thể xuống dòng giữa các ý. ' +
         'Nếu thiếu thông tin, hỏi tối đa 2 câu ngắn để làm rõ.'; 
@@ -629,7 +767,13 @@ router.post('/chat', async (req, res) => {
       const finalMessages = hasSystem ? chatMessages : [{ role: 'system', content: system }, ...chatMessages];
 
       const ai = await callLLMChat({ messages: finalMessages, temperature: 0.4 });
-      if (ai.ok) return res.json({ success: true, reply: ai.text });
+      if (ai.ok) {
+        return res.json({
+          success: true,
+          reply: appendCareerGuideLinksToReply(ai.text, careerGuideSuggestions),
+          links: careerGuideSuggestions
+        });
+      }
 
       console.warn('AI general chat failure:', {
         provider: ai.provider || AI_PROVIDER,
@@ -638,12 +782,15 @@ router.post('/chat', async (req, res) => {
         error: ai.error || null
       });
 
+      const fallbackReply = toFriendlyAiFailureMessage({
+        errorText: ai.error || ai.primaryError || '',
+        fallbackUsed: Boolean(ai.fallbackUsed)
+      });
+
       return res.json({
         success: true,
-        reply: toFriendlyAiFailureMessage({
-          errorText: ai.error || ai.primaryError || '',
-          fallbackUsed: Boolean(ai.fallbackUsed)
-        })
+        reply: appendCareerGuideLinksToReply(fallbackReply, careerGuideSuggestions),
+        links: careerGuideSuggestions
       });
     }
 
@@ -741,7 +888,9 @@ router.post('/chat/cv-file', handleCvUpload, async (req, res) => {
     const system =
       'Bạn là trợ lý CV của JobFinder. Phân tích CV và đưa nhận xét ngắn gọn, cụ thể. ' +
       'Trả lời tiếng Việt, không markdown, không bullet (*, -, #). Viết tối đa 8 câu, có thể xuống dòng. ' +
-      'Nhấn mạnh 1) tóm tắt nhanh, 2) điểm mạnh, 3) thiếu thông tin, 4) gợi ý chỉnh sửa.';
+      'Nhấn mạnh 1) tóm tắt nhanh, 2) điểm mạnh, 3) thiếu thông tin, 4) gợi ý chỉnh sửa. ' +
+      'Chỉ dùng dữ liệu xuất hiện trong CV; không tự thêm ngành nghề, kinh nghiệm hoặc công nghệ không có trong văn bản CV. ' +
+      'Nếu thông tin CV mâu thuẫn, hãy nêu mâu thuẫn ngắn gọn và hỏi lại người dùng muốn theo định hướng nào.';
 
     const userContent =
       (question ? `Yêu cầu của người dùng: ${question}\n\n` : '') +
@@ -828,10 +977,12 @@ router.post('/chat/cv-stored', authenticateToken, async (req, res) => {
 
     const profile = await getUserProfile(userId).catch(() => null);
     const keywords = extractKeywordsFromText(`${cvText}\n${lastUserText}`, 24);
+    const focusKeywords = extractKeywordsFromText(`${lastUserText}\n${profile?.position || ''}`, 10);
     const publishedJobs = await loadPublishedJobs(120);
     const rankedJobs = recommendJobsByCv({
       jobs: publishedJobs,
       keywords,
+      priorityKeywords: focusKeywords,
       preferredCity: profile?.city || ''
     });
 
@@ -854,7 +1005,9 @@ router.post('/chat/cv-stored', authenticateToken, async (req, res) => {
         'Bạn là trợ lý nghề nghiệp của JobFinder. Nhiệm vụ: đọc nội dung CV, đánh giá nhanh, và gợi ý việc làm phù hợp từ danh sách job được cung cấp. ' +
         'Chỉ trả lời tiếng Việt, không markdown, không dùng *, -, #. ' +
         'Tối đa 10 câu, có thể xuống dòng. ' +
-        'Bắt buộc nêu: 1) nhận xét CV, 2) điểm cần cải thiện, 3) 3-5 việc làm phù hợp nhất kèm lý do ngắn.';
+        'Bắt buộc nêu: 1) nhận xét CV, 2) điểm cần cải thiện, 3) 3-5 việc làm phù hợp nhất kèm lý do ngắn. ' +
+        'Chỉ dùng thông tin có trong CV và danh sách job bên dưới, không suy diễn thêm hồ sơ/ngành khác. ' +
+        'Nếu CV có dấu hiệu nhiều định hướng nghề, ưu tiên định hướng trùng với câu hỏi người dùng hoặc vị trí mong muốn trong hồ sơ; không trộn lẫn hai nhóm nghề trái ngữ cảnh trong cùng đề xuất.';
 
       const ai = await callLLMChat({
         messages: [

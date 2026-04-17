@@ -108,16 +108,6 @@ async function main() {
 
     report.push(
       await runDelete(
-        'ThongBao (notifications)',
-        `DELETE tb
-         FROM ThongBao tb
-         JOIN NguoiDung u ON u.MaNguoiDung = tb.MaNguoiDung
-         WHERE u.VaiTro IN (?, ?)`
-      )
-    );
-
-    report.push(
-      await runDelete(
         'TinNhan (messages)',
         `DELETE tn
          FROM TinNhan tn

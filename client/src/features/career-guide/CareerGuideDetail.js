@@ -1,7 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { sanitizeCareerHtml } from './richTextUtils';
 import './CareerGuideDetail.css';
+
+const VIEW_TRACK_TTL_MS = 5 * 60 * 1000;
+
+const shouldTrackCareerGuideView = (identifier) => {
+  const idValue = String(identifier || '').trim();
+  if (!idValue) return true;
+
+  const cacheKey = `jobfinder:career-guide:view:${idValue}`;
+
+  try {
+    const now = Date.now();
+    const lastTrackedAt = Number.parseInt(sessionStorage.getItem(cacheKey) || '0', 10);
+    if (!Number.isFinite(lastTrackedAt) || now - lastTrackedAt > VIEW_TRACK_TTL_MS) {
+      sessionStorage.setItem(cacheKey, String(now));
+      return true;
+    }
+    return false;
+  } catch {
+    return true;
+  }
+};
 
 function CareerGuideDetail() {
   const { id } = useParams();
@@ -29,18 +50,11 @@ function CareerGuideDetail() {
     return [];
   };
 
-  useEffect(() => {
-    const userData = localStorage.getItem('user');
-    if (userData) {
-      setUser(JSON.parse(userData));
-    }
-    fetchPostDetail();
-  }, [id]);
-
-  const fetchPostDetail = async () => {
+  const fetchPostDetail = useCallback(async ({ trackView = true } = {}) => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/career-guide/${id}`);
+      const encodedId = encodeURIComponent(String(id || '').trim());
+      const response = await fetch(`/api/career-guide/${encodedId}?trackView=${trackView ? '1' : '0'}`);
       const data = await response.json();
       
       if (data.success) {
@@ -55,7 +69,16 @@ function CareerGuideDetail() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
+    const trackView = shouldTrackCareerGuideView(id);
+    fetchPostDetail({ trackView });
+  }, [fetchPostDetail, id]);
 
   const handleSubmitComment = async (e) => {
     e.preventDefault();
@@ -93,7 +116,7 @@ function CareerGuideDetail() {
       
       if (response.ok && data?.success) {
         setCommentContent('');
-        await fetchPostDetail(); // Reload comments
+        await fetchPostDetail({ trackView: false });
         if (data.hidden) {
           alert(data.message || 'Bình luận chứa từ ngữ không phù hợp nên đã được ẩn.');
         }
@@ -132,7 +155,7 @@ function CareerGuideDetail() {
       const data = await response.json().catch(() => null);
       
       if (response.ok && data?.success) {
-        fetchPostDetail(); // Reload comments
+        fetchPostDetail({ trackView: false });
       } else {
         alert(data?.error || 'Không thể xóa bình luận');
       }

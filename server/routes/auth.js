@@ -25,6 +25,8 @@ const ROLE_EMPLOYER = 'Nhà tuyển dụng';
 const ROLE_ADMIN = 'Quản trị';
 const ROLE_SUPER_ADMIN = 'Siêu quản trị viên';
 const ROLE_PENDING = 'Chưa chọn vai trò';
+const PENDING_REGISTRATION_TABLE = 'dangky';
+const LEGACY_PENDING_REGISTRATION_TABLE = 'DangKyTam';
 
 const isTemplateGoogleClientId = (value) => /^(your_|react_app_|vite_|next_public_)/i.test(value);
 
@@ -49,8 +51,9 @@ const GOOGLE_AUDIENCES = Array.from(
 const googleOAuthClient = new OAuth2Client();
 
 const PENDING_REGISTRATION_TABLE_SQL = `
-CREATE TABLE IF NOT EXISTS DangKyTam (
-    Email VARCHAR(191) PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS ${PENDING_REGISTRATION_TABLE} (
+    MaDangKy INTEGER PRIMARY KEY AUTOINCREMENT,
+    Email VARCHAR(191) NOT NULL UNIQUE,
     MatKhau VARCHAR(255) NOT NULL,
     VaiTro VARCHAR(50) NOT NULL DEFAULT 'Chưa chọn vai trò',
     HoTen VARCHAR(255) NULL,
@@ -228,13 +231,52 @@ const parseBooleanEnv = (value) => {
 const shouldExposeOtpInResponse = process.env.NODE_ENV !== 'production'
     || parseBooleanEnv(process.env.EXPOSE_OTP_IN_RESPONSE);
 
+const isMissingTableError = (err) => {
+    const message = String(err?.message || '').toLowerCase();
+    return message.includes('no such table') || message.includes("doesn't exist");
+};
+
+const isTableAlreadyExistsError = (err) => {
+    const message = String(err?.message || '').toLowerCase();
+    return message.includes('already exists');
+};
+
 let ensurePendingRegistrationTablePromise = null;
 let ensurePendingRegistrationColumnsPromise = null;
+let migratePendingRegistrationTablePromise = null;
+
+const migrateLegacyPendingRegistrationTable = async () => {
+    if (migratePendingRegistrationTablePromise) {
+        return migratePendingRegistrationTablePromise;
+    }
+
+    migratePendingRegistrationTablePromise = (async () => {
+        try {
+            await dbRunAsync(
+                `INSERT OR IGNORE INTO ${PENDING_REGISTRATION_TABLE}
+                (Email, MatKhau, VaiTro, HoTen, SoDienThoai, DiaChi, NgaySinh, GioiTinh, TenCongTy, MaSoThue, MaXacThuc, ThoiGianMaXacThuc, NgayTao)
+                SELECT Email, MatKhau, VaiTro, HoTen, SoDienThoai, DiaChi, NgaySinh, GioiTinh, TenCongTy, MaSoThue, MaXacThuc, ThoiGianMaXacThuc, NgayTao
+                FROM ${LEGACY_PENDING_REGISTRATION_TABLE}`
+            );
+            await dbRunAsync(`DROP TABLE IF EXISTS ${LEGACY_PENDING_REGISTRATION_TABLE}`);
+        } catch (err) {
+            if (!isMissingTableError(err)) {
+                throw err;
+            }
+        }
+    })().catch((err) => {
+        migratePendingRegistrationTablePromise = null;
+        throw err;
+    });
+
+    return migratePendingRegistrationTablePromise;
+};
+
 const ensurePendingRegistrationColumns = async () => {
     if (!ensurePendingRegistrationColumnsPromise) {
         const alterQueries = [
-            'ALTER TABLE DangKyTam ADD COLUMN NgaySinh DATE NULL',
-            'ALTER TABLE DangKyTam ADD COLUMN GioiTinh VARCHAR(20) NULL'
+            `ALTER TABLE ${PENDING_REGISTRATION_TABLE} ADD COLUMN NgaySinh DATE NULL`,
+            `ALTER TABLE ${PENDING_REGISTRATION_TABLE} ADD COLUMN GioiTinh VARCHAR(20) NULL`
         ];
 
         ensurePendingRegistrationColumnsPromise = (async () => {
@@ -260,8 +302,17 @@ const ensurePendingRegistrationColumns = async () => {
 const ensurePendingRegistrationTable = async () => {
     if (!ensurePendingRegistrationTablePromise) {
         ensurePendingRegistrationTablePromise = (async () => {
+            try {
+                await dbRunAsync(`ALTER TABLE ${LEGACY_PENDING_REGISTRATION_TABLE} RENAME TO ${PENDING_REGISTRATION_TABLE}`);
+            } catch (renameErr) {
+                if (!isMissingTableError(renameErr) && !isTableAlreadyExistsError(renameErr)) {
+                    throw renameErr;
+                }
+            }
+
             await dbRunAsync(PENDING_REGISTRATION_TABLE_SQL);
             await ensurePendingRegistrationColumns();
+            await migrateLegacyPendingRegistrationTable();
         })().catch((err) => {
             ensurePendingRegistrationTablePromise = null;
             throw err;
@@ -311,7 +362,7 @@ const savePendingRegistration = async ({
     await ensurePendingRegistrationTable();
 
     await dbRunAsync(
-        `INSERT OR REPLACE INTO DangKyTam
+        `INSERT OR REPLACE INTO ${PENDING_REGISTRATION_TABLE}
         (Email, MatKhau, VaiTro, HoTen, SoDienThoai, DiaChi, NgaySinh, GioiTinh, TenCongTy, MaSoThue, MaXacThuc, ThoiGianMaXacThuc)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
@@ -1029,7 +1080,7 @@ router.post('/verify-otp', async (req, res) => {
     try {
         await ensurePendingRegistrationTable();
 
-        const pending = await dbGetAsync('SELECT * FROM DangKyTam WHERE Email = ?', [normalizedEmail]);
+        const pending = await dbGetAsync(`SELECT * FROM ${PENDING_REGISTRATION_TABLE} WHERE Email = ?`, [normalizedEmail]);
 
         if (!pending) {
             const legacyResult = await verifyLegacyUnverifiedUserOtp({ email: normalizedEmail, otp: normalizedOtp });
@@ -1051,7 +1102,7 @@ router.post('/verify-otp', async (req, res) => {
 
         const existingUser = await dbGetAsync('SELECT MaNguoiDung, TrangThai FROM NguoiDung WHERE lower(Email) = lower(?)', [normalizedEmail]);
         if (existingUser && Number(existingUser.TrangThai) === 1) {
-            await dbRunAsync('DELETE FROM DangKyTam WHERE Email = ?', [normalizedEmail]);
+            await dbRunAsync(`DELETE FROM ${PENDING_REGISTRATION_TABLE} WHERE Email = ?`, [normalizedEmail]);
             return res.status(400).json({ error: 'Email này đã được sử dụng. Vui lòng sử dụng email khác.' });
         }
 
@@ -1101,7 +1152,7 @@ router.post('/verify-otp', async (req, res) => {
                 });
             }
 
-            await dbRunAsync('DELETE FROM DangKyTam WHERE Email = ?', [normalizedEmail]);
+            await dbRunAsync(`DELETE FROM ${PENDING_REGISTRATION_TABLE} WHERE Email = ?`, [normalizedEmail]);
 
             const createdUser = await getUserWithAvatarById(createdUserId);
             if (!createdUser) {
@@ -1163,14 +1214,14 @@ router.post('/resend-otp', async (req, res) => {
     try {
         await ensurePendingRegistrationTable();
 
-        const pending = await dbGetAsync('SELECT * FROM DangKyTam WHERE Email = ?', [normalizedEmail]);
+        const pending = await dbGetAsync(`SELECT * FROM ${PENDING_REGISTRATION_TABLE} WHERE Email = ?`, [normalizedEmail]);
 
         if (pending) {
             const otp = generateOTP();
             const otpExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
             await dbRunAsync(
-                'UPDATE DangKyTam SET MaXacThuc = ?, ThoiGianMaXacThuc = ?, NgayTao = CURRENT_TIMESTAMP WHERE Email = ?',
+                `UPDATE ${PENDING_REGISTRATION_TABLE} SET MaXacThuc = ?, ThoiGianMaXacThuc = ?, NgayTao = CURRENT_TIMESTAMP WHERE Email = ?`,
                 [otp, otpExpiry, normalizedEmail]
             );
 

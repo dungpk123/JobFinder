@@ -55,7 +55,8 @@ function CareerGuide() {
     if (isSuperAdmin) return true;
 
     return (
-      normalizedUserRole === 'nha tuyen dung'
+      normalizedUserRole === 'ung vien'
+      || normalizedUserRole === 'nha tuyen dung'
       || normalizedUserRole === 'quan tri'
       || normalizedUserRole === 'sieu quan tri vien'
     );
@@ -441,7 +442,7 @@ function CareerGuide() {
               ) : user ? (
                 <div className="cg-sidebar-card cg-sidebar-auth">
                   <h3>Quyền của bạn</h3>
-                  <p>Tài khoản Ứng viên có thể xem và bình luận bài viết, nhưng không thể tạo bài mới.</p>
+                  <p>Bạn có thể xem, bình luận và viết bài chia sẻ kinh nghiệm hướng nghiệp.</p>
                 </div>
               ) : (
                 <div className="cg-sidebar-card cg-sidebar-auth">
