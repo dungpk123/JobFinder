@@ -35,15 +35,6 @@ const buildAbsoluteUrl = (req, relativePath) => {
   return `${req.protocol}://${req.get('host')}${relativePath}`;
 };
 
-const parseJsonArray = (text) => {
-  try {
-    const parsed = JSON.parse(text || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
-
 const getCompanyWithOwner = async (id) => {
   return dbGet(
     `SELECT
@@ -70,8 +61,27 @@ const toInt = (v, def) => {
 
 const isMysql = /^mysql:\/\//i.test(process.env.DATABASE_URL || '');
 
-const AUDIT_REQUIRED_COLUMNS = ['id', 'user_id', 'action', 'entity_type', 'entity_id', 'timestamp'];
-const AUDIT_LEGACY_COLUMNS = ['manhatky', 'maquantri', 'hanhdong', 'doituong', 'madoituong', 'ghichu', 'ngaythuchien'];
+const AUDIT_REQUIRED_COLUMNS = [
+  'manhatkyquantri',
+  'manguoidung',
+  'hanhdong',
+  'loaidoituong',
+  'madoituong',
+  'thoigianthaotac'
+];
+const AUDIT_LEGACY_COLUMNS = [
+  'id',
+  'user_id',
+  'action',
+  'entity_type',
+  'entity_id',
+  'timestamp',
+  'manhatky',
+  'maquantri',
+  'doituong',
+  'ghichu',
+  'ngaythuchien'
+];
 
 const hasColumn = (columnSet, name) => columnSet.has(String(name || '').toLowerCase());
 
@@ -97,14 +107,14 @@ const ensureAdminAuditTable = async () => {
 
     if (isMysql) {
       const createMysqlAuditTableSql = `CREATE TABLE IF NOT EXISTS NhatKyQuanTri (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        user_id INT NULL,
-        \`action\` VARCHAR(100) NULL,
-        entity_type VARCHAR(100) NULL,
-        entity_id INT NULL,
-        \`timestamp\` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        KEY IDX_NhatKyQuanTri_user_id (user_id),
-        KEY IDX_NhatKyQuanTri_timestamp (\`timestamp\`)
+        MaNhatKyQuanTri INT AUTO_INCREMENT PRIMARY KEY,
+        MaNguoiDung INT NULL,
+        HanhDong VARCHAR(100) NULL,
+        LoaiDoiTuong VARCHAR(100) NULL,
+        MaDoiTuong INT NULL,
+        ThoiGianThaoTac DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        KEY IDX_NhatKyQuanTri_MaNguoiDung (MaNguoiDung),
+        KEY IDX_NhatKyQuanTri_ThoiGianThaoTac (ThoiGianThaoTac)
       )`;
 
       await dbRun(createMysqlAuditTableSql);
@@ -127,15 +137,15 @@ const ensureAdminAuditTable = async () => {
         await dbRun(`RENAME TABLE NhatKyQuanTri TO \`${backupTable}\``);
         await dbRun(createMysqlAuditTableSql);
 
-        const idExpr = getAuditSelectExpr(mysqlColumnSet, ['id', 'MaNhatKy'], 'NULL', '`');
-        const userIdExpr = getAuditSelectExpr(mysqlColumnSet, ['user_id', 'MaQuanTri'], 'NULL', '`');
-        const actionExpr = getAuditSelectExpr(mysqlColumnSet, ['action', 'HanhDong'], 'NULL', '`');
-        const entityTypeExpr = getAuditSelectExpr(mysqlColumnSet, ['entity_type', 'DoiTuong'], 'NULL', '`');
-        const entityIdExpr = getAuditSelectExpr(mysqlColumnSet, ['entity_id', 'MaDoiTuong'], 'NULL', '`');
-        const timestampExpr = getAuditSelectExpr(mysqlColumnSet, ['timestamp', 'NgayThucHien'], 'CURRENT_TIMESTAMP', '`');
+        const idExpr = getAuditSelectExpr(mysqlColumnSet, ['MaNhatKyQuanTri', 'id', 'MaNhatKy'], 'NULL', '`');
+        const userIdExpr = getAuditSelectExpr(mysqlColumnSet, ['MaNguoiDung', 'user_id', 'MaQuanTri'], 'NULL', '`');
+        const actionExpr = getAuditSelectExpr(mysqlColumnSet, ['HanhDong', 'action'], 'NULL', '`');
+        const entityTypeExpr = getAuditSelectExpr(mysqlColumnSet, ['LoaiDoiTuong', 'entity_type', 'DoiTuong'], 'NULL', '`');
+        const entityIdExpr = getAuditSelectExpr(mysqlColumnSet, ['MaDoiTuong', 'entity_id'], 'NULL', '`');
+        const timestampExpr = getAuditSelectExpr(mysqlColumnSet, ['ThoiGianThaoTac', 'timestamp', 'NgayThucHien'], 'CURRENT_TIMESTAMP', '`');
 
         await dbRun(
-          `INSERT INTO NhatKyQuanTri (id, user_id, \`action\`, entity_type, entity_id, \`timestamp\`)
+          `INSERT INTO NhatKyQuanTri (MaNhatKyQuanTri, MaNguoiDung, HanhDong, LoaiDoiTuong, MaDoiTuong, ThoiGianThaoTac)
            SELECT
              ${idExpr},
              ${userIdExpr},
@@ -153,12 +163,12 @@ const ensureAdminAuditTable = async () => {
     }
 
     const createSqliteAuditTableSql = `CREATE TABLE IF NOT EXISTS NhatKyQuanTri (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id INTEGER NULL,
-      action TEXT,
-      entity_type TEXT,
-      entity_id INTEGER NULL,
-      timestamp TEXT DEFAULT (datetime('now', 'localtime'))
+      MaNhatKyQuanTri INTEGER PRIMARY KEY AUTOINCREMENT,
+      MaNguoiDung INTEGER NULL,
+      HanhDong TEXT,
+      LoaiDoiTuong TEXT,
+      MaDoiTuong INTEGER NULL,
+      ThoiGianThaoTac TEXT DEFAULT (datetime('now', 'localtime'))
     )`;
 
     await dbRun(createSqliteAuditTableSql);
@@ -176,20 +186,20 @@ const ensureAdminAuditTable = async () => {
       await dbRun(`ALTER TABLE NhatKyQuanTri RENAME TO "${backupTable}"`);
       await dbRun(createSqliteAuditTableSql);
 
-      const idExpr = getAuditSelectExpr(sqliteColumnSet, ['id', 'MaNhatKy'], 'NULL', '"');
-      const userIdExpr = getAuditSelectExpr(sqliteColumnSet, ['user_id', 'MaQuanTri'], 'NULL', '"');
-      const actionExpr = getAuditSelectExpr(sqliteColumnSet, ['action', 'HanhDong'], 'NULL', '"');
-      const entityTypeExpr = getAuditSelectExpr(sqliteColumnSet, ['entity_type', 'DoiTuong'], 'NULL', '"');
-      const entityIdExpr = getAuditSelectExpr(sqliteColumnSet, ['entity_id', 'MaDoiTuong'], 'NULL', '"');
+      const idExpr = getAuditSelectExpr(sqliteColumnSet, ['MaNhatKyQuanTri', 'id', 'MaNhatKy'], 'NULL', '"');
+      const userIdExpr = getAuditSelectExpr(sqliteColumnSet, ['MaNguoiDung', 'user_id', 'MaQuanTri'], 'NULL', '"');
+      const actionExpr = getAuditSelectExpr(sqliteColumnSet, ['HanhDong', 'action'], 'NULL', '"');
+      const entityTypeExpr = getAuditSelectExpr(sqliteColumnSet, ['LoaiDoiTuong', 'entity_type', 'DoiTuong'], 'NULL', '"');
+      const entityIdExpr = getAuditSelectExpr(sqliteColumnSet, ['MaDoiTuong', 'entity_id'], 'NULL', '"');
       const timestampExpr = getAuditSelectExpr(
         sqliteColumnSet,
-        ['timestamp', 'NgayThucHien'],
+        ['ThoiGianThaoTac', 'timestamp', 'NgayThucHien'],
         `datetime('now', 'localtime')`,
         '"'
       );
 
       await dbRun(
-        `INSERT INTO NhatKyQuanTri (id, user_id, action, entity_type, entity_id, timestamp)
+        `INSERT INTO NhatKyQuanTri (MaNhatKyQuanTri, MaNguoiDung, HanhDong, LoaiDoiTuong, MaDoiTuong, ThoiGianThaoTac)
          SELECT
            ${idExpr},
            ${userIdExpr},
@@ -225,7 +235,7 @@ const writeAdminAuditLog = ({ adminId, userId, action, entityType, object, entit
     : (Number.isFinite(Number(objectId)) ? Number(objectId) : null);
 
   return ensureAdminAuditTable().then(() => dbRun(
-    `INSERT INTO NhatKyQuanTri (user_id, \`action\`, entity_type, entity_id, \`timestamp\`)
+    `INSERT INTO NhatKyQuanTri (MaNguoiDung, HanhDong, LoaiDoiTuong, MaDoiTuong, ThoiGianThaoTac)
      VALUES (?, ?, ?, ?, datetime('now', 'localtime'))`,
     [normalizedUserId, actionText, entityTypeText, normalizedEntityId]
   ));
@@ -368,7 +378,7 @@ const ensureCareerGuideAdminSchema = async () => {
   ensureCareerGuideAdminSchemaPromise = (async () => {
     if (isMysql) {
       await dbRun(`
-        CREATE TABLE IF NOT EXISTS CamNangNgheNghiep (
+        CREATE TABLE IF NOT EXISTS BaiVietHuongNghiep (
           MaBaiViet INT NOT NULL AUTO_INCREMENT,
           TieuDe VARCHAR(255) NOT NULL,
           NoiDung LONGTEXT NOT NULL,
@@ -378,14 +388,14 @@ const ensureCareerGuideAdminSchema = async () => {
           NgayCapNhat DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
           LuotXem INT NOT NULL DEFAULT 0,
           PRIMARY KEY (MaBaiViet),
-          KEY IDX_CamNangNgheNghiep_MaTacGia (MaTacGia),
-          CONSTRAINT FK_CamNangNgheNghiep_TacGia
+          KEY IDX_BaiVietHuongNghiep_MaTacGia (MaTacGia),
+          CONSTRAINT FK_BaiVietHuongNghiep_TacGia
             FOREIGN KEY (MaTacGia) REFERENCES NguoiDung(MaNguoiDung)
         )
       `);
 
       await dbRun(`
-        CREATE TABLE IF NOT EXISTS BinhLuanCamNangNgheNghiep (
+        CREATE TABLE IF NOT EXISTS BinhLuanBaiVietHuongNghiep (
           MaBinhLuan INT NOT NULL AUTO_INCREMENT,
           MaBaiViet INT NOT NULL,
           MaNguoiDung INT NOT NULL,
@@ -393,8 +403,8 @@ const ensureCareerGuideAdminSchema = async () => {
           NoiDung LONGTEXT NOT NULL,
           NgayTao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY (MaBinhLuan),
-          KEY IDX_BinhLuanCamNang_MaBaiViet (MaBaiViet),
-          KEY IDX_BinhLuanCamNang_MaNguoiDung (MaNguoiDung)
+          KEY IDX_BinhLuanBaiVietHuongNghiep_MaBaiViet (MaBaiViet),
+          KEY IDX_BinhLuanBaiVietHuongNghiep_MaNguoiDung (MaNguoiDung)
         )
       `);
 
@@ -402,7 +412,7 @@ const ensureCareerGuideAdminSchema = async () => {
     }
 
     await dbRun(`
-      CREATE TABLE IF NOT EXISTS CamNangNgheNghiep (
+      CREATE TABLE IF NOT EXISTS BaiVietHuongNghiep (
         MaBaiViet INTEGER PRIMARY KEY AUTOINCREMENT,
         TieuDe TEXT NOT NULL,
         NoiDung TEXT NOT NULL,
@@ -414,22 +424,22 @@ const ensureCareerGuideAdminSchema = async () => {
         FOREIGN KEY (MaTacGia) REFERENCES NguoiDung(MaNguoiDung) ON DELETE RESTRICT
       )
     `);
-    await dbRun('CREATE INDEX IF NOT EXISTS IDX_CamNangNgheNghiep_MaTacGia ON CamNangNgheNghiep(MaTacGia)');
+    await dbRun('CREATE INDEX IF NOT EXISTS IDX_BaiVietHuongNghiep_MaTacGia ON BaiVietHuongNghiep(MaTacGia)');
 
     await dbRun(`
-      CREATE TABLE IF NOT EXISTS BinhLuanCamNangNgheNghiep (
+      CREATE TABLE IF NOT EXISTS BinhLuanBaiVietHuongNghiep (
         MaBinhLuan INTEGER PRIMARY KEY AUTOINCREMENT,
         MaBaiViet INTEGER NOT NULL,
         MaNguoiDung INTEGER NOT NULL,
         LoaiNguoiDung TEXT NOT NULL,
         NoiDung TEXT NOT NULL,
         NgayTao TEXT DEFAULT (datetime('now', 'localtime')),
-        FOREIGN KEY (MaBaiViet) REFERENCES CamNangNgheNghiep(MaBaiViet) ON DELETE CASCADE,
+        FOREIGN KEY (MaBaiViet) REFERENCES BaiVietHuongNghiep(MaBaiViet) ON DELETE CASCADE,
         FOREIGN KEY (MaNguoiDung) REFERENCES NguoiDung(MaNguoiDung) ON DELETE CASCADE
       )
     `);
-    await dbRun('CREATE INDEX IF NOT EXISTS IDX_BinhLuanCamNang_MaBaiViet ON BinhLuanCamNangNgheNghiep(MaBaiViet)');
-    await dbRun('CREATE INDEX IF NOT EXISTS IDX_BinhLuanCamNang_MaNguoiDung ON BinhLuanCamNangNgheNghiep(MaNguoiDung)');
+    await dbRun('CREATE INDEX IF NOT EXISTS IDX_BinhLuanBaiVietHuongNghiep_MaBaiViet ON BinhLuanBaiVietHuongNghiep(MaBaiViet)');
+    await dbRun('CREATE INDEX IF NOT EXISTS IDX_BinhLuanBaiVietHuongNghiep_MaNguoiDung ON BinhLuanBaiVietHuongNghiep(MaNguoiDung)');
   })();
 
   try {
@@ -608,41 +618,41 @@ router.get('/audit-logs', async (req, res) => {
     const params = [];
 
     if (Number.isFinite(userId)) {
-      whereParts.push('nk.user_id = ?');
+      whereParts.push('nk.MaNguoiDung = ?');
       params.push(userId);
     }
 
     if (action) {
-      whereParts.push('lower(IFNULL(nk.\`action\`, "")) = ?');
+      whereParts.push('lower(IFNULL(nk.HanhDong, "")) = ?');
       params.push(action.toLowerCase());
     }
 
     if (entityType) {
-      whereParts.push('lower(IFNULL(nk.entity_type, "")) = ?');
+      whereParts.push('lower(IFNULL(nk.LoaiDoiTuong, "")) = ?');
       params.push(entityType.toLowerCase());
     }
 
     if (Number.isFinite(entityId)) {
-      whereParts.push('nk.entity_id = ?');
+      whereParts.push('nk.MaDoiTuong = ?');
       params.push(entityId);
     }
 
     if (fromDate) {
-      whereParts.push('nk.\`timestamp\` >= ?');
+      whereParts.push('nk.ThoiGianThaoTac >= ?');
       params.push(`${fromDate} 00:00:00`);
     }
 
     if (toDate) {
-      whereParts.push('nk.\`timestamp\` <= ?');
+      whereParts.push('nk.ThoiGianThaoTac <= ?');
       params.push(`${toDate} 23:59:59`);
     }
 
     if (keyword) {
       const like = `%${keyword}%`;
-      const entityIdTextExpr = isMysql ? 'CAST(nk.entity_id AS CHAR)' : 'CAST(nk.entity_id AS TEXT)';
+      const entityIdTextExpr = isMysql ? 'CAST(nk.MaDoiTuong AS CHAR)' : 'CAST(nk.MaDoiTuong AS TEXT)';
       whereParts.push(`(
-        lower(IFNULL(nk.\`action\`, "")) LIKE ?
-        OR lower(IFNULL(nk.entity_type, "")) LIKE ?
+        lower(IFNULL(nk.HanhDong, "")) LIKE ?
+        OR lower(IFNULL(nk.LoaiDoiTuong, "")) LIKE ?
         OR lower(IFNULL(${entityIdTextExpr}, "")) LIKE ?
         OR lower(IFNULL(nd.HoTen, "")) LIKE ?
         OR lower(IFNULL(nd.Email, "")) LIKE ?
@@ -654,18 +664,18 @@ router.get('/audit-logs', async (req, res) => {
 
     const rows = await dbAll(
       `SELECT
-         nk.id,
-         nk.user_id,
+         nk.MaNhatKyQuanTri AS id,
+         nk.MaNguoiDung AS user_id,
          nd.HoTen AS user_name,
          nd.Email AS user_email,
-         nk.\`action\` AS action,
-         nk.entity_type,
-         nk.entity_id,
-         nk.\`timestamp\` AS timestamp
+         nk.HanhDong AS action,
+         nk.LoaiDoiTuong AS entity_type,
+         nk.MaDoiTuong AS entity_id,
+         nk.ThoiGianThaoTac AS timestamp
        FROM NhatKyQuanTri nk
-       LEFT JOIN NguoiDung nd ON nd.MaNguoiDung = nk.user_id
+       LEFT JOIN NguoiDung nd ON nd.MaNguoiDung = nk.MaNguoiDung
        ${whereSql}
-       ORDER BY nk.\`timestamp\` DESC, nk.id DESC
+       ORDER BY nk.ThoiGianThaoTac DESC, nk.MaNhatKyQuanTri DESC
        LIMIT ? OFFSET ?`,
       [...params, limit, offset]
     );
@@ -673,7 +683,7 @@ router.get('/audit-logs', async (req, res) => {
     const totalRow = await dbGet(
       `SELECT COUNT(*) AS c
        FROM NhatKyQuanTri nk
-       LEFT JOIN NguoiDung nd ON nd.MaNguoiDung = nk.user_id
+       LEFT JOIN NguoiDung nd ON nd.MaNguoiDung = nk.MaNguoiDung
        ${whereSql}`,
       params
     );
@@ -699,7 +709,7 @@ router.delete('/audit-logs/:id', async (req, res) => {
     const id = toInt(req.params.id, NaN);
     if (!Number.isFinite(id)) return res.status(400).json({ success: false, error: 'id không hợp lệ' });
 
-    const result = await dbRun('DELETE FROM NhatKyQuanTri WHERE id = ?', [id]);
+    const result = await dbRun('DELETE FROM NhatKyQuanTri WHERE MaNhatKyQuanTri = ?', [id]);
     if (!Number(result?.changes || 0)) {
       return res.status(404).json({ success: false, error: 'Không tìm thấy audit-log' });
     }
@@ -760,13 +770,9 @@ router.get('/users/:id/detail', async (req, res) => {
           hsv.DiaChi AS UngVienDiaChi,
           hsv.ChucDanh,
           hsv.TrinhDoHocVan,
-          hsv.SoNamKinhNghiem,
           hsv.LinkCaNhan,
           hsv.GioiThieuBanThan,
           hsv.AnhDaiDien,
-          hsv.DanhSachHocVanJson,
-          hsv.DanhSachKinhNghiemJson,
-          hsv.DanhSachNgoaiNguJson,
           ntd.MaNhaTuyenDung,
           COALESCE(ntd.TenCongTy, c.TenCongTy) AS TenCongTy,
           COALESCE(ntd.MaSoThue, c.MaSoThue) AS MaSoThue,
@@ -799,12 +805,8 @@ router.get('/users/:id/detail', async (req, res) => {
         DiaChi: row.UngVienDiaChi || '',
         ChucDanh: row.ChucDanh || '',
         TrinhDoHocVan: row.TrinhDoHocVan || '',
-        SoNamKinhNghiem: Number(row.SoNamKinhNghiem || 0),
         LinkCaNhan: row.LinkCaNhan || '',
-        GioiThieuBanThan: row.GioiThieuBanThan || '',
-        EducationList: parseJsonArray(row.DanhSachHocVanJson),
-        WorkList: parseJsonArray(row.DanhSachKinhNghiemJson),
-        LanguageList: parseJsonArray(row.DanhSachNgoaiNguJson)
+        GioiThieuBanThan: row.GioiThieuBanThan || ''
       }
       : null;
 
@@ -1383,7 +1385,7 @@ router.get('/career-guide-posts', async (req, res) => {
           cg.NgayTao,
           cg.NgayCapNhat,
           cg.LuotXem
-       FROM CamNangNgheNghiep cg
+      FROM BaiVietHuongNghiep cg
        ${whereSql}
        ORDER BY ${orderBy}
        LIMIT ? OFFSET ?`,
@@ -1392,7 +1394,7 @@ router.get('/career-guide-posts', async (req, res) => {
 
     const totalRow = await dbGet(
       `SELECT COUNT(*) AS c
-       FROM CamNangNgheNghiep cg
+       FROM BaiVietHuongNghiep cg
        ${whereSql}`,
       params
     );
@@ -1421,20 +1423,20 @@ router.delete('/career-guide-posts/:id', async (req, res) => {
     }
 
     const existing = await dbGet(
-      'SELECT MaBaiViet FROM CamNangNgheNghiep WHERE MaBaiViet = ?',
+      'SELECT MaBaiViet FROM BaiVietHuongNghiep WHERE MaBaiViet = ?',
       [id]
     );
     if (!existing) {
       return res.status(404).json({ success: false, error: 'Không tìm thấy bài viết' });
     }
 
-    await dbRun('DELETE FROM BinhLuanCamNangNgheNghiep WHERE MaBaiViet = ?', [id]);
-    await dbRun('DELETE FROM CamNangNgheNghiep WHERE MaBaiViet = ?', [id]);
+    await dbRun('DELETE FROM BinhLuanBaiVietHuongNghiep WHERE MaBaiViet = ?', [id]);
+    await dbRun('DELETE FROM BaiVietHuongNghiep WHERE MaBaiViet = ?', [id]);
 
     await logAdminAction({
       adminId: req.user?.id,
       action: 'Xóa bài viết hướng nghiệp',
-      object: 'CamNangNgheNghiep',
+      object: 'BaiVietHuongNghiep',
       objectId: id
     });
 

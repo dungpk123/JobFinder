@@ -147,7 +147,7 @@ const fetchCareerGuideRows = async () => {
   try {
     return await dbAll(
       `SELECT MaBaiViet AS id, TieuDe AS title, NoiDung AS content
-       FROM CamNangNgheNghiep
+       FROM BaiVietHuongNghiep
        WHERE COALESCE(TrangThai, 'published') = 'published'
        ORDER BY NgayTao DESC
        LIMIT 120`
@@ -157,7 +157,7 @@ const fetchCareerGuideRows = async () => {
     if (message.includes('no such column') || message.includes('unknown column')) {
       return dbAll(
         `SELECT MaBaiViet AS id, TieuDe AS title, NoiDung AS content
-         FROM CamNangNgheNghiep
+        FROM BaiVietHuongNghiep
          ORDER BY NgayTao DESC
          LIMIT 120`
       );

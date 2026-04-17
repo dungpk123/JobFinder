@@ -1,8 +1,8 @@
--- Seed data for CamNangNgheNghiep table
+-- Seed data for BaiVietHuongNghiep table
 -- Insert sample career guide posts
 
 -- Post 1: Tips for writing a good CV
-INSERT INTO CamNangNgheNghiep (TieuDe, NoiDung, MaTacGia, LoaiTacGia, NgayTao, LuotXem) VALUES 
+INSERT INTO BaiVietHuongNghiep (TieuDe, NoiDung, MaTacGia, LoaiTacGia, NgayTao, LuotXem) VALUES 
 ('5 Bí Quyết Viết CV Thu Hút Nhà Tuyển Dụng', 
 '<h2>Giới thiệu</h2>
 <p>Một bản CV tốt là chìa khóa để bạn có được cơ hội phỏng vấn. Dưới đây là 5 bí quyết giúp CV của bạn nổi bật trong hàng trăm hồ sơ ứng tuyển.</p>
@@ -26,7 +26,7 @@ INSERT INTO CamNangNgheNghiep (TieuDe, NoiDung, MaTacGia, LoaiTacGia, NgayTao, L
 1, 'admin', datetime('now', '-5 days'), 245);
 
 -- Post 2: Interview preparation tips
-INSERT INTO CamNangNgheNghiep (TieuDe, NoiDung, MaTacGia, LoaiTacGia, NgayTao, LuotXem) VALUES 
+INSERT INTO BaiVietHuongNghiep (TieuDe, NoiDung, MaTacGia, LoaiTacGia, NgayTao, LuotXem) VALUES 
 ('Chuẩn Bị Gì Trước Buổi Phỏng Vấn Xin Việc?', 
 '<h2>Hướng dẫn chi tiết chuẩn bị phỏng vấn</h2>
 <p>Phỏng vấn là bước quan trọng quyết định bạn có được nhận vào vị trí mong muốn hay không. Dưới đây là những điều bạn cần chuẩn bị:</p>
@@ -65,7 +65,7 @@ INSERT INTO CamNangNgheNghiep (TieuDe, NoiDung, MaTacGia, LoaiTacGia, NgayTao, L
 1, 'admin', datetime('now', '-3 days'), 189);
 
 -- Post 3: Career development tips
-INSERT INTO CamNangNgheNghiep (TieuDe, NoiDung, MaTacGia, LoaiTacGia, NgayTao, LuotXem) VALUES 
+INSERT INTO BaiVietHuongNghiep (TieuDe, NoiDung, MaTacGia, LoaiTacGia, NgayTao, LuotXem) VALUES 
 ('Làm Thế Nào Để Phát Triển Sự Nghiệp Trong Thời Đại 4.0?', 
 '<h2>Chiến lược phát triển sự nghiệp hiện đại</h2>
 <p>Thế giới công nghệ đang thay đổi nhanh chóng, và cách chúng ta làm việc cũng thay đổi theo. Dưới đây là những chiến lược giúp bạn phát triển sự nghiệp trong kỷ nguyên số:</p>
@@ -96,7 +96,7 @@ INSERT INTO CamNangNgheNghiep (TieuDe, NoiDung, MaTacGia, LoaiTacGia, NgayTao, L
 1, 'admin', datetime('now', '-1 day'), 156);
 
 -- Post 4: Salary negotiation
-INSERT INTO CamNangNgheNghiep (TieuDe, NoiDung, MaTacGia, LoaiTacGia, NgayTao, LuotXem) VALUES 
+INSERT INTO BaiVietHuongNghiep (TieuDe, NoiDung, MaTacGia, LoaiTacGia, NgayTao, LuotXem) VALUES 
 ('Bí Kíp Thương Lượng Lương Thành Công Cho Người Mới Bắt Đầu', 
 '<h2>Nghệ thuật thương lượng lương</h2>
 <p>Thương lượng lương là một kỹ năng quan trọng mà nhiều người thường ngại thực hiện. Dưới đây là hướng dẫn chi tiết giúp bạn tự tin hơn trong việc đàm phán mức lương xứng đáng.</p>
@@ -146,7 +146,7 @@ INSERT INTO CamNangNgheNghiep (TieuDe, NoiDung, MaTacGia, LoaiTacGia, NgayTao, L
 1, 'admin', datetime('now', '-6 hours'), 78);
 
 -- Post 5: Remote work tips
-INSERT INTO CamNangNgheNghiep (TieuDe, NoiDung, MaTacGia, LoaiTacGia, NgayTao, LuotXem) VALUES 
+INSERT INTO BaiVietHuongNghiep (TieuDe, NoiDung, MaTacGia, LoaiTacGia, NgayTao, LuotXem) VALUES 
 ('10 Mẹo Làm Việc Từ Xa Hiệu Quả', 
 '<h2>Tối ưu hóa năng suất khi làm việc tại nhà</h2>
 <p>Làm việc từ xa đang trở thành xu hướng phổ biến. Dưới đây là những mẹo giúp bạn làm việc hiệu quả hơn khi ở nhà:</p>
@@ -185,7 +185,7 @@ INSERT INTO CamNangNgheNghiep (TieuDe, NoiDung, MaTacGia, LoaiTacGia, NgayTao, L
 1, 'admin', datetime('now', '-2 hours'), 45);
 
 -- Add some sample comments
-INSERT INTO BinhLuanCamNangNgheNghiep (MaBaiViet, MaNguoiDung, LoaiNguoiDung, NoiDung, NgayTao) VALUES 
+INSERT INTO BinhLuanBaiVietHuongNghiep (MaBaiViet, MaNguoiDung, LoaiNguoiDung, NoiDung, NgayTao) VALUES 
 (1, 1, 'admin', 'Bài viết rất hữu ích! Cảm ơn tác giả đã chia sẻ.', datetime('now', '-4 days')),
 (1, 1, 'admin', 'Mình đã áp dụng và thấy hiệu quả ngay. CV của mình đã được nhiều công ty phản hồi hơn.', datetime('now', '-3 days')),
 (2, 1, 'admin', 'Những tips này rất thực tế. Mình sẽ áp dụng cho buổi phỏng vấn tuần sau!', datetime('now', '-2 days')),

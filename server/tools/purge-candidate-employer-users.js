@@ -154,9 +154,9 @@ async function main() {
 
     report.push(
       await runDelete(
-        'BinhLuanCamNangNgheNghiep (comments)',
+        'BinhLuanBaiVietHuongNghiep (comments)',
         `DELETE cgc
-         FROM BinhLuanCamNangNgheNghiep cgc
+         FROM BinhLuanBaiVietHuongNghiep cgc
          JOIN NguoiDung u ON u.MaNguoiDung = cgc.MaNguoiDung
          WHERE u.VaiTro IN (?, ?)`
       )
@@ -164,9 +164,9 @@ async function main() {
 
     report.push(
       await runDelete(
-        'CamNangNgheNghiep (posts)',
+        'BaiVietHuongNghiep (posts)',
         `DELETE cg
-         FROM CamNangNgheNghiep cg
+         FROM BaiVietHuongNghiep cg
          JOIN NguoiDung u ON u.MaNguoiDung = cg.MaTacGia
          WHERE u.VaiTro IN (?, ?)`
       )

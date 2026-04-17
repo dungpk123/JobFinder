@@ -392,13 +392,6 @@ const toNullableDate = (value) => {
     return normalized ? normalized : null;
 };
 
-const toNullableInteger = (value, fallback = 0) => {
-    if (value === null || typeof value === 'undefined' || value === '') return fallback;
-    const parsed = Number.parseInt(value, 10);
-    if (Number.isNaN(parsed)) return fallback;
-    return parsed;
-};
-
 const updateBasicUserInfo = async ({ userId, fullName, phone, address, role }) => {
     const updates = [];
     const params = [];
@@ -435,31 +428,6 @@ const updateBasicUserInfo = async ({ userId, fullName, phone, address, role }) =
     );
 };
 
-const clearCandidateProfileLists = async (userId) => {
-    const clearQueries = [
-        `UPDATE HoSoUngVien
-         SET DanhSachHocVanJson = NULL,
-             DanhSachKinhNghiemJson = NULL,
-             DanhSachNgoaiNguJson = NULL
-         WHERE MaNguoiDung = ?`,
-        `UPDATE HoSoUngVien
-         SET EducationListJson = NULL,
-             WorkListJson = NULL,
-             LanguageListJson = NULL
-         WHERE MaNguoiDung = ?`
-    ];
-
-    for (const query of clearQueries) {
-        try {
-            await dbRunAsync(query, [userId]);
-        } catch (err) {
-            if (!isUnknownColumnError(err)) {
-                throw err;
-            }
-        }
-    }
-};
-
 const ensureCandidateProfile = async ({
     userId,
     birthday,
@@ -468,7 +436,6 @@ const ensureCandidateProfile = async ({
     city,
     district,
     intro,
-    experienceYears,
     education,
     avatar,
     title,
@@ -483,7 +450,6 @@ const ensureCandidateProfile = async ({
         toNullableString(city),
         toNullableString(district),
         toNullableString(intro),
-        toNullableInteger(experienceYears, 0),
         toNullableString(education),
         toNullableString(avatar),
         toNullableString(title),
@@ -499,7 +465,6 @@ const ensureCandidateProfile = async ({
                  ThanhPho = ?,
                  QuanHuyen = ?,
                  GioiThieuBanThan = ?,
-                 SoNamKinhNghiem = ?,
                  TrinhDoHocVan = ?,
                  AnhDaiDien = ?,
                  ChucDanh = ?,
@@ -508,17 +473,15 @@ const ensureCandidateProfile = async ({
              WHERE MaNguoiDung = ?`,
             [...profileParams, userId]
         );
-        await clearCandidateProfileLists(userId);
         return;
     }
 
     await dbRunAsync(
         `INSERT INTO HoSoUngVien
-        (MaNguoiDung, NgaySinh, GioiTinh, DiaChi, ThanhPho, QuanHuyen, GioiThieuBanThan, SoNamKinhNghiem, TrinhDoHocVan, AnhDaiDien, ChucDanh, LinkCaNhan, NgayTao, NgayCapNhat)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        (MaNguoiDung, NgaySinh, GioiTinh, DiaChi, ThanhPho, QuanHuyen, GioiThieuBanThan, TrinhDoHocVan, AnhDaiDien, ChucDanh, LinkCaNhan, NgayTao, NgayCapNhat)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
         [userId, ...profileParams]
     );
-    await clearCandidateProfileLists(userId);
 };
 
 const ensureEmployerAndCompanyProfile = async ({
@@ -1024,7 +987,6 @@ router.post('/complete-profile', authenticateToken, async (req, res) => {
                 city: req.body?.city ?? req.body?.ThanhPho,
                 district: req.body?.district ?? req.body?.QuanHuyen,
                 intro: req.body?.introHtml ?? req.body?.GioiThieuBanThan,
-                experienceYears: req.body?.experienceYears ?? req.body?.SoNamKinhNghiem,
                 education: req.body?.education ?? req.body?.TrinhDoHocVan,
                 avatar: req.body?.avatar ?? req.body?.AnhDaiDien,
                 title: req.body?.title ?? req.body?.ChucDanh ?? req.body?.position,

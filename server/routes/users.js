@@ -15,38 +15,6 @@ const buildAbsoluteUrl = (req, relativePath) => {
   }
   return `${req.protocol}://${req.get('host')}${relativePath}`;
 };
-const safeJsonArray = (val) => {
-  try {
-    const arr = Array.isArray(val) ? val : [];
-    return JSON.stringify(arr);
-  } catch (err) {
-    console.warn('JSON stringify failed, fallback to []', err);
-    return '[]';
-  }
-};
-const parseJsonArray = (text) => {
-  try {
-    const parsed = JSON.parse(text || '[]');
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
-
-const toJsonText = (value) => {
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    return trimmed || '[]';
-  }
-  if (Array.isArray(value)) {
-    try {
-      return JSON.stringify(value);
-    } catch {
-      return '[]';
-    }
-  }
-  return '[]';
-};
 
 const firstDefined = (...values) => values.find((value) => value !== undefined && value !== null);
 
@@ -198,12 +166,8 @@ router.post('/update-profile', (req, res) => {
     address,
     personalLink,
     introHtml,
-    experienceYears,
     education,
-    avatar,
-    educationList,
-    workList,
-    languageList
+    avatar
   } = req.body;
   
   if (!userId) {
@@ -218,10 +182,6 @@ router.post('/update-profile', (req, res) => {
 
   console.log('Updating profile for userId:', numUserId, { fullName, phone, birthday, gender, city, address });
   const introContent = introHtml || '';
-  const safeExperienceYears = Number.isNaN(Number.parseInt(experienceYears, 10)) ? 0 : Number.parseInt(experienceYears, 10);
-  const educationJson = safeJsonArray(educationList);
-  const workJson = safeJsonArray(workList);
-  const languageJson = safeJsonArray(languageList);
 
   const continueUpdateCandidateProfile = () => {
     // Check if HoSoUngVien exists
@@ -239,7 +199,7 @@ router.post('/update-profile', (req, res) => {
         // HoSoUngVien exists, update it
         db.run(
           `UPDATE HoSoUngVien 
-           SET NgaySinh = ?, GioiTinh = ?, DiaChi = ?, ThanhPho = ?, QuanHuyen = ?, ChucDanh = ?, LinkCaNhan = ?, GioiThieuBanThan = ?, SoNamKinhNghiem = ?, TrinhDoHocVan = ?, AnhDaiDien = ?, DanhSachHocVanJson = ?, DanhSachKinhNghiemJson = ?, DanhSachNgoaiNguJson = ?, NgayCapNhat = datetime("now", "localtime") 
+           SET NgaySinh = ?, GioiTinh = ?, DiaChi = ?, ThanhPho = ?, QuanHuyen = ?, ChucDanh = ?, LinkCaNhan = ?, GioiThieuBanThan = ?, TrinhDoHocVan = ?, AnhDaiDien = ?, NgayCapNhat = datetime("now", "localtime") 
            WHERE MaNguoiDung = ?`,
           [
             birthday || '',
@@ -250,12 +210,8 @@ router.post('/update-profile', (req, res) => {
             position || '',
             personalLink || '',
             introContent,
-            safeExperienceYears,
             education || '',
             avatar || '',
-            educationJson,
-            workJson,
-            languageJson,
             numUserId
           ],
           function (updateErr) {
@@ -270,8 +226,8 @@ router.post('/update-profile', (req, res) => {
       } else {
         // HoSoUngVien doesn't exist, create it
         db.run(
-          `INSERT INTO HoSoUngVien (MaNguoiDung, NgaySinh, GioiTinh, DiaChi, ThanhPho, QuanHuyen, ChucDanh, LinkCaNhan, GioiThieuBanThan, SoNamKinhNghiem, TrinhDoHocVan, AnhDaiDien, DanhSachHocVanJson, DanhSachKinhNghiemJson, DanhSachNgoaiNguJson, NgayTao, NgayCapNhat)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now", "localtime"), datetime("now", "localtime"))`,
+          `INSERT INTO HoSoUngVien (MaNguoiDung, NgaySinh, GioiTinh, DiaChi, ThanhPho, QuanHuyen, ChucDanh, LinkCaNhan, GioiThieuBanThan, TrinhDoHocVan, AnhDaiDien, NgayTao, NgayCapNhat)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime("now", "localtime"), datetime("now", "localtime"))`,
           [
             numUserId,
             birthday || '',
@@ -282,12 +238,8 @@ router.post('/update-profile', (req, res) => {
             position || '',
             personalLink || '',
             introContent,
-            safeExperienceYears,
             education || '',
-            avatar || '',
-            educationJson,
-            workJson,
-            languageJson
+            avatar || ''
           ],
           function (insertErr) {
             if (insertErr) {
@@ -362,17 +314,10 @@ router.get('/profile/:userId', (req, res) => {
 
   const candidateQueries = [
     `SELECT NgaySinh, GioiTinh, DiaChi AS DiaChiHoSo, ThanhPho, QuanHuyen, AnhDaiDien, ChucDanh, LinkCaNhan,
-            GioiThieuBanThan, SoNamKinhNghiem, TrinhDoHocVan,
-        DanhSachHocVanJson, DanhSachKinhNghiemJson, DanhSachNgoaiNguJson,
+            GioiThieuBanThan, TrinhDoHocVan,
         NgayTao AS HoSoNgayTao, NgayCapNhat AS HoSoNgayCapNhat
      FROM HoSoUngVien
      WHERE MaNguoiDung = ?`,
-     `SELECT NgaySinh, GioiTinh, DiaChi AS DiaChiHoSo, ThanhPho, QuanHuyen, AnhDaiDien, ChucDanh, LinkCaNhan,
-          GioiThieuBanThan, SoNamKinhNghiem, TrinhDoHocVan,
-      EducationListJson, WorkListJson, LanguageListJson,
-      NgayTao AS HoSoNgayTao, NgayCapNhat AS HoSoNgayCapNhat
-      FROM HoSoUngVien
-      WHERE MaNguoiDung = ?`,
       `SELECT NgaySinh, GioiTinh, DiaChi AS DiaChiHoSo, ThanhPho, QuanHuyen, AnhDaiDien,
         NgayTao AS HoSoNgayTao, NgayCapNhat AS HoSoNgayCapNhat
      FROM HoSoUngVien
@@ -399,9 +344,6 @@ router.get('/profile/:userId', (req, res) => {
 
       const row = { ...userRow, ...(candidateErr ? {} : (candidateRow || {})) };
 
-      const educationJson = firstDefined(row.DanhSachHocVanJson, row.EducationListJson);
-      const workJson = firstDefined(row.DanhSachKinhNghiemJson, row.WorkListJson);
-      const languageJson = firstDefined(row.DanhSachNgoaiNguJson, row.LanguageListJson);
       const resolvedUserId = firstDefined(row.userId, row.MaNguoiDung, userId);
       const resolvedFullName = row.HoTen || '';
       const resolvedEmail = row.Email || '';
@@ -415,13 +357,9 @@ router.get('/profile/:userId', (req, res) => {
       const resolvedPosition = row.ChucDanh || '';
       const resolvedPersonalLink = row.LinkCaNhan || '';
       const resolvedIntro = row.GioiThieuBanThan || '';
-      const resolvedExperienceYears = Number(row.SoNamKinhNghiem || 0);
       const resolvedEducation = row.TrinhDoHocVan || '';
       const resolvedCreatedAt = firstDefined(row.HoSoNgayTao, row.NgayTao, row.NguoiDungNgayTao, '');
       const resolvedUpdatedAt = firstDefined(row.HoSoNgayCapNhat, row.NgayCapNhat, row.NguoiDungNgayCapNhat, '');
-      const educationJsonText = toJsonText(educationJson);
-      const workJsonText = toJsonText(workJson);
-      const languageJsonText = toJsonText(languageJson);
 
       return res.json({
         success: true,
@@ -440,11 +378,11 @@ router.get('/profile/:userId', (req, res) => {
           position: resolvedPosition,
           personalLink: resolvedPersonalLink,
           introHtml: resolvedIntro,
-          experienceYears: resolvedExperienceYears,
+          experienceYears: 0,
           education: resolvedEducation,
-          educationList: parseJsonArray(educationJson),
-          workList: parseJsonArray(workJson),
-          languageList: parseJsonArray(languageJson),
+          educationList: [],
+          workList: [],
+          languageList: [],
           createdAt: resolvedCreatedAt,
           updatedAt: resolvedUpdatedAt,
           raw: {
@@ -458,14 +396,14 @@ router.get('/profile/:userId', (req, res) => {
             ThanhPho: resolvedCity,
             QuanHuyen: resolvedDistrict,
             GioiThieuBanThan: resolvedIntro,
-            SoNamKinhNghiem: resolvedExperienceYears,
+            SoNamKinhNghiem: 0,
             TrinhDoHocVan: resolvedEducation,
             AnhDaiDien: resolvedAvatar,
             ChucDanh: resolvedPosition,
             LinkCaNhan: resolvedPersonalLink,
-            DanhSachHocVanJson: educationJsonText,
-            DanhSachKinhNghiemJson: workJsonText,
-            DanhSachNgoaiNguJson: languageJsonText,
+            DanhSachHocVanJson: '[]',
+            DanhSachKinhNghiemJson: '[]',
+            DanhSachNgoaiNguJson: '[]',
             NgayTao: resolvedCreatedAt,
             NgayCapNhat: resolvedUpdatedAt
           }

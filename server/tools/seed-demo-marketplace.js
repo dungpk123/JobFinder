@@ -1189,7 +1189,7 @@ const upsertCandidateProfile = async ({ userId, profile, address }) => {
     await dbRun(
       `UPDATE HoSoUngVien
        SET NgaySinh = ?, GioiTinh = ?, DiaChi = ?, ThanhPho = ?, QuanHuyen = ?,
-           GioiThieuBanThan = ?, SoNamKinhNghiem = ?, TrinhDoHocVan = ?,
+           GioiThieuBanThan = ?, TrinhDoHocVan = ?,
            ChucDanh = ?, LinkCaNhan = ?, NgayCapNhat = datetime('now','localtime')
        WHERE MaHoSo = ?`,
       [
@@ -1199,7 +1199,6 @@ const upsertCandidateProfile = async ({ userId, profile, address }) => {
         profile.city,
         profile.district,
         profile.intro,
-        profile.experienceYears,
         profile.education,
         profile.title,
         profile.personalLink,
@@ -1212,8 +1211,8 @@ const upsertCandidateProfile = async ({ userId, profile, address }) => {
   const inserted = await dbRun(
     `INSERT INTO HoSoUngVien (
       MaNguoiDung, NgaySinh, GioiTinh, DiaChi, ThanhPho, QuanHuyen,
-      GioiThieuBanThan, SoNamKinhNghiem, TrinhDoHocVan, ChucDanh, LinkCaNhan
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      GioiThieuBanThan, TrinhDoHocVan, ChucDanh, LinkCaNhan
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       userId,
       profile.birthday,
@@ -1222,7 +1221,6 @@ const upsertCandidateProfile = async ({ userId, profile, address }) => {
       profile.city,
       profile.district,
       profile.intro,
-      profile.experienceYears,
       profile.education,
       profile.title,
       profile.personalLink

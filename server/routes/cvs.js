@@ -687,7 +687,6 @@ router.get('/search', (req, res) => {
             nd.Email,
             nd.SoDienThoai,
             hsv.ThanhPho,
-            hsv.SoNamKinhNghiem,
             hsv.TrinhDoHocVan,
             hsv.ChucDanh
         FROM HoSoCV cv
@@ -709,12 +708,7 @@ router.get('/search', (req, res) => {
         params.push(city);
     }
 
-    if (experience) {
-        if (experience === '0-1') sql += ` AND COALESCE(hsv.SoNamKinhNghiem, 0) <= 1`;
-        else if (experience === '1-3') sql += ` AND COALESCE(hsv.SoNamKinhNghiem, 0) BETWEEN 1 AND 3`;
-        else if (experience === '3-5') sql += ` AND COALESCE(hsv.SoNamKinhNghiem, 0) BETWEEN 3 AND 5`;
-        else if (experience === '5+') sql += ` AND COALESCE(hsv.SoNamKinhNghiem, 0) >= 5`;
-    }
+    void experience;
 
     sql += ` ORDER BY cv.NgayCapNhat DESC LIMIT 50`;
 
@@ -736,7 +730,7 @@ router.get('/search', (req, res) => {
                 candidateEmail: row.Email || '',
                 candidatePhone: row.SoDienThoai || '',
                 city: row.ThanhPho || '',
-                experience: row.SoNamKinhNghiem != null ? `${row.SoNamKinhNghiem} năm` : '',
+                experience: '',
                 level: row.TrinhDoHocVan || '',
                 industry: row.ChucDanh || '',
                 updatedAt: row.NgayCapNhat || '',
@@ -795,7 +789,6 @@ router.get('/saved', authenticateToken, authorizeRole(['Nhà tuyển dụng']), 
                 nd.Email,
                 nd.SoDienThoai,
                 hsv.ThanhPho,
-                hsv.SoNamKinhNghiem,
                 hsv.TrinhDoHocVan,
                 hsv.ChucDanh
              FROM LuuCV lc
@@ -823,7 +816,7 @@ router.get('/saved', authenticateToken, authorizeRole(['Nhà tuyển dụng']), 
                 candidateEmail: r.Email || '',
                 candidatePhone: r.SoDienThoai || '',
                 city: r.ThanhPho || '',
-                experience: r.SoNamKinhNghiem != null ? `${r.SoNamKinhNghiem} năm` : '',
+                experience: '',
                 level: r.TrinhDoHocVan || '',
                 industry: r.ChucDanh || '',
                 ...fileMeta

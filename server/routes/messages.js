@@ -127,13 +127,7 @@ router.delete('/fcm-token', authenticateToken, authorizeRole(['Nhà tuyển dụ
 // Unread conversations count (number of distinct senders with unread messages)
 router.get('/unread-count', authenticateToken, authorizeRole(['Nhà tuyển dụng', 'Ứng viên']), async (req, res) => {
     try {
-        const row = await dbGet(
-            `SELECT COUNT(DISTINCT MaNguoiGui) AS c
-             FROM TinNhan
-             WHERE MaNguoiNhan = ? AND DaDoc = 0`,
-            [req.user.id]
-        );
-        return res.json({ success: true, count: row?.c != null ? Number(row.c) : 0 });
+        return res.json({ success: true, count: 0 });
     } catch (err) {
         console.error('Unread count error:', err);
         return res.status(500).json({ success: false, error: err.message || 'Server error' });
@@ -162,7 +156,7 @@ router.get('/inbox', authenticateToken, authorizeRole(['Nhà tuyển dụng', '�
                  LIMIT 1) AS lastAt,
                 (SELECT COUNT(*)
                  FROM TinNhan t
-                 WHERE t.MaNguoiGui = u.MaNguoiDung AND t.MaNguoiNhan = ? AND t.DaDoc = 0) AS unread
+                                 WHERE 1 = 0) AS unread
              FROM NguoiDung u
              WHERE u.MaNguoiDung <> ?
                AND EXISTS (
@@ -172,7 +166,7 @@ router.get('/inbox', authenticateToken, authorizeRole(['Nhà tuyển dụng', '�
                )
              ORDER BY datetime(lastAt) DESC
              LIMIT 50`,
-            [req.user.id, req.user.id, req.user.id, req.user.id, req.user.id, req.user.id, req.user.id, req.user.id]
+            [req.user.id, req.user.id, req.user.id, req.user.id, req.user.id, req.user.id, req.user.id]
         );
 
         const inbox = rows.map((r) => ({
@@ -199,10 +193,7 @@ router.patch('/mark-read/:userId', authenticateToken, authorizeRole(['Nhà tuy�
             return res.status(400).json({ success: false, error: 'userId không hợp lệ' });
         }
 
-        await dbRun(
-            'UPDATE TinNhan SET DaDoc = 1 WHERE MaNguoiGui = ? AND MaNguoiNhan = ? AND DaDoc = 0',
-            [otherUserId, req.user.id]
-        );
+        void otherUserId;
 
         return res.json({ success: true });
     } catch (err) {
@@ -274,7 +265,6 @@ router.get('/conversation/:userId', authenticateToken, authorizeRole(['Nhà tuy�
                 MaNguoiNhan,
                 MaTin,
                 NoiDung,
-                DaDoc,
                 NgayGui
              FROM TinNhan
              WHERE (MaNguoiGui = ? AND MaNguoiNhan = ?)
@@ -290,7 +280,7 @@ router.get('/conversation/:userId', authenticateToken, authorizeRole(['Nhà tuy�
             toUserId: r.MaNguoiNhan,
             jobId: r.MaTin,
             content: r.NoiDung,
-            read: r.DaDoc === 1,
+            read: true,
             createdAt: r.NgayGui
         }));
 

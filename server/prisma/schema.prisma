@@ -51,14 +51,10 @@ model HoSoUngVien {
   thanhPho          String?   @db.VarChar(191) @map("ThanhPho")
   quanHuyen         String?   @db.VarChar(191) @map("QuanHuyen")
   gioiThieuBanThan  String?   @db.LongText @map("GioiThieuBanThan")
-  soNamKinhNghiem   Int       @default(0) @map("SoNamKinhNghiem")
   trinhDoHocVan     String?   @db.VarChar(255) @map("TrinhDoHocVan")
   anhDaiDien        String?   @db.VarChar(500) @map("AnhDaiDien")
   chucDanh          String?   @db.VarChar(255) @map("ChucDanh")
   linkCaNhan        String?   @db.VarChar(500) @map("LinkCaNhan")
-  educationListJson String?   @db.LongText @map("DanhSachHocVanJson")
-  workListJson      String?   @db.LongText @map("DanhSachKinhNghiemJson")
-  languageListJson  String?   @db.LongText @map("DanhSachNgoaiNguJson")
   ngayTao           DateTime  @default(now()) @map("NgayTao")
   ngayCapNhat       DateTime  @default(now()) @map("NgayCapNhat")
 
@@ -171,7 +167,6 @@ model UngTuyen {
   maTin         Int       @map("MaTin")
   maCV          Int?      @map("MaCV")
   maUngVien     Int       @map("MaUngVien")
-  thuGioiThieu  String?   @db.LongText @map("ThuGioiThieu")
   trangThai     String    @default("Đã nộp") @db.VarChar(50) @map("TrangThai")
   ngayNop       DateTime  @default(now()) @map("NgayNop")
   ghiChu        String?   @db.LongText @map("GhiChu")
@@ -202,15 +197,15 @@ model BaoCao {
 }
 
 model NhatKyQuanTri {
-  id         Int      @id @default(autoincrement()) @map("id")
-  userId     Int?     @map("user_id")
-  action     String?  @db.VarChar(100) @map("action")
-  entityType String?  @db.VarChar(100) @map("entity_type")
-  entityId   Int?     @map("entity_id")
-  timestamp  DateTime @default(now()) @map("timestamp")
+  maNhatKyQuanTri Int      @id @default(autoincrement()) @map("MaNhatKyQuanTri")
+  maNguoiDung     Int?     @map("MaNguoiDung")
+  hanhDong        String?  @db.VarChar(100) @map("HanhDong")
+  loaiDoiTuong    String?  @db.VarChar(100) @map("LoaiDoiTuong")
+  maDoiTuong      Int?     @map("MaDoiTuong")
+  thoiGianThaoTac DateTime @default(now()) @map("ThoiGianThaoTac")
 
-  @@index([userId], map: "IDX_NhatKyQuanTri_user_id")
-  @@index([timestamp], map: "IDX_NhatKyQuanTri_timestamp")
+  @@index([maNguoiDung], map: "IDX_NhatKyQuanTri_MaNguoiDung")
+  @@index([thoiGianThaoTac], map: "IDX_NhatKyQuanTri_ThoiGianThaoTac")
 
   @@map("NhatKyQuanTri")
 }
@@ -230,7 +225,6 @@ model TinNhan {
   maNguoiNhan Int       @map("MaNguoiNhan")
   maTin       Int?      @map("MaTin")
   noiDung     String    @db.LongText @map("NoiDung")
-  daDoc       Int       @default(0) @map("DaDoc")
   ngayGui     DateTime  @default(now()) @map("NgayGui")
 
   @@map("TinNhan")
@@ -267,7 +261,7 @@ model CareerGuide {
   updatedAt  DateTime @default(now()) @map("NgayCapNhat")
   views      Int      @default(0) @map("LuotXem")
 
-  @@map("CamNangNgheNghiep")
+  @@map("BaiVietHuongNghiep")
 }
 
 model CareerGuideComment {
@@ -278,5 +272,5 @@ model CareerGuideComment {
   content   String   @db.LongText @map("NoiDung")
   createdAt DateTime @default(now()) @map("NgayTao")
 
-  @@map("BinhLuanCamNangNgheNghiep")
+  @@map("BinhLuanBaiVietHuongNghiep")
 }

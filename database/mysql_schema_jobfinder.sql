@@ -93,14 +93,10 @@ CREATE TABLE IF NOT EXISTS `HoSoUngVien` (
   `ThanhPho` VARCHAR(191) NULL,
   `QuanHuyen` VARCHAR(191) NULL,
   `GioiThieuBanThan` LONGTEXT NULL,
-  `SoNamKinhNghiem` INT NOT NULL DEFAULT 0,
   `TrinhDoHocVan` VARCHAR(255) NULL,
   `AnhDaiDien` VARCHAR(500) NULL,
   `ChucDanh` VARCHAR(255) NULL,
   `LinkCaNhan` VARCHAR(500) NULL,
-  `DanhSachHocVanJson` LONGTEXT NULL,
-  `DanhSachKinhNghiemJson` LONGTEXT NULL,
-  `DanhSachNgoaiNguJson` LONGTEXT NULL,
   `NgayTao` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `NgayCapNhat` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`MaHoSo`),
@@ -240,7 +236,6 @@ CREATE TABLE IF NOT EXISTS `UngTuyen` (
   `MaTin` INT NOT NULL,
   `MaCV` INT NULL,
   `MaUngVien` INT NOT NULL,
-  `ThuGioiThieu` LONGTEXT NULL,
   `TrangThai` VARCHAR(50) NOT NULL DEFAULT 'Đã nộp',
   `NgayNop` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `GhiChu` LONGTEXT NULL,
@@ -290,17 +285,17 @@ CREATE TABLE IF NOT EXISTS `BaoCao` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `NhatKyQuanTri` (
-  `id` INT NOT NULL AUTO_INCREMENT,
-  `user_id` INT NULL,
-  `action` VARCHAR(100) NULL,
-  `entity_type` VARCHAR(100) NULL,
-  `entity_id` INT NULL,
-  `timestamp` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  KEY `IDX_NhatKyQuanTri_user_id` (`user_id`),
-  KEY `IDX_NhatKyQuanTri_timestamp` (`timestamp`),
-  CONSTRAINT `FK_NhatKyQuanTri_user_id`
-    FOREIGN KEY (`user_id`) REFERENCES `NguoiDung` (`MaNguoiDung`)
+  `MaNhatKyQuanTri` INT NOT NULL AUTO_INCREMENT,
+  `MaNguoiDung` INT NULL,
+  `HanhDong` VARCHAR(100) NULL,
+  `LoaiDoiTuong` VARCHAR(100) NULL,
+  `MaDoiTuong` INT NULL,
+  `ThoiGianThaoTac` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`MaNhatKyQuanTri`),
+  KEY `IDX_NhatKyQuanTri_MaNguoiDung` (`MaNguoiDung`),
+  KEY `IDX_NhatKyQuanTri_ThoiGianThaoTac` (`ThoiGianThaoTac`),
+  CONSTRAINT `FK_NhatKyQuanTri_MaNguoiDung`
+    FOREIGN KEY (`MaNguoiDung`) REFERENCES `NguoiDung` (`MaNguoiDung`)
     ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -310,7 +305,6 @@ CREATE TABLE IF NOT EXISTS `TinNhan` (
   `MaNguoiNhan` INT NOT NULL,
   `MaTin` INT NULL,
   `NoiDung` LONGTEXT NOT NULL,
-  `DaDoc` INT NOT NULL DEFAULT 0,
   `NgayGui` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`MaTinNhan`),
   KEY `IDX_TinNhan_MaNguoiGui` (`MaNguoiGui`),
@@ -361,7 +355,7 @@ CREATE TABLE IF NOT EXISTS `BinhLuanCongTy` (
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS `CamNangNgheNghiep` (
+CREATE TABLE IF NOT EXISTS `BaiVietHuongNghiep` (
   `MaBaiViet` INT NOT NULL AUTO_INCREMENT,
   `TieuDe` VARCHAR(255) NOT NULL,
   `NoiDung` LONGTEXT NOT NULL,
@@ -371,13 +365,13 @@ CREATE TABLE IF NOT EXISTS `CamNangNgheNghiep` (
   `NgayCapNhat` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `LuotXem` INT NOT NULL DEFAULT 0,
   PRIMARY KEY (`MaBaiViet`),
-  KEY `IDX_CamNangNgheNghiep_MaTacGia` (`MaTacGia`),
-  CONSTRAINT `FK_CamNangNgheNghiep_TacGia`
+  KEY `IDX_BaiVietHuongNghiep_MaTacGia` (`MaTacGia`),
+  CONSTRAINT `FK_BaiVietHuongNghiep_TacGia`
     FOREIGN KEY (`MaTacGia`) REFERENCES `NguoiDung` (`MaNguoiDung`)
     ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS `BinhLuanCamNangNgheNghiep` (
+CREATE TABLE IF NOT EXISTS `BinhLuanBaiVietHuongNghiep` (
   `MaBinhLuan` INT NOT NULL AUTO_INCREMENT,
   `MaBaiViet` INT NOT NULL,
   `MaNguoiDung` INT NOT NULL,
@@ -385,12 +379,12 @@ CREATE TABLE IF NOT EXISTS `BinhLuanCamNangNgheNghiep` (
   `NoiDung` LONGTEXT NOT NULL,
   `NgayTao` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`MaBinhLuan`),
-  KEY `IDX_BinhLuanCamNang_MaBaiViet` (`MaBaiViet`),
-  KEY `IDX_BinhLuanCamNang_MaNguoiDung` (`MaNguoiDung`),
-  CONSTRAINT `FK_BinhLuanCamNang_BaiViet`
-    FOREIGN KEY (`MaBaiViet`) REFERENCES `CamNangNgheNghiep` (`MaBaiViet`)
+  KEY `IDX_BinhLuanBaiVietHuongNghiep_MaBaiViet` (`MaBaiViet`),
+  KEY `IDX_BinhLuanBaiVietHuongNghiep_MaNguoiDung` (`MaNguoiDung`),
+  CONSTRAINT `FK_BinhLuanBaiVietHuongNghiep_BaiViet`
+    FOREIGN KEY (`MaBaiViet`) REFERENCES `BaiVietHuongNghiep` (`MaBaiViet`)
     ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `FK_BinhLuanCamNang_NguoiDung`
+  CONSTRAINT `FK_BinhLuanBaiVietHuongNghiep_NguoiDung`
     FOREIGN KEY (`MaNguoiDung`) REFERENCES `NguoiDung` (`MaNguoiDung`)
     ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

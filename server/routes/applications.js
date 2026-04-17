@@ -106,7 +106,7 @@ router.get('/status', authenticateToken, authorizeRole(['Ứng viên']), async (
 
 // Apply for a job (candidate only)
 router.post('/', authenticateToken, authorizeRole(['Ứng viên']), async (req, res) => {
-    const { jobId, cvId, coverLetter } = req.body;
+    const { jobId, cvId } = req.body;
 
     if (!jobId) {
         return res.status(400).json({ error: 'Thiếu mã tin tuyển dụng (jobId)' });
@@ -141,9 +141,9 @@ router.post('/', authenticateToken, authorizeRole(['Ứng viên']), async (req, 
         }
 
         const inserted = await dbRun(
-            `INSERT INTO UngTuyen (MaTin, MaCV, MaUngVien, ThuGioiThieu)
-             VALUES (?, ?, ?, ?)`,
-            [jobId, cvId || null, req.user.id, coverLetter || null]
+            `INSERT INTO UngTuyen (MaTin, MaCV, MaUngVien)
+             VALUES (?, ?, ?)`,
+            [jobId, cvId || null, req.user.id]
         );
 
         // Best-effort increment
@@ -201,7 +201,6 @@ router.get('/', authenticateToken, authorizeRole(['Nhà tuyển dụng']), async
                 ut.MaTin,
                 ut.MaCV,
                 ut.MaUngVien,
-                ut.ThuGioiThieu,
                 ut.TrangThai,
                 ut.NgayNop,
                 ttd.TieuDe,

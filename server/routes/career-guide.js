@@ -153,7 +153,7 @@ const loadCareerGuideColumnSet = async () => {
         `SELECT COLUMN_NAME AS columnName
          FROM INFORMATION_SCHEMA.COLUMNS
          WHERE TABLE_SCHEMA = DATABASE()
-           AND TABLE_NAME = 'CamNangNgheNghiep'`
+           AND TABLE_NAME = 'BaiVietHuongNghiep'`
       );
 
       return new Set(
@@ -163,7 +163,7 @@ const loadCareerGuideColumnSet = async () => {
       );
     }
 
-    const rows = await dbAll(`PRAGMA table_info('CamNangNgheNghiep')`);
+    const rows = await dbAll(`PRAGMA table_info('BaiVietHuongNghiep')`);
     return new Set(
       (rows || [])
         .map((row) => String(row?.name || '').trim().toLowerCase())
@@ -215,15 +215,15 @@ const ensureCareerGuideOptionalColumns = async () => {
     if (columnSet.has(normalizedName)) continue;
 
     if (isMysql) {
-      await dbRun(`ALTER TABLE CamNangNgheNghiep ADD COLUMN ${column.name} ${column.mysqlType}`);
+      await dbRun(`ALTER TABLE BaiVietHuongNghiep ADD COLUMN ${column.name} ${column.mysqlType}`);
     } else {
-      await dbRun(`ALTER TABLE CamNangNgheNghiep ADD COLUMN ${column.name} ${column.sqliteType}`);
+      await dbRun(`ALTER TABLE BaiVietHuongNghiep ADD COLUMN ${column.name} ${column.sqliteType}`);
     }
 
     clearCareerGuideColumnsCache();
     const refreshed = await loadCareerGuideColumnSet();
     if (!refreshed.has(normalizedName)) {
-      throw new Error(`Không thể tạo cột ${column.name} cho CamNangNgheNghiep`);
+      throw new Error(`Không thể tạo cột ${column.name} cho BaiVietHuongNghiep`);
     }
   }
 };
@@ -237,7 +237,7 @@ const ensureCareerGuideSchema = async () => {
   ensureCareerGuideSchemaPromise = (async () => {
     if (isMysql) {
       await dbRun(`
-        CREATE TABLE IF NOT EXISTS CamNangNgheNghiep (
+        CREATE TABLE IF NOT EXISTS BaiVietHuongNghiep (
           MaBaiViet INT NOT NULL AUTO_INCREMENT,
           TieuDe VARCHAR(255) NOT NULL,
           NoiDung LONGTEXT NOT NULL,
@@ -247,13 +247,13 @@ const ensureCareerGuideSchema = async () => {
           NgayCapNhat DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
           LuotXem INT NOT NULL DEFAULT 0,
           PRIMARY KEY (MaBaiViet),
-          KEY IDX_CamNangNgheNghiep_MaTacGia (MaTacGia),
-          CONSTRAINT FK_CamNangNgheNghiep_TacGia FOREIGN KEY (MaTacGia) REFERENCES NguoiDung(MaNguoiDung)
+          KEY IDX_BaiVietHuongNghiep_MaTacGia (MaTacGia),
+          CONSTRAINT FK_BaiVietHuongNghiep_TacGia FOREIGN KEY (MaTacGia) REFERENCES NguoiDung(MaNguoiDung)
         )
       `);
 
       await dbRun(`
-        CREATE TABLE IF NOT EXISTS BinhLuanCamNangNgheNghiep (
+        CREATE TABLE IF NOT EXISTS BinhLuanBaiVietHuongNghiep (
           MaBinhLuan INT NOT NULL AUTO_INCREMENT,
           MaBaiViet INT NOT NULL,
           MaNguoiDung INT NOT NULL,
@@ -261,13 +261,13 @@ const ensureCareerGuideSchema = async () => {
           NoiDung LONGTEXT NOT NULL,
           NgayTao DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
           PRIMARY KEY (MaBinhLuan),
-          KEY IDX_BinhLuanCamNang_MaBaiViet (MaBaiViet),
-          KEY IDX_BinhLuanCamNang_MaNguoiDung (MaNguoiDung)
+          KEY IDX_BinhLuanBaiVietHuongNghiep_MaBaiViet (MaBaiViet),
+          KEY IDX_BinhLuanBaiVietHuongNghiep_MaNguoiDung (MaNguoiDung)
         )
       `);
     } else {
       await dbRun(`
-        CREATE TABLE IF NOT EXISTS CamNangNgheNghiep (
+        CREATE TABLE IF NOT EXISTS BaiVietHuongNghiep (
           MaBaiViet INTEGER PRIMARY KEY AUTOINCREMENT,
           TieuDe TEXT NOT NULL,
           NoiDung TEXT NOT NULL,
@@ -280,23 +280,23 @@ const ensureCareerGuideSchema = async () => {
         )
       `);
 
-      await dbRun('CREATE INDEX IF NOT EXISTS IDX_CamNangNgheNghiep_MaTacGia ON CamNangNgheNghiep(MaTacGia)');
+      await dbRun('CREATE INDEX IF NOT EXISTS IDX_BaiVietHuongNghiep_MaTacGia ON BaiVietHuongNghiep(MaTacGia)');
 
       await dbRun(`
-        CREATE TABLE IF NOT EXISTS BinhLuanCamNangNgheNghiep (
+        CREATE TABLE IF NOT EXISTS BinhLuanBaiVietHuongNghiep (
           MaBinhLuan INTEGER PRIMARY KEY AUTOINCREMENT,
           MaBaiViet INTEGER NOT NULL,
           MaNguoiDung INTEGER NOT NULL,
           LoaiNguoiDung TEXT NOT NULL,
           NoiDung TEXT NOT NULL,
           NgayTao TEXT DEFAULT (datetime('now', 'localtime')),
-          FOREIGN KEY (MaBaiViet) REFERENCES CamNangNgheNghiep(MaBaiViet) ON DELETE CASCADE,
+          FOREIGN KEY (MaBaiViet) REFERENCES BaiVietHuongNghiep(MaBaiViet) ON DELETE CASCADE,
           FOREIGN KEY (MaNguoiDung) REFERENCES NguoiDung(MaNguoiDung) ON DELETE CASCADE
         )
       `);
 
-      await dbRun('CREATE INDEX IF NOT EXISTS IDX_BinhLuanCamNang_MaBaiViet ON BinhLuanCamNangNgheNghiep(MaBaiViet)');
-      await dbRun('CREATE INDEX IF NOT EXISTS IDX_BinhLuanCamNang_MaNguoiDung ON BinhLuanCamNangNgheNghiep(MaNguoiDung)');
+      await dbRun('CREATE INDEX IF NOT EXISTS IDX_BinhLuanBaiVietHuongNghiep_MaBaiViet ON BinhLuanBaiVietHuongNghiep(MaBaiViet)');
+      await dbRun('CREATE INDEX IF NOT EXISTS IDX_BinhLuanBaiVietHuongNghiep_MaNguoiDung ON BinhLuanBaiVietHuongNghiep(MaNguoiDung)');
     }
 
     clearCareerGuideColumnsCache();
@@ -381,7 +381,7 @@ const ensureCareerCommentModerationColumn = async () => {
         `SELECT COUNT(*) AS c
          FROM INFORMATION_SCHEMA.TABLES
          WHERE TABLE_SCHEMA = DATABASE()
-           AND TABLE_NAME = 'BinhLuanCamNangNgheNghiep'`
+           AND TABLE_NAME = 'BinhLuanBaiVietHuongNghiep'`
       );
 
       if (Number(tableExists?.c || 0) === 0) return;
@@ -390,12 +390,12 @@ const ensureCareerCommentModerationColumn = async () => {
         `SELECT COUNT(*) AS c
          FROM INFORMATION_SCHEMA.COLUMNS
          WHERE TABLE_SCHEMA = DATABASE()
-           AND TABLE_NAME = 'BinhLuanCamNangNgheNghiep'
+           AND TABLE_NAME = 'BinhLuanBaiVietHuongNghiep'
            AND COLUMN_NAME = 'BiAn'`
       );
 
       if (Number(column?.c || 0) === 0) {
-        await dbRun('ALTER TABLE BinhLuanCamNangNgheNghiep ADD COLUMN BiAn TINYINT(1) NOT NULL DEFAULT 0');
+        await dbRun('ALTER TABLE BinhLuanBaiVietHuongNghiep ADD COLUMN BiAn TINYINT(1) NOT NULL DEFAULT 0');
       }
 
       return;
@@ -404,15 +404,15 @@ const ensureCareerCommentModerationColumn = async () => {
     const table = await dbGet(
       `SELECT name
        FROM sqlite_master
-       WHERE type = 'table' AND name = 'BinhLuanCamNangNgheNghiep'`
+       WHERE type = 'table' AND name = 'BinhLuanBaiVietHuongNghiep'`
     );
     if (!table) return;
 
-    const columns = await dbAll(`PRAGMA table_info('BinhLuanCamNangNgheNghiep')`);
+    const columns = await dbAll(`PRAGMA table_info('BinhLuanBaiVietHuongNghiep')`);
     const hasBiAn = columns.some((col) => String(col?.name || '').toLowerCase() === 'bian');
 
     if (!hasBiAn) {
-      await dbRun('ALTER TABLE BinhLuanCamNangNgheNghiep ADD COLUMN BiAn INTEGER DEFAULT 0');
+      await dbRun('ALTER TABLE BinhLuanBaiVietHuongNghiep ADD COLUMN BiAn INTEGER DEFAULT 0');
     }
   })();
 
@@ -454,7 +454,9 @@ const isMissingCareerGuideTableError = (error) => {
   if (!message) return false;
 
   const mentionsCareerGuideTable =
-    message.includes('camnangnghenghiep')
+    message.includes('baiviethuongnghiep')
+    || message.includes('binhluanbaiviethuongnghiep')
+    || message.includes('camnangnghenghiep')
     || message.includes('binhluancamnangnghenghiep')
     || message.includes('careerguide');
 
@@ -491,8 +493,8 @@ router.get('/', async (req, res) => {
     const hasStatusColumn = columnSet.has('trangthai');
     const countRow = await dbGet(
       hasStatusColumn
-        ? "SELECT COUNT(*) AS total FROM CamNangNgheNghiep WHERE COALESCE(TrangThai, 'published') = 'published'"
-        : 'SELECT COUNT(*) AS total FROM CamNangNgheNghiep'
+        ? "SELECT COUNT(*) AS total FROM BaiVietHuongNghiep WHERE COALESCE(TrangThai, 'published') = 'published'"
+        : 'SELECT COUNT(*) AS total FROM BaiVietHuongNghiep'
     );
     const total = Number(countRow?.total || 0);
 
@@ -507,7 +509,7 @@ router.get('/', async (req, res) => {
     const sql = `
       SELECT
         ${buildCareerGuidePostSelectFields(columnSet)}
-      FROM CamNangNgheNghiep cg
+      FROM BaiVietHuongNghiep cg
       LEFT JOIN NguoiDung u ON cg.MaTacGia = u.MaNguoiDung
       LEFT JOIN NhaTuyenDung ntd ON ntd.MaNguoiDung = u.MaNguoiDung
       WHERE ${statusWhereClause}
@@ -550,7 +552,7 @@ router.get('/my-posts', authenticateToken, async (req, res) => {
 
     const countRow = await dbGet(
       `SELECT COUNT(*) AS total
-       FROM CamNangNgheNghiep
+       FROM BaiVietHuongNghiep
        WHERE MaTacGia = ? AND LoaiTacGia = ?`,
       [userId, userType]
     );
@@ -559,7 +561,7 @@ router.get('/my-posts', authenticateToken, async (req, res) => {
     const rows = await dbAll(
       `SELECT
          ${buildCareerGuidePostSelectFields(columnSet)}
-       FROM CamNangNgheNghiep cg
+       FROM BaiVietHuongNghiep cg
        LEFT JOIN NguoiDung u ON cg.MaTacGia = u.MaNguoiDung
        LEFT JOIN NhaTuyenDung ntd ON ntd.MaNguoiDung = u.MaNguoiDung
        WHERE cg.MaTacGia = ? AND cg.LoaiTacGia = ?
@@ -659,7 +661,7 @@ router.get('/:id', async (req, res) => {
       : await dbGet(
         `SELECT
            ${buildCareerGuidePostSelectFields(columnSet)}
-         FROM CamNangNgheNghiep cg
+         FROM BaiVietHuongNghiep cg
          LEFT JOIN NguoiDung u ON cg.MaTacGia = u.MaNguoiDung
          LEFT JOIN NhaTuyenDung ntd ON ntd.MaNguoiDung = u.MaNguoiDung
          WHERE ${whereClause}
@@ -681,7 +683,7 @@ router.get('/:id', async (req, res) => {
     }
 
     if (shouldTrackView) {
-      await dbRun('UPDATE CamNangNgheNghiep SET LuotXem = LuotXem + 1 WHERE MaBaiViet = ?', [post.id]);
+      await dbRun('UPDATE BaiVietHuongNghiep SET LuotXem = LuotXem + 1 WHERE MaBaiViet = ?', [post.id]);
     }
 
     const comments = await dbAll(
@@ -696,7 +698,7 @@ router.get('/:id', async (req, res) => {
            WHEN cgc.LoaiNguoiDung = 'employer' THEN COALESCE(ntd.TenCongTy, u.HoTen, 'Nhà tuyển dụng')
            ELSE 'Admin'
          END AS userName
-       FROM BinhLuanCamNangNgheNghiep cgc
+       FROM BinhLuanBaiVietHuongNghiep cgc
        LEFT JOIN NguoiDung u ON cgc.MaNguoiDung = u.MaNguoiDung
        LEFT JOIN NhaTuyenDung ntd ON ntd.MaNguoiDung = u.MaNguoiDung
        WHERE cgc.MaBaiViet = ? AND IFNULL(cgc.BiAn, 0) = 0
@@ -788,7 +790,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
     const placeholders = insertColumns.map(() => '?').join(', ');
     const sql = `
-      INSERT INTO CamNangNgheNghiep (${insertColumns.join(', ')})
+      INSERT INTO BaiVietHuongNghiep (${insertColumns.join(', ')})
       VALUES (${placeholders})
     `;
 
@@ -852,7 +854,7 @@ router.post('/:id/comments', authenticateToken, async (req, res) => {
     if (isNumericId) {
       postId = Number(rawIdentifier);
     } else if (columnSet.has('slug')) {
-      const matchedPost = await dbGet('SELECT MaBaiViet AS id FROM CamNangNgheNghiep WHERE Slug = ? LIMIT 1', [rawIdentifier]);
+      const matchedPost = await dbGet('SELECT MaBaiViet AS id FROM BaiVietHuongNghiep WHERE Slug = ? LIMIT 1', [rawIdentifier]);
       postId = Number(matchedPost?.id || 0);
     }
 
@@ -862,7 +864,7 @@ router.post('/:id/comments', authenticateToken, async (req, res) => {
 
     const nowExpression = isMysql ? 'NOW()' : "datetime('now')";
     const sql = `
-      INSERT INTO BinhLuanCamNangNgheNghiep (MaBaiViet, MaNguoiDung, LoaiNguoiDung, NoiDung, BiAn, NgayTao)
+      INSERT INTO BinhLuanBaiVietHuongNghiep (MaBaiViet, MaNguoiDung, LoaiNguoiDung, NoiDung, BiAn, NgayTao)
       VALUES (?, ?, ?, ?, ?, ${nowExpression})
     `;
 
@@ -901,7 +903,7 @@ router.patch('/:id', authenticateToken, async (req, res) => {
 
     const post = await dbGet(
       `SELECT MaTacGia AS authorId, LoaiTacGia AS authorType
-       FROM CamNangNgheNghiep
+       FROM BaiVietHuongNghiep
        WHERE MaBaiViet = ?`,
       [postId]
     );
@@ -982,7 +984,7 @@ router.patch('/:id', authenticateToken, async (req, res) => {
     updates.push(`NgayCapNhat = ${isMysql ? 'NOW()' : "datetime('now')"}`);
 
     await dbRun(
-      `UPDATE CamNangNgheNghiep
+      `UPDATE BaiVietHuongNghiep
        SET ${updates.join(', ')}
        WHERE MaBaiViet = ?`,
       [...params, postId]
@@ -991,7 +993,7 @@ router.patch('/:id', authenticateToken, async (req, res) => {
     const updatedPost = await dbGet(
       `SELECT
          ${buildCareerGuidePostSelectFields(columnSet)}
-       FROM CamNangNgheNghiep cg
+       FROM BaiVietHuongNghiep cg
        LEFT JOIN NguoiDung u ON cg.MaTacGia = u.MaNguoiDung
        LEFT JOIN NhaTuyenDung ntd ON ntd.MaNguoiDung = u.MaNguoiDung
        WHERE cg.MaBaiViet = ?`,
@@ -1026,7 +1028,7 @@ router.delete('/:id', authenticateToken, (req, res) => {
   }
 
   // Check if user is author or admin
-  const checkSql = 'SELECT MaTacGia as authorId, LoaiTacGia as authorType FROM CamNangNgheNghiep WHERE MaBaiViet = ?';
+  const checkSql = 'SELECT MaTacGia as authorId, LoaiTacGia as authorType FROM BaiVietHuongNghiep WHERE MaBaiViet = ?';
   
   db.get(checkSql, [id], (err, post) => {
     if (err) {
@@ -1044,13 +1046,13 @@ router.delete('/:id', authenticateToken, (req, res) => {
     }
 
     // Delete comments first
-    db.run('DELETE FROM BinhLuanCamNangNgheNghiep WHERE MaBaiViet = ?', [id], (err) => {
+    db.run('DELETE FROM BinhLuanBaiVietHuongNghiep WHERE MaBaiViet = ?', [id], (err) => {
       if (err) {
         return res.status(500).json({ success: false, error: 'Lỗi khi xóa bình luận' });
       }
 
       // Delete post
-      db.run('DELETE FROM CamNangNgheNghiep WHERE MaBaiViet = ?', [id], function(err) {
+      db.run('DELETE FROM BaiVietHuongNghiep WHERE MaBaiViet = ?', [id], function(err) {
         if (err) {
           return res.status(500).json({ success: false, error: 'Lỗi khi xóa bài viết' });
         }
@@ -1074,7 +1076,7 @@ router.delete('/:postId/comments/:commentId', authenticateToken, (req, res) => {
     userType = 'admin';
   }
 
-  const checkSql = 'SELECT MaNguoiDung as userId, LoaiNguoiDung as userType FROM BinhLuanCamNangNgheNghiep WHERE MaBinhLuan = ?';
+  const checkSql = 'SELECT MaNguoiDung as userId, LoaiNguoiDung as userType FROM BinhLuanBaiVietHuongNghiep WHERE MaBinhLuan = ?';
   
   db.get(checkSql, [commentId], (err, comment) => {
     if (err) {
@@ -1091,7 +1093,7 @@ router.delete('/:postId/comments/:commentId', authenticateToken, (req, res) => {
       return res.status(403).json({ success: false, error: 'Bạn không có quyền xóa bình luận này' });
     }
 
-    db.run('DELETE FROM BinhLuanCamNangNgheNghiep WHERE MaBinhLuan = ?', [commentId], function(err) {
+    db.run('DELETE FROM BinhLuanBaiVietHuongNghiep WHERE MaBinhLuan = ?', [commentId], function(err) {
       if (err) {
         return res.status(500).json({ success: false, error: 'Lỗi khi xóa bình luận' });
       }

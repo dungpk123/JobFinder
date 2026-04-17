@@ -63,78 +63,10 @@ const pool = mysql.createPool({
   multipleStatements: false
 });
 
-const HO_SO_UNG_VIEN_TABLE = 'HoSoUngVien';
-const HO_SO_JSON_COLUMN_MAPPINGS = [
-  { english: 'EducationListJson', vietnamese: 'DanhSachHocVanJson' },
-  { english: 'WorkListJson', vietnamese: 'DanhSachKinhNghiemJson' },
-  { english: 'LanguageListJson', vietnamese: 'DanhSachNgoaiNguJson' }
-];
-
-const quoteIdentifier = (value) => `\`${String(value || '').replace(/`/g, '``')}\``;
-
-const ensureCandidateProfileJsonColumns = async () => {
-  const [tableRows] = await pool.query(
-    'SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? LIMIT 1',
-    [HO_SO_UNG_VIEN_TABLE]
-  );
-
-  if (!Array.isArray(tableRows) || tableRows.length === 0) {
-    return;
-  }
-
-  const [columnRows] = await pool.query(
-    'SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?',
-    [HO_SO_UNG_VIEN_TABLE]
-  );
-
-  const existingColumns = new Set(
-    (Array.isArray(columnRows) ? columnRows : [])
-      .map((row) => String(row?.COLUMN_NAME || '').trim())
-      .filter(Boolean)
-  );
-
-  for (const mapping of HO_SO_JSON_COLUMN_MAPPINGS) {
-    const hasVietnamese = existingColumns.has(mapping.vietnamese);
-    const hasEnglish = existingColumns.has(mapping.english);
-
-    if (!hasVietnamese && hasEnglish) {
-      await pool.query(
-        `ALTER TABLE ${quoteIdentifier(HO_SO_UNG_VIEN_TABLE)} CHANGE COLUMN ${quoteIdentifier(mapping.english)} ${quoteIdentifier(mapping.vietnamese)} LONGTEXT NULL`
-      );
-      existingColumns.delete(mapping.english);
-      existingColumns.add(mapping.vietnamese);
-      continue;
-    }
-
-    if (!hasVietnamese && !hasEnglish) {
-      await pool.query(
-        `ALTER TABLE ${quoteIdentifier(HO_SO_UNG_VIEN_TABLE)} ADD COLUMN ${quoteIdentifier(mapping.vietnamese)} LONGTEXT NULL`
-      );
-      existingColumns.add(mapping.vietnamese);
-      continue;
-    }
-
-    if (hasVietnamese && hasEnglish) {
-      await pool.query(
-        `UPDATE ${quoteIdentifier(HO_SO_UNG_VIEN_TABLE)}
-         SET ${quoteIdentifier(mapping.vietnamese)} = COALESCE(NULLIF(${quoteIdentifier(mapping.vietnamese)}, ''), ${quoteIdentifier(mapping.english)})
-         WHERE (${quoteIdentifier(mapping.vietnamese)} IS NULL OR ${quoteIdentifier(mapping.vietnamese)} = '')
-           AND ${quoteIdentifier(mapping.english)} IS NOT NULL`
-      );
-    }
-  }
-};
-
 let ensureMysqlSchemaPromise = null;
 const ensureMysqlSchemaReady = async () => {
   if (!ensureMysqlSchemaPromise) {
-    ensureMysqlSchemaPromise = (async () => {
-      try {
-        await ensureCandidateProfileJsonColumns();
-      } catch (err) {
-        console.warn('[db] Skip MySQL schema normalization:', err?.message || err);
-      }
-    })();
+    ensureMysqlSchemaPromise = Promise.resolve();
   }
 
   return ensureMysqlSchemaPromise;

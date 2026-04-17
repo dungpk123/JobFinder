@@ -61,14 +61,10 @@ db.serialize(() => {
             ThanhPho TEXT,
             QuanHuyen TEXT,
             GioiThieuBanThan TEXT,
-            SoNamKinhNghiem INTEGER DEFAULT 0,
             TrinhDoHocVan TEXT,
             AnhDaiDien TEXT,
             ChucDanh TEXT,
             LinkCaNhan TEXT,
-            DanhSachHocVanJson TEXT,
-            DanhSachKinhNghiemJson TEXT,
-            DanhSachNgoaiNguJson TEXT,
             NgayTao TEXT DEFAULT (datetime('now', 'localtime')),
             NgayCapNhat TEXT DEFAULT (datetime('now', 'localtime')),
             FOREIGN KEY (MaNguoiDung) REFERENCES NguoiDung(MaNguoiDung) ON DELETE CASCADE
@@ -93,9 +89,9 @@ db.serialize(() => {
         )
     `);
 
-    // CamNangNgheNghiep table
+    // BaiVietHuongNghiep table
     db.run(`
-        CREATE TABLE IF NOT EXISTS CamNangNgheNghiep (
+        CREATE TABLE IF NOT EXISTS BaiVietHuongNghiep (
             MaBaiViet INTEGER PRIMARY KEY AUTOINCREMENT,
             TieuDe TEXT NOT NULL,
             NoiDung TEXT NOT NULL,
@@ -108,25 +104,25 @@ db.serialize(() => {
         )
     `);
 
-    db.run('CREATE INDEX IF NOT EXISTS IDX_CamNangNgheNghiep_MaTacGia ON CamNangNgheNghiep(MaTacGia)');
+    db.run('CREATE INDEX IF NOT EXISTS IDX_BaiVietHuongNghiep_MaTacGia ON BaiVietHuongNghiep(MaTacGia)');
 
-    // BinhLuanCamNangNgheNghiep table
+    // BinhLuanBaiVietHuongNghiep table
     db.run(`
-        CREATE TABLE IF NOT EXISTS BinhLuanCamNangNgheNghiep (
+        CREATE TABLE IF NOT EXISTS BinhLuanBaiVietHuongNghiep (
             MaBinhLuan INTEGER PRIMARY KEY AUTOINCREMENT,
             MaBaiViet INTEGER NOT NULL,
             MaNguoiDung INTEGER NOT NULL,
             LoaiNguoiDung TEXT NOT NULL,
             NoiDung TEXT NOT NULL,
             NgayTao TEXT DEFAULT (datetime('now', 'localtime')),
-            FOREIGN KEY (MaBaiViet) REFERENCES CamNangNgheNghiep(MaBaiViet) ON DELETE CASCADE,
+            FOREIGN KEY (MaBaiViet) REFERENCES BaiVietHuongNghiep(MaBaiViet) ON DELETE CASCADE,
             FOREIGN KEY (MaNguoiDung) REFERENCES NguoiDung(MaNguoiDung) ON DELETE CASCADE
         )
     `);
 
-    db.run('CREATE INDEX IF NOT EXISTS IDX_BinhLuanCamNang_MaBaiViet ON BinhLuanCamNangNgheNghiep(MaBaiViet)');
-    db.run('CREATE INDEX IF NOT EXISTS IDX_BinhLuanCamNang_MaNguoiDung ON BinhLuanCamNangNgheNghiep(MaNguoiDung)');
-    db.run('ALTER TABLE BinhLuanCamNangNgheNghiep ADD COLUMN BiAn INTEGER DEFAULT 0', () => {});
+    db.run('CREATE INDEX IF NOT EXISTS IDX_BinhLuanBaiVietHuongNghiep_MaBaiViet ON BinhLuanBaiVietHuongNghiep(MaBaiViet)');
+    db.run('CREATE INDEX IF NOT EXISTS IDX_BinhLuanBaiVietHuongNghiep_MaNguoiDung ON BinhLuanBaiVietHuongNghiep(MaNguoiDung)');
+    db.run('ALTER TABLE BinhLuanBaiVietHuongNghiep ADD COLUMN BiAn INTEGER DEFAULT 0', () => {});
 
     // DanhMucCongViec table
     db.run(`
@@ -221,27 +217,38 @@ db.serialize(() => {
         if (err) console.error(err);
     });
 
-    db.run('ALTER TABLE HoSoUngVien RENAME COLUMN EducationListJson TO DanhSachHocVanJson', (err) => {
+    db.run('ALTER TABLE CamNangNgheNghiep RENAME TO BaiVietHuongNghiep', (err) => {
         const message = String(err?.message || '').toLowerCase();
-        if (err && !message.includes('no such column') && !message.includes('duplicate column name')) console.error(err);
+        if (err && !message.includes('no such table') && !message.includes('already exists')) console.error(err);
     });
-    db.run('ALTER TABLE HoSoUngVien RENAME COLUMN WorkListJson TO DanhSachKinhNghiemJson', (err) => {
+    db.run('ALTER TABLE BinhLuanCamNangNgheNghiep RENAME TO BinhLuanBaiVietHuongNghiep', (err) => {
         const message = String(err?.message || '').toLowerCase();
-        if (err && !message.includes('no such column') && !message.includes('duplicate column name')) console.error(err);
-    });
-    db.run('ALTER TABLE HoSoUngVien RENAME COLUMN LanguageListJson TO DanhSachNgoaiNguJson', (err) => {
-        const message = String(err?.message || '').toLowerCase();
-        if (err && !message.includes('no such column') && !message.includes('duplicate column name')) console.error(err);
+        if (err && !message.includes('no such table') && !message.includes('already exists')) console.error(err);
     });
 
-    db.run('ALTER TABLE HoSoUngVien ADD COLUMN DanhSachHocVanJson TEXT', (err) => {
-        if (err && !String(err.message || '').includes('duplicate column name')) console.error(err);
+    db.run('ALTER TABLE HoSoUngVien DROP COLUMN SoNamKinhNghiem', (err) => {
+        const message = String(err?.message || '').toLowerCase();
+        if (err && !message.includes('no such column') && !message.includes('syntax error')) console.error(err);
     });
-    db.run('ALTER TABLE HoSoUngVien ADD COLUMN DanhSachKinhNghiemJson TEXT', (err) => {
-        if (err && !String(err.message || '').includes('duplicate column name')) console.error(err);
+    db.run('ALTER TABLE HoSoUngVien DROP COLUMN DanhSachHocVanJson', (err) => {
+        const message = String(err?.message || '').toLowerCase();
+        if (err && !message.includes('no such column') && !message.includes('syntax error')) console.error(err);
     });
-    db.run('ALTER TABLE HoSoUngVien ADD COLUMN DanhSachNgoaiNguJson TEXT', (err) => {
-        if (err && !String(err.message || '').includes('duplicate column name')) console.error(err);
+    db.run('ALTER TABLE HoSoUngVien DROP COLUMN DanhSachKinhNghiemJson', (err) => {
+        const message = String(err?.message || '').toLowerCase();
+        if (err && !message.includes('no such column') && !message.includes('syntax error')) console.error(err);
+    });
+    db.run('ALTER TABLE HoSoUngVien DROP COLUMN DanhSachNgoaiNguJson', (err) => {
+        const message = String(err?.message || '').toLowerCase();
+        if (err && !message.includes('no such column') && !message.includes('syntax error')) console.error(err);
+    });
+    db.run('ALTER TABLE UngTuyen DROP COLUMN ThuGioiThieu', (err) => {
+        const message = String(err?.message || '').toLowerCase();
+        if (err && !message.includes('no such column') && !message.includes('syntax error')) console.error(err);
+    });
+    db.run('ALTER TABLE TinNhan DROP COLUMN DaDoc', (err) => {
+        const message = String(err?.message || '').toLowerCase();
+        if (err && !message.includes('no such column') && !message.includes('syntax error')) console.error(err);
     });
 
     // KyNang table
@@ -299,7 +306,6 @@ db.serialize(() => {
             MaTin INTEGER NOT NULL,
             MaCV INTEGER NULL,
             MaUngVien INTEGER NOT NULL,
-            ThuGioiThieu TEXT,
             TrangThai TEXT CHECK (TrangThai IN ('Đã nộp', 'Đang xem xét', 'Phỏng vấn', 'Đề nghị', 'Từ chối', 'Rút hồ sơ', 'Đã nhận')) DEFAULT 'Đã nộp',
             NgayNop TEXT DEFAULT (datetime('now', 'localtime')),
             GhiChu TEXT,
@@ -339,15 +345,21 @@ db.serialize(() => {
     // NhatKyQuanTri table
     db.run(`
         CREATE TABLE IF NOT EXISTS NhatKyQuanTri (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NULL,
-            action TEXT,
-            entity_type TEXT,
-            entity_id INTEGER NULL,
-            timestamp TEXT DEFAULT (datetime('now', 'localtime')),
-            FOREIGN KEY (user_id) REFERENCES NguoiDung(MaNguoiDung) ON DELETE SET NULL
+            MaNhatKyQuanTri INTEGER PRIMARY KEY AUTOINCREMENT,
+            MaNguoiDung INTEGER NULL,
+            HanhDong TEXT,
+            LoaiDoiTuong TEXT,
+            MaDoiTuong INTEGER NULL,
+            ThoiGianThaoTac TEXT DEFAULT (datetime('now', 'localtime')),
+            FOREIGN KEY (MaNguoiDung) REFERENCES NguoiDung(MaNguoiDung) ON DELETE SET NULL
         )
     `);
+    db.run('ALTER TABLE NhatKyQuanTri RENAME COLUMN id TO MaNhatKyQuanTri', () => {});
+    db.run('ALTER TABLE NhatKyQuanTri RENAME COLUMN user_id TO MaNguoiDung', () => {});
+    db.run('ALTER TABLE NhatKyQuanTri RENAME COLUMN action TO HanhDong', () => {});
+    db.run('ALTER TABLE NhatKyQuanTri RENAME COLUMN entity_type TO LoaiDoiTuong', () => {});
+    db.run('ALTER TABLE NhatKyQuanTri RENAME COLUMN entity_id TO MaDoiTuong', () => {});
+    db.run('ALTER TABLE NhatKyQuanTri RENAME COLUMN timestamp TO ThoiGianThaoTac', () => {});
 
     // ThongKeCongViec table
     db.run(`
@@ -368,7 +380,6 @@ db.serialize(() => {
             MaNguoiNhan INTEGER NOT NULL,
             MaTin INTEGER NULL,
             NoiDung TEXT NOT NULL,
-            DaDoc INTEGER DEFAULT 0,
             NgayGui TEXT DEFAULT (datetime('now', 'localtime')),
             FOREIGN KEY (MaNguoiGui) REFERENCES NguoiDung(MaNguoiDung),
             FOREIGN KEY (MaNguoiNhan) REFERENCES NguoiDung(MaNguoiDung),
