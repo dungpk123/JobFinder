@@ -135,6 +135,43 @@ const buildUserUpdatePayload = (form) => {
 };
 
 const isUserSoftDeleted = (user) => !!user?.NgayXoa;
+const SOFT_DELETE_RETENTION_MS = 72 * 60 * 60 * 1000;
+
+const parseDateValue = (value) => {
+    if (!value) return null;
+    if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? null : value;
+    }
+    const normalized = String(value || '').trim();
+    if (!normalized) return null;
+    const parsed = new Date(normalized.includes('T') ? normalized : normalized.replace(' ', 'T'));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const getSoftDeleteMeta = (user, nowMs = Date.now()) => {
+    const deletedAt = parseDateValue(user?.NgayXoa);
+    if (!deletedAt) return null;
+
+    const expiresAtMs = deletedAt.getTime() + SOFT_DELETE_RETENTION_MS;
+    return {
+        expiresAtMs,
+        remainingMs: expiresAtMs - nowMs,
+        isExpired: expiresAtMs <= nowMs
+    };
+};
+
+const formatSoftDeleteRemaining = (remainingMs) => {
+    const totalMinutes = Math.max(1, Math.ceil(Math.max(remainingMs, 0) / 60000));
+    const days = Math.floor(totalMinutes / (24 * 60));
+    const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+    const minutes = totalMinutes % 60;
+
+    const parts = [];
+    if (days > 0) parts.push(`${days} ngày`);
+    if (hours > 0 || days > 0) parts.push(`${hours} giờ`);
+    parts.push(`${minutes} phút`);
+    return parts.join(' ');
+};
 
 const getUserPermissions = (user, isSuperAdmin, isAdmin) => {
     const isTargetSuperAdmin = Number(user?.IsSuperAdmin) === 1;
@@ -146,9 +183,14 @@ const getUserPermissions = (user, isSuperAdmin, isAdmin) => {
     };
 };
 
-const getStatusBadge = (user) => {
-    if (isUserSoftDeleted(user)) {
-        return <span className="badge bg-danger-subtle text-danger">Đã xóa mềm</span>;
+const getStatusBadge = (user, nowMs = Date.now()) => {
+    const softDeleteMeta = getSoftDeleteMeta(user, nowMs);
+    if (softDeleteMeta) {
+        return (
+            <span className={`badge ${softDeleteMeta.isExpired ? 'bg-secondary-subtle text-secondary' : 'bg-danger-subtle text-danger'}`}>
+                Đã xóa mềm 72h
+            </span>
+        );
     }
     const status = Number(user?.TrangThai ?? 1);
     if (status === 1) {
@@ -193,6 +235,7 @@ const AdminUsersPage = ({
     const [rowBusyId, setRowBusyId] = useState(null);
     const [rowErrors, setRowErrors] = useState({});
     const [currentPage, setCurrentPage] = useState(1);
+    const [nowTick, setNowTick] = useState(Date.now());
     const [viewModal, setViewModal] = useState({
         open: false,
         user: null,
@@ -220,6 +263,14 @@ const AdminUsersPage = ({
         saving: false,
         error: ''
     });
+
+    useEffect(() => {
+        const timer = window.setInterval(() => {
+            setNowTick(Date.now());
+        }, 30000);
+
+        return () => window.clearInterval(timer);
+    }, []);
 
     const filteredUsers = useMemo(() => (
         (users || [])
@@ -423,9 +474,12 @@ const AdminUsersPage = ({
         const isDeleted = isUserSoftDeleted(user);
         const actionText = isDeleted ? 'khôi phục' : 'xóa mềm';
         const confirmText = isDeleted ? 'Khôi phục' : 'Xóa';
+        const confirmMessage = isDeleted
+            ? 'Bạn có chắc muốn khôi phục tài khoản này?'
+            : 'Tài khoản sẽ bị xóa mềm trong 72 giờ. Nếu không khôi phục trong thời gian này, hệ thống sẽ xóa vĩnh viễn toàn bộ dữ liệu liên quan. Bạn có muốn tiếp tục?';
         const ok = await requestConfirm({
             title: `Xác nhận ${actionText}`,
-            message: `Bạn có chắc muốn ${actionText} tài khoản này?`,
+            message: confirmMessage,
             confirmText
         });
         if (!ok) return;
@@ -505,6 +559,7 @@ const AdminUsersPage = ({
                             {pagedUsers.map((user, index) => {
                                 const userId = user.MaNguoiDung;
                                 const isDeleted = isUserSoftDeleted(user);
+                                const softDeleteMeta = getSoftDeleteMeta(user, nowTick);
                                 const permissions = getUserPermissions(user, isSuperAdmin, isAdmin);
                                 const busy = rowBusyId === userId;
                                 return (
@@ -515,9 +570,18 @@ const AdminUsersPage = ({
                                         <td>
                                             <span className="badge rounded-pill text-bg-light border">{user.VaiTro || 'Ứng viên'}</span>
                                         </td>
-                                        <td>{getStatusBadge(user)}</td>
+                                        <td>{getStatusBadge(user, nowTick)}</td>
                                         <td>{formatDateTime(user.NgayTao)}</td>
-                                        <td>{formatDateTime(user.NgayXoa)}</td>
+                                        <td>
+                                            <div>{formatDateTime(user.NgayXoa)}</div>
+                                            {softDeleteMeta ? (
+                                                <small className={`d-block mt-1 ${softDeleteMeta.isExpired ? 'text-danger' : 'text-muted'}`}>
+                                                    {softDeleteMeta.isExpired
+                                                        ? 'Đã quá hạn 72 giờ, hệ thống sẽ xóa vĩnh viễn khi đồng bộ tiếp theo.'
+                                                        : `Còn ${formatSoftDeleteRemaining(softDeleteMeta.remainingMs)} để khôi phục.`}
+                                                </small>
+                                            ) : null}
+                                        </td>
                                         <td className="admin-action-col">
                                             <div className="admin-row-actions">
                                                 <button
@@ -611,7 +675,7 @@ const AdminUsersPage = ({
 
                                         <div className="admin-users-profile-tags">
                                             <span className="badge rounded-pill text-bg-light border">{detailUser.VaiTro || 'Ứng viên'}</span>
-                                            {getStatusBadge(detailUser)}
+                                            {getStatusBadge(detailUser, nowTick)}
                                         </div>
 
                                         <div className="admin-users-profile-meta">

@@ -57,7 +57,7 @@ const AdminOverviewPage = ({ currentAdminName, statsCards, recentTemplateActivit
             workbook.created = new Date();
             workbook.modified = new Date();
 
-            const summarySheet = workbook.addWorksheet('TongQuanDashboard');
+            const summarySheet = workbook.addWorksheet('Tổng quan dashboard');
             summarySheet.columns = [
                 { width: 34 },
                 { width: 18 },
@@ -65,7 +65,7 @@ const AdminOverviewPage = ({ currentAdminName, statsCards, recentTemplateActivit
             ];
 
             summarySheet.mergeCells('A1:C1');
-            summarySheet.getCell('A1').value = 'JOBFINDER - BAO CAO DASHBOARD ADMIN';
+            summarySheet.getCell('A1').value = 'JOBFINDER - BÁO CÁO DASHBOARD ADMIN';
             summarySheet.getCell('A1').font = { bold: true, size: 15, color: { argb: 'FF0F172A' } };
             summarySheet.getCell('A1').alignment = { vertical: 'middle', horizontal: 'left' };
 
@@ -89,7 +89,7 @@ const AdminOverviewPage = ({ currentAdminName, statsCards, recentTemplateActivit
                 summarySheet.addRow(['Không có dữ liệu thống kê', '-', '-']);
             }
 
-            const recentSheet = workbook.addWorksheet('HoatDongGanDay');
+            const recentSheet = workbook.addWorksheet('Hoạt động gần đây');
             recentSheet.columns = [
                 { width: 8 },
                 { width: 34 },
@@ -112,7 +112,7 @@ const AdminOverviewPage = ({ currentAdminName, statsCards, recentTemplateActivit
                 recentSheet.addRow([1, 'Chưa có hoạt động', '-', '-']);
             }
 
-            const popularSheet = workbook.addWorksheet('TemplatePhoBien');
+            const popularSheet = workbook.addWorksheet('Template phổ biến');
             popularSheet.columns = [
                 { width: 8 },
                 { width: 34 },

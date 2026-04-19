@@ -65,7 +65,7 @@ const formatUserLabel = (row) => {
     const email = String(row?.user_email || '').trim();
     if (email) return email;
 
-    if (row?.user_id != null) return `User #${row.user_id}`;
+    if (row?.user_id != null) return `Người dùng #${row.user_id}`;
     return 'Hệ thống';
 };
 
@@ -180,7 +180,7 @@ const AdminAuditLogsPage = ({ API_BASE, authHeaders }) => {
             workbook.created = new Date();
             workbook.modified = new Date();
 
-            const sheet = workbook.addWorksheet('NhatKyQuanTri');
+            const sheet = workbook.addWorksheet('Nhật ký quản trị');
             sheet.views = [{ state: 'frozen', ySplit: 5 }];
             sheet.properties.defaultRowHeight = 22;
             sheet.columns = [
@@ -214,23 +214,23 @@ const AdminAuditLogsPage = ({ API_BASE, authHeaders }) => {
             sheet.mergeCells('B3:G3');
 
             const titleCell = sheet.getCell('B1');
-            titleCell.value = 'JOBFINDER - NHAT KY QUAN TRI';
+            titleCell.value = 'JOBFINDER - NHẬT KÝ QUẢN TRỊ';
             titleCell.font = { bold: true, size: 16, color: { argb: 'FF0F172A' } };
             titleCell.alignment = { vertical: 'middle', horizontal: 'left' };
 
             const subtitleCell = sheet.getCell('B2');
-            subtitleCell.value = `Ngay xuat: ${new Date().toLocaleString('vi-VN')}`;
+            subtitleCell.value = `Ngày xuất: ${new Date().toLocaleString('vi-VN')}`;
             subtitleCell.font = { size: 11, color: { argb: 'FF334155' } };
             subtitleCell.alignment = { vertical: 'middle', horizontal: 'left' };
 
             const noteCell = sheet.getCell('B3');
-            noteCell.value = `Tong ban ghi: ${exportRows.length.toLocaleString('vi-VN')} | Nguon du lieu: JobFinder Admin`;
+            noteCell.value = `Tổng bản ghi: ${exportRows.length.toLocaleString('vi-VN')} | Nguồn dữ liệu: JobFinder Admin`;
             noteCell.font = { italic: true, size: 10, color: { argb: 'FF475569' } };
             noteCell.alignment = { vertical: 'middle', horizontal: 'left' };
 
             const headerRowIndex = 5;
             const headerRow = sheet.getRow(headerRowIndex);
-            headerRow.values = ['STT', 'ID', 'Nguoi thuc hien', 'Email', 'Noi dung hanh dong', 'Doi tuong', 'Thoi gian'];
+            headerRow.values = ['STT', 'ID', 'Người thực hiện', 'Email', 'Nội dung hành động', 'Đối tượng', 'Thời gian'];
             headerRow.height = 26;
 
             headerRow.eachCell((cell) => {
@@ -281,7 +281,7 @@ const AdminAuditLogsPage = ({ API_BASE, authHeaders }) => {
             const footerRowIndex = sheet.lastRow.number + 2;
             sheet.mergeCells(`A${footerRowIndex}:G${footerRowIndex}`);
             const footerCell = sheet.getCell(`A${footerRowIndex}`);
-            footerCell.value = 'Bao cao duoc xuat tu he thong JobFinder. Vui long khong chinh sua du lieu goc khi doi soat.';
+            footerCell.value = 'Báo cáo được xuất từ hệ thống JobFinder. Vui lòng không chỉnh sửa dữ liệu gốc khi đối soát.';
             footerCell.font = { italic: true, size: 10, color: { argb: 'FF64748B' } };
             footerCell.alignment = { vertical: 'middle', horizontal: 'left' };
 

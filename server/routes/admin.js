@@ -41,14 +41,21 @@ const getCompanyWithOwner = async (id) => {
         c.MaCongTy,
         c.TenCongTy,
         c.MaSoThue,
+        c.DiaChi,
         c.ThanhPho,
+        c.LinhVuc,
+        c.MoTa,
+        c.NgayTao,
+        c.NgayCapNhat,
         c.Website,
         c.NguoiDaiDien,
+        COALESCE(c.Logo, ntd.Logo) AS LogoCongTy,
         nd.TrangThai AS TrangThaiDaiDien,
         nd.Email AS EmailDaiDien,
         nd.HoTen AS TenNguoiDaiDien
      FROM CongTy c
      LEFT JOIN NguoiDung nd ON nd.MaNguoiDung = c.NguoiDaiDien
+     LEFT JOIN NhaTuyenDung ntd ON ntd.MaNguoiDung = c.NguoiDaiDien
      WHERE c.MaCongTy = ?`,
     [id]
   );
@@ -324,6 +331,182 @@ const ensureNguoiDungNgayXoaColumn = async () => {
   }
 };
 
+const SOFT_DELETE_RETENTION_HOURS = 72;
+const SOFT_DELETE_RETENTION_MS = SOFT_DELETE_RETENTION_HOURS * 60 * 60 * 1000;
+
+const parseDbDateTime = (value) => {
+  if (!value) return null;
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+
+  const normalized = raw.includes('T') ? raw : raw.replace(' ', 'T');
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed;
+};
+
+const computeSoftDeleteMeta = (deletedAtValue, nowMs = Date.now()) => {
+  const deletedAt = parseDbDateTime(deletedAtValue);
+  if (!deletedAt) return null;
+
+  const expiresMs = deletedAt.getTime() + SOFT_DELETE_RETENTION_MS;
+  return {
+    deletedAt: deletedAt.toISOString(),
+    expiresAt: new Date(expiresMs).toISOString(),
+    remainingMs: expiresMs - nowMs,
+    isExpired: expiresMs <= nowMs
+  };
+};
+
+const isMissingTableError = (err) => {
+  const code = String(err?.code || '').toUpperCase();
+  const message = String(err?.message || '').toLowerCase();
+  return code === 'ER_NO_SUCH_TABLE'
+    || message.includes('no such table')
+    || message.includes("doesn't exist")
+    || message.includes('unknown table');
+};
+
+const runDeleteIgnoreMissingTable = async (sql, params = []) => {
+  try {
+    return await dbRun(sql, params);
+  } catch (err) {
+    if (isMissingTableError(err)) {
+      return { changes: 0 };
+    }
+    throw err;
+  }
+};
+
+const deleteByNumericIds = async (tableName, columnName, ids) => {
+  const cleaned = (ids || [])
+    .map((id) => toInt(id, NaN))
+    .filter((id) => Number.isFinite(id));
+  if (!cleaned.length) return { changes: 0 };
+
+  const placeholders = cleaned.map(() => '?').join(', ');
+  return runDeleteIgnoreMissingTable(
+    `DELETE FROM ${tableName} WHERE ${columnName} IN (${placeholders})`,
+    cleaned
+  );
+};
+
+const removeUserPermanently = async (userId) => {
+  const id = toInt(userId, NaN);
+  if (!Number.isFinite(id)) return false;
+
+  const cvRows = await dbAll(
+    'SELECT MaCV FROM HoSoCV WHERE MaNguoiDung = ?',
+    [id]
+  ).catch(() => []);
+  const cvIds = cvRows
+    .map((row) => toInt(row?.MaCV, NaN))
+    .filter((item) => Number.isFinite(item));
+
+  const employerRows = await dbAll(
+    'SELECT MaNhaTuyenDung FROM NhaTuyenDung WHERE MaNguoiDung = ?',
+    [id]
+  ).catch(() => []);
+  const employerIds = employerRows
+    .map((row) => toInt(row?.MaNhaTuyenDung, NaN))
+    .filter((item) => Number.isFinite(item));
+
+  await runDeleteIgnoreMissingTable('DELETE FROM BinhLuanBaiVietHuongNghiep WHERE MaNguoiDung = ?', [id]);
+  await runDeleteIgnoreMissingTable('DELETE FROM BaiVietHuongNghiep WHERE MaTacGia = ?', [id]);
+  await runDeleteIgnoreMissingTable('DELETE FROM TinNhan WHERE MaNguoiGui = ? OR MaNguoiNhan = ?', [id, id]);
+
+  for (const employerId of employerIds) {
+    const jobRows = await dbAll(
+      'SELECT MaTin FROM TinTuyenDung WHERE MaNhaTuyenDung = ?',
+      [employerId]
+    ).catch(() => []);
+    const jobIds = jobRows
+      .map((row) => toInt(row?.MaTin, NaN))
+      .filter((item) => Number.isFinite(item));
+
+    await deleteByNumericIds('LuuTin', 'MaTin', jobIds);
+    await deleteByNumericIds('UngTuyen', 'MaTin', jobIds);
+    await deleteByNumericIds('TinNhan', 'MaTin', jobIds);
+    await deleteByNumericIds('ThongKeCongViec', 'MaTin', jobIds);
+    await deleteByNumericIds('ChiTietTin_KyNang', 'MaTin', jobIds);
+    await deleteByNumericIds('TinTuyenDung', 'MaTin', jobIds);
+
+    await runDeleteIgnoreMissingTable('DELETE FROM LuuCV WHERE MaNhaTuyenDung = ?', [employerId]);
+  }
+
+  await deleteByNumericIds('UngTuyen', 'MaCV', cvIds);
+  await deleteByNumericIds('LuuCV', 'MaCV', cvIds);
+
+  await runDeleteIgnoreMissingTable('DELETE FROM UngTuyen WHERE MaUngVien = ?', [id]);
+  await runDeleteIgnoreMissingTable('DELETE FROM LuuTin WHERE MaNguoiDung = ?', [id]);
+  await runDeleteIgnoreMissingTable('DELETE FROM HoSoCV WHERE MaNguoiDung = ?', [id]);
+  await runDeleteIgnoreMissingTable('DELETE FROM HoSoUngVien WHERE MaNguoiDung = ?', [id]);
+  await runDeleteIgnoreMissingTable('DELETE FROM BaoCao WHERE MaNguoiBaoCao = ?', [id]);
+  await runDeleteIgnoreMissingTable('DELETE FROM NhatKyQuanTri WHERE MaNguoiDung = ?', [id]);
+  await runDeleteIgnoreMissingTable('DELETE FROM NhaTuyenDung WHERE MaNguoiDung = ?', [id]);
+  await runDeleteIgnoreMissingTable('DELETE FROM CongTy WHERE NguoiDaiDien = ?', [id]);
+
+  const result = await dbRun('DELETE FROM NguoiDung WHERE MaNguoiDung = ?', [id]);
+  return Number(result?.changes || 0) > 0;
+};
+
+let purgeExpiredSoftDeletedUsersPromise = null;
+const purgeExpiredSoftDeletedUsers = async () => {
+  if (purgeExpiredSoftDeletedUsersPromise) return purgeExpiredSoftDeletedUsersPromise;
+
+  purgeExpiredSoftDeletedUsersPromise = (async () => {
+    try {
+      await ensureNguoiDungNgayXoaColumn();
+
+      const rows = await dbAll(
+        `SELECT MaNguoiDung, Email, VaiTro, IFNULL(IsSuperAdmin, 0) AS IsSuperAdmin, NgayXoa
+         FROM NguoiDung
+         WHERE NgayXoa IS NOT NULL`
+      );
+
+      const nowMs = Date.now();
+      const expiredUsers = rows.filter((row) => {
+        if (Number(row?.IsSuperAdmin || 0) === 1) return false;
+        if (String(row?.VaiTro || '').trim() === 'Quản trị') return false;
+
+        const meta = computeSoftDeleteMeta(row?.NgayXoa, nowMs);
+        return Boolean(meta?.isExpired);
+      });
+
+      for (const row of expiredUsers) {
+        const targetId = toInt(row?.MaNguoiDung, NaN);
+        if (!Number.isFinite(targetId)) continue;
+
+        try {
+          const deleted = await removeUserPermanently(targetId);
+          if (deleted) {
+            await writeAdminAuditLog({
+              userId: null,
+              action: `Xóa cứng người dùng quá hạn ${SOFT_DELETE_RETENTION_HOURS}h`,
+              entityType: 'NguoiDung',
+              entityId: targetId
+            }).catch(() => null);
+          }
+        } catch (err) {
+          console.warn(`[admin] Failed to hard-delete expired user ${targetId}:`, err?.message || err);
+        }
+      }
+    } catch (err) {
+      console.warn('[admin] Failed to purge expired soft-deleted users:', err?.message || err);
+    }
+  })();
+
+  try {
+    await purgeExpiredSoftDeletedUsersPromise;
+  } finally {
+    purgeExpiredSoftDeletedUsersPromise = null;
+  }
+};
+
 let ensureCvTemplateTablePromise = null;
 const ensureCvTemplateTable = async () => {
   if (ensureCvTemplateTablePromise) return ensureCvTemplateTablePromise;
@@ -529,6 +712,7 @@ const normalizeTemplateDocumentHtml = (html = '') => {
 
 const mapUserRow = (row) => {
   if (!row) return null;
+  const softDeleteMeta = computeSoftDeleteMeta(row.NgayXoa);
   return {
     MaNguoiDung: row.MaNguoiDung,
     Email: row.Email,
@@ -539,6 +723,8 @@ const mapUserRow = (row) => {
     NgayTao: row.NgayTao,
     NgayCapNhat: row.NgayCapNhat,
     NgayXoa: row.NgayXoa || null,
+    SoftDeleteExpiresAt: softDeleteMeta?.expiresAt || null,
+    SoftDeleteRemainingMs: softDeleteMeta ? Math.max(softDeleteMeta.remainingMs, 0) : null,
     IsSuperAdmin: Number(row.IsSuperAdmin || 0)
   };
 };
@@ -607,6 +793,7 @@ const requireSuperAdmin = (req, res, next) => {
 
 router.get('/overview', async (req, res) => {
   await ensureCvTemplateTable().catch(() => null);
+  await purgeExpiredSoftDeletedUsers();
 
   const tables = [
     'NguoiDung',
@@ -764,6 +951,7 @@ router.delete('/audit-logs/:id', async (req, res) => {
 router.get('/users', async (req, res) => {
   try {
     await ensureNguoiDungNgayXoaColumn();
+    await purgeExpiredSoftDeletedUsers();
 
     const limit = Math.min(Math.max(toInt(req.query.limit, 50), 1), 200);
     const offset = Math.max(toInt(req.query.offset, 0), 0);
@@ -787,6 +975,7 @@ router.get('/users', async (req, res) => {
 router.get('/users/:id/detail', async (req, res) => {
   try {
     await ensureNguoiDungNgayXoaColumn();
+    await purgeExpiredSoftDeletedUsers();
 
     const id = toInt(req.params.id, NaN);
     if (!Number.isFinite(id)) return res.status(400).json({ success: false, error: 'id không hợp lệ' });
@@ -884,6 +1073,7 @@ router.get('/users/:id/detail', async (req, res) => {
 router.patch('/users/:id', async (req, res) => {
   try {
     await ensureNguoiDungNgayXoaColumn();
+    await purgeExpiredSoftDeletedUsers();
 
     const id = toInt(req.params.id, NaN);
     if (!Number.isFinite(id)) return res.status(400).json({ success: false, error: 'id không hợp lệ' });
@@ -953,6 +1143,7 @@ router.patch('/users/:id', async (req, res) => {
 router.delete('/users/:id', async (req, res) => {
   try {
     await ensureNguoiDungNgayXoaColumn();
+    await purgeExpiredSoftDeletedUsers();
 
     const id = toInt(req.params.id, NaN);
     if (!Number.isFinite(id)) return res.status(400).json({ success: false, error: 'id không hợp lệ' });
@@ -1000,6 +1191,7 @@ router.delete('/users/:id', async (req, res) => {
 router.post('/users/:id/restore', async (req, res) => {
   try {
     await ensureNguoiDungNgayXoaColumn();
+    await purgeExpiredSoftDeletedUsers();
 
     const id = toInt(req.params.id, NaN);
     if (!Number.isFinite(id)) return res.status(400).json({ success: false, error: 'id không hợp lệ' });
@@ -1139,15 +1331,22 @@ router.get('/companies', async (req, res) => {
           c.MaCongTy,
           c.TenCongTy,
           c.MaSoThue,
+         c.DiaChi,
           c.ThanhPho,
+         c.LinhVuc,
+         c.MoTa,
+         c.Logo,
           c.Website,
           c.NguoiDaiDien,
           c.NgayTao,
+         c.NgayCapNhat,
+         COALESCE(c.Logo, ntd.Logo) AS LogoCongTy,
           nd.TrangThai AS TrangThaiDaiDien,
           nd.Email AS EmailDaiDien,
           nd.HoTen AS TenNguoiDaiDien
        FROM CongTy c
        LEFT JOIN NguoiDung nd ON nd.MaNguoiDung = c.NguoiDaiDien
+       LEFT JOIN NhaTuyenDung ntd ON ntd.MaNguoiDung = c.NguoiDaiDien
        ORDER BY c.MaCongTy DESC
        LIMIT ? OFFSET ?`,
       [limit, offset]

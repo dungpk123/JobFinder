@@ -1630,7 +1630,32 @@
 }
 
 .admin-company-view-dialog {
-    max-width: 760px;
+    max-width: 980px;
+    max-height: calc(100vh - 28px);
+    border-radius: 18px !important;
+}
+
+.admin-company-view-dialog .card-body {
+    max-height: calc(100vh - 132px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 1.1rem 1.2rem 1rem;
+}
+
+.admin-company-view-layout {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.admin-company-profile-panel {
+    position: sticky;
+    top: 0;
+}
+
+.admin-company-avatar {
+    border-radius: 18px;
 }
 
 .admin-company-view-grid {
@@ -1659,6 +1684,17 @@
     font-size: 0.9rem;
     font-weight: 600;
     overflow-wrap: anywhere;
+}
+
+.admin-company-view-link {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 600;
+    word-break: break-all;
+}
+
+.admin-company-view-link:hover {
+    text-decoration: underline;
 }
 
 .admin-company-view-field-span-2 {
@@ -1812,6 +1848,19 @@
 
     .admin-report-modal {
         width: 100%;
+    }
+
+    .admin-company-view-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-company-profile-panel {
+        position: static;
+        width: 100%;
+    }
+
+    .admin-company-view-dialog .card-body {
+        max-height: calc(100vh - 172px);
     }
 
     .admin-company-view-grid {

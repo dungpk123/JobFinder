@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Ban, Building2, Eye, ExternalLink, ShieldCheck, Trash2, X } from 'lucide-react';
+import { Ban, Building2, CalendarDays, Eye, Globe, Mail, MapPin, ShieldCheck, Trash2, X } from 'lucide-react';
 
 const normalizeWebsiteUrl = (value) => {
     const raw = String(value || '').trim();
@@ -12,62 +12,162 @@ const getCompanyStatusLabel = (value) => {
     return Number(value) === 1 ? 'Hoạt động' : 'Đã chặn';
 };
 
+const formatDateTime = (value) => {
+    if (!value) return '-';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '-';
+    const dateText = date.toLocaleDateString('vi-VN');
+    const timeText = date.toLocaleTimeString('vi-VN', {
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+    return `${dateText} ${timeText}`;
+};
+
+const renderCompanyStatusBadge = (value) => {
+    if (Number(value) === 1) {
+        return <span className="badge bg-success-subtle text-success">Hoạt động</span>;
+    }
+    return <span className="badge bg-danger-subtle text-danger">Đã chặn</span>;
+};
+
 const AdminCompanyDetailModal = ({ company, onClose }) => {
     const websiteHref = normalizeWebsiteUrl(company?.Website);
+    const logoUrl = String(company?.LogoCongTy || company?.Logo || '').trim();
+    const avatarFallback = (company?.TenCongTy || company?.EmailDaiDien || '?').charAt(0).toUpperCase();
 
     return (
         <div className="admin-confirm-backdrop" role="dialog" aria-modal="true" aria-label="Chi tiết công ty">
             <div className="admin-confirm-dialog admin-company-view-dialog card border-0 shadow-sm">
+                <div className="card-header bg-white border-0 d-flex align-items-center justify-content-between admin-users-view-header">
+                    <h5 className="mb-0">Thông tin công ty</h5>
+                    <button type="button" className="admin-users-close-btn" onClick={onClose}>
+                        <X size={14} />
+                    </button>
+                </div>
                 <div className="card-body">
-                    <div className="d-flex justify-content-between align-items-start gap-2 mb-3">
-                        <div>
-                            <h5 className="mb-1">Thông tin công ty</h5>
-                            <p className="text-muted mb-0">Chi tiết hồ sơ doanh nghiệp được quản lý trong hệ thống JobFinder.</p>
-                        </div>
-                        <button
-                            type="button"
-                            className="btn btn-sm btn-outline-secondary admin-icon-action-btn"
-                            onClick={onClose}
-                            title="Đóng"
-                            aria-label="Đóng"
-                        >
-                            <X size={14} />
-                        </button>
-                    </div>
+                    <div className="admin-company-view-layout">
+                        <aside className="admin-users-profile-panel admin-company-profile-panel">
+                            {logoUrl ? (
+                                <img
+                                    src={logoUrl}
+                                    alt="logo company"
+                                    className="admin-users-avatar admin-company-avatar"
+                                />
+                            ) : (
+                                <div className="admin-users-avatar admin-users-avatar-fallback admin-company-avatar">
+                                    {avatarFallback}
+                                </div>
+                            )}
 
-                    <div className="admin-company-view-grid">
-                        <article className="admin-company-view-field">
-                            <span>Mã công ty</span>
-                            <strong>{company?.MaCongTy ?? '-'}</strong>
-                        </article>
-                        <article className="admin-company-view-field">
-                            <span>Trạng thái</span>
-                            <strong>{getCompanyStatusLabel(company?.TrangThaiDaiDien)}</strong>
-                        </article>
-                        <article className="admin-company-view-field admin-company-view-field-span-2">
-                            <span>Tên công ty</span>
-                            <strong>{company?.TenCongTy || '-'}</strong>
-                        </article>
-                        <article className="admin-company-view-field">
-                            <span>Mã số thuế</span>
-                            <strong>{company?.MaSoThue || '-'}</strong>
-                        </article>
-                        <article className="admin-company-view-field">
-                            <span>Tỉnh/TP</span>
-                            <strong>{company?.ThanhPho || '-'}</strong>
-                        </article>
-                        <article className="admin-company-view-field">
-                            <span>Người đại diện</span>
-                            <strong>{company?.TenNguoiDaiDien || '-'}</strong>
-                        </article>
-                        <article className="admin-company-view-field">
-                            <span>Email đại diện</span>
-                            <strong>{company?.EmailDaiDien || '-'}</strong>
-                        </article>
-                        <article className="admin-company-view-field admin-company-view-field-span-2">
-                            <span>Website</span>
-                            <strong>{company?.Website || '-'}</strong>
-                        </article>
+                            <div className="admin-users-profile-name">{company?.TenCongTy || '-'}</div>
+                            <div className="admin-users-profile-email">
+                                <Mail size={14} />
+                                <span>{company?.EmailDaiDien || '-'}</span>
+                            </div>
+
+                            <div className="admin-users-profile-tags">
+                                {renderCompanyStatusBadge(company?.TrangThaiDaiDien)}
+                            </div>
+
+                            <div className="admin-users-profile-meta">
+                                <div className="admin-users-profile-meta-item">
+                                    <span>Mã công ty</span>
+                                    <strong>{company?.MaCongTy ?? '-'}</strong>
+                                </div>
+                                <div className="admin-users-profile-meta-item">
+                                    <span>Ngày tạo</span>
+                                    <strong>{formatDateTime(company?.NgayTao)}</strong>
+                                </div>
+                                <div className="admin-users-profile-meta-item">
+                                    <span>Cập nhật</span>
+                                    <strong>{formatDateTime(company?.NgayCapNhat)}</strong>
+                                </div>
+                            </div>
+                        </aside>
+
+                        <div className="admin-users-detail-panels">
+                            <section className="admin-users-section-card">
+                                <h6 className="mb-2 d-flex align-items-center gap-2">
+                                    <Building2 size={16} />
+                                    Thông tin doanh nghiệp
+                                </h6>
+                                <div className="admin-company-view-grid">
+                                    <article className="admin-company-view-field admin-company-view-field-span-2">
+                                        <span>Tên công ty</span>
+                                        <strong>{company?.TenCongTy || '-'}</strong>
+                                    </article>
+                                    <article className="admin-company-view-field">
+                                        <span>Mã số thuế</span>
+                                        <strong>{company?.MaSoThue || '-'}</strong>
+                                    </article>
+                                    <article className="admin-company-view-field">
+                                        <span>Lĩnh vực</span>
+                                        <strong>{company?.LinhVuc || '-'}</strong>
+                                    </article>
+                                    <article className="admin-company-view-field">
+                                        <span>Tỉnh/TP</span>
+                                        <strong>{company?.ThanhPho || '-'}</strong>
+                                    </article>
+                                    <article className="admin-company-view-field">
+                                        <span>Địa chỉ</span>
+                                        <strong>{company?.DiaChi || '-'}</strong>
+                                    </article>
+                                    <article className="admin-company-view-field admin-company-view-field-span-2">
+                                        <span>Website</span>
+                                        {websiteHref ? (
+                                            <a
+                                                href={websiteHref}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="admin-company-view-link"
+                                            >
+                                                {company?.Website || websiteHref}
+                                            </a>
+                                        ) : (
+                                            <strong>-</strong>
+                                        )}
+                                    </article>
+                                </div>
+                            </section>
+
+                            <section className="admin-users-section-card">
+                                <h6 className="mb-2 d-flex align-items-center gap-2">
+                                    <MapPin size={16} />
+                                    Người đại diện
+                                </h6>
+                                <div className="admin-company-view-grid">
+                                    <article className="admin-company-view-field">
+                                        <span>Họ tên</span>
+                                        <strong>{company?.TenNguoiDaiDien || '-'}</strong>
+                                    </article>
+                                    <article className="admin-company-view-field">
+                                        <span>Email</span>
+                                        <strong>{company?.EmailDaiDien || '-'}</strong>
+                                    </article>
+                                    <article className="admin-company-view-field">
+                                        <span>Trạng thái tài khoản</span>
+                                        <strong>{getCompanyStatusLabel(company?.TrangThaiDaiDien)}</strong>
+                                    </article>
+                                    <article className="admin-company-view-field">
+                                        <span>Lần cập nhật gần nhất</span>
+                                        <strong>{formatDateTime(company?.NgayCapNhat)}</strong>
+                                    </article>
+                                </div>
+                            </section>
+
+                            {company?.MoTa ? (
+                                <section className="admin-users-section-card">
+                                    <h6 className="mb-2 d-flex align-items-center gap-2">
+                                        <CalendarDays size={16} />
+                                        Mô tả doanh nghiệp
+                                    </h6>
+                                    <div className="admin-users-note-box">
+                                        <div>{company.MoTa}</div>
+                                    </div>
+                                </section>
+                            ) : null}
+                        </div>
                     </div>
 
                     <div className="admin-company-view-actions">
@@ -78,7 +178,7 @@ const AdminCompanyDetailModal = ({ company, onClose }) => {
                                 target="_blank"
                                 rel="noreferrer"
                             >
-                                <ExternalLink size={14} />
+                                <Globe size={14} />
                                 <span>Mở website công ty</span>
                             </a>
                         ) : null}
