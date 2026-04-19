@@ -315,7 +315,7 @@ const CVSearch = () => {
 
     return (
         <div>
-            <h2 className="mb-4">Tìm kiếm CV ứng viên</h2>
+            <h2 className="mb-4 employer-page-title">Tìm kiếm CV ứng viên</h2>
 
             <div className="card border-0 shadow-sm mb-4">
                 <div className="card-body">

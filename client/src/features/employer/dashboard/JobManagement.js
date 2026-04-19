@@ -93,7 +93,7 @@ const JobManagement = () => {
     return (
         <div>
             <div className="d-flex justify-content-between align-items-center mb-4">
-                <h2 className="mb-0">Quản lý tin tuyển dụng</h2>
+                <h2 className="mb-0 employer-page-title">Quản lý tin tuyển dụng</h2>
                 <Link to="/employer/jobs/create" className="btn btn-primary">
                     <i className="bi bi-plus-circle me-2"></i>
                     Đăng tin mới

@@ -98,7 +98,7 @@ const EmployerOverview = () => {
         <div>
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <div>
-                    <h2 className="mb-1">Dashboard</h2>
+                    <h2 className="mb-1 employer-page-title">Dashboard</h2>
                     <p className="text-muted mb-0">Tổng quan dashboard và báo cáo hiệu quả tuyển dụng.</p>
                 </div>
                 <Link to="/employer/jobs/create" className="btn btn-primary">

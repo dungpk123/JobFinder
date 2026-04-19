@@ -677,7 +677,7 @@ const JobCreate = () => {
             <div className="job-create-shell">
                 <div className="d-flex justify-content-between align-items-center mb-4 job-create-header">
                     <div>
-                        <h2 className="mb-0">{isEdit ? 'Chỉnh sửa tin tuyển dụng' : 'Đăng tin tuyển dụng'}</h2>
+                        <h2 className="mb-0 employer-page-title">{isEdit ? 'Chỉnh sửa tin tuyển dụng' : 'Đăng tin tuyển dụng'}</h2>
                     </div>
                     <button
                         type="button"

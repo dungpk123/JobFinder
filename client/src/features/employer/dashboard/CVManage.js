@@ -161,7 +161,7 @@ const CVManage = () => {
     return (
         <div>
             <div className="d-flex justify-content-between align-items-center mb-4">
-                <h2 className="mb-0">Quản lý CV</h2>
+                <h2 className="mb-0 employer-page-title">Quản lý CV</h2>
             </div>
 
             <div className="card border-0 shadow-sm mb-3">

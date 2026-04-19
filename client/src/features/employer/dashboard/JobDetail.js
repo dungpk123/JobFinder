@@ -54,7 +54,7 @@ const JobDetail = () => {
                     <button className="btn btn-link p-0 me-3" onClick={() => navigate(-1)}>
                         ← Quay lại
                     </button>
-                    <h2 className="mb-0">Chi tiết tin tuyển dụng</h2>
+                    <h2 className="mb-0 employer-page-title">Chi tiết tin tuyển dụng</h2>
                 </div>
                 <div className="d-flex gap-2">
                     <Link to={`/employer/jobs/${id}/edit`} className="btn btn-primary">

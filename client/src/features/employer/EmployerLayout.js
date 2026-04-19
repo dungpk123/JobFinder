@@ -111,8 +111,9 @@ const EmployerLayout = () => {
         { path: '/employer/cv-search', icon: 'bi-search', label: 'Tìm kiếm CV', subtitle: 'Tìm ứng viên phù hợp' },
         { path: '/employer/cv-manage', icon: 'bi-bookmark-check', label: 'Quản lý CV', subtitle: 'Danh sách CV đã lưu' },
         { path: '/employer/jobs', icon: 'bi-briefcase', label: 'Quản lý tin tuyển dụng', subtitle: 'Đăng và theo dõi tin' },
+        { path: '/employer/notifications', icon: 'bi-bell', label: 'Thông báo', subtitle: 'Trung tâm thông báo tuyển dụng' },
         { path: '/employer/applications', icon: 'bi-file-earmark-person', label: 'Quản lý hồ sơ ứng tuyển', subtitle: 'Duyệt hồ sơ ứng viên' },
-        { path: '/employer/messages', icon: 'bi-chat-dots', label: 'Tin nhắn', subtitle: 'Trao đổi với ứng viên' },
+        { path: '/employer/messages', icon: 'bi-chat-dots', label: 'Tin nhắn tuyển dụng', subtitle: 'Trao đổi với ứng viên' },
         { path: '/employer/company', icon: 'bi-building', label: 'Thông tin công ty', subtitle: 'Hồ sơ doanh nghiệp' },
         { path: '/employer/account', icon: 'bi-person', label: 'Tài khoản', subtitle: 'Cập nhật hồ sơ cá nhân' }
     ];
@@ -257,6 +258,10 @@ const EmployerLayout = () => {
                                     <button type="button" className="employer-user-menu-item" onClick={() => handleHeaderMenuNavigate('/employer/jobs')}>
                                         <i className="bi bi-briefcase"></i>
                                         <span>Quản lý tin tuyển dụng</span>
+                                    </button>
+                                    <button type="button" className="employer-user-menu-item" onClick={() => handleHeaderMenuNavigate('/employer/notifications')}>
+                                        <i className="bi bi-bell"></i>
+                                        <span>Thông báo</span>
                                     </button>
                                     <button
                                         type="button"

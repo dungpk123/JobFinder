@@ -375,8 +375,8 @@ const CompanyProfile = () => {
     return (
         <div className="employer-profile-page">
             <div className="d-flex justify-content-between align-items-center mb-3 gap-2 flex-wrap">
-                <div>
-                    <h2 className="mb-1">Thông tin công ty</h2>
+                <div className="text-start">
+                    <h2 className="mb-1 employer-page-title">Thông tin công ty</h2>
                     <p className="employer-profile-subtitle mb-0">Cập nhật hồ sơ doanh nghiệp theo phong cách thống nhất với trang tìm kiếm việc làm.</p>
                 </div>
                 {!editing && (

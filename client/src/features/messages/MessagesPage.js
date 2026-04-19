@@ -283,7 +283,7 @@ const MessagesPage = () => {
     <div className="messages-page">
       <div className="messages-page-header">
         <div>
-          <h2 className="mb-1">Tin nhắn tuyển dụng</h2>
+          <h2 className="mb-1 employer-page-title">Tin nhắn tuyển dụng</h2>
           <p className="mb-0 text-muted">Trao đổi trực tiếp giữa nhà tuyển dụng và ứng viên.</p>
         </div>
         <Link className="btn btn-outline-primary" to="/employer/cv-search">

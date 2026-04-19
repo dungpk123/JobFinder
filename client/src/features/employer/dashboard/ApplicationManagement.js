@@ -196,7 +196,7 @@ const ApplicationManagement = () => {
         <div>
             <div className="d-flex flex-wrap align-items-start justify-content-between gap-2 mb-4">
                 <div>
-                    <h2 className="mb-1">Quản lý hồ sơ ứng tuyển</h2>
+                    <h2 className="mb-1 employer-page-title">Quản lý hồ sơ ứng tuyển</h2>
                     <p className="text-muted mb-0">Theo dõi nhanh hồ sơ mới, trạng thái xử lý và phản hồi ứng viên.</p>
                 </div>
             </div>

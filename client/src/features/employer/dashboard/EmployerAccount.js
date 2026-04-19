@@ -90,6 +90,7 @@ const EmployerAccount = () => {
   const [loading, setLoading] = useState(true);
   const [loadingProvinces, setLoadingProvinces] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [changingPass, setChangingPass] = useState(false);
   const [passwordModalOpen, setPasswordModalOpen] = useState(false);
   const [passwordError, setPasswordError] = useState('');
@@ -97,6 +98,7 @@ const EmployerAccount = () => {
   const [passwordModalKey, setPasswordModalKey] = useState(0);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
+  const [profileSnapshot, setProfileSnapshot] = useState(null);
 
   const [form, setForm] = useState({
     fullName: '',
@@ -178,6 +180,7 @@ const EmployerAccount = () => {
           : serverData;
 
         setForm(combined);
+        setProfileSnapshot(combined);
         setAvatarPreview(normalizeAvatarUrl(combined.avatarUrl) || AVATAR_FALLBACK);
 
         if (draftKey) {
@@ -325,6 +328,25 @@ const EmployerAccount = () => {
     }
   };
 
+  const handleStartEditing = () => {
+    setError('');
+    setMessage('');
+    setEditing(true);
+  };
+
+  const handleCancelEditing = () => {
+    setError('');
+    setMessage('');
+    setIsCityOpen(false);
+    setCityQuery('');
+    clearPendingAvatar();
+    if (profileSnapshot && typeof profileSnapshot === 'object') {
+      setForm(profileSnapshot);
+      setAvatarPreview(normalizeAvatarUrl(profileSnapshot.avatarUrl) || AVATAR_FALLBACK);
+    }
+    setEditing(false);
+  };
+
   const handleAvatarSelect = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -426,6 +448,8 @@ const EmployerAccount = () => {
     try {
       await updateProfile({ userId, ...form, avatar: form.avatarUrl || '' });
       setMessage('Đã lưu thông tin cá nhân.');
+      setProfileSnapshot(form);
+      setEditing(false);
       const normalizedAvatar = normalizeAvatarUrl(form.avatarUrl || user?.avatar || user?.AnhDaiDien || '');
       syncLocalUserSnapshot({
         name: form.fullName || user?.name || user?.HoTen || '',
@@ -517,12 +541,26 @@ const EmployerAccount = () => {
         <div className="card-body p-4 p-lg-4">
           <div className="employer-profile-header mb-3">
             <div>
-              <h4 className="mb-1">Thông tin tài khoản</h4>
-              <p className="employer-profile-subtitle mb-0">
-                Cập nhật hồ sơ cá nhân theo cùng phong cách bộ lọc của trang tìm kiếm việc làm.
-              </p>
+              <h4 className="mb-1 employer-page-title">Thông tin tài khoản</h4>
             </div>
+            {!loading && !editing ? (
+              <button type="button" className="btn btn-primary" onClick={handleStartEditing}>
+                <i className="bi bi-pencil-square me-2"></i>
+                Chỉnh sửa thông tin
+              </button>
+            ) : null}
+            {!loading && editing ? (
+              <button type="button" className="btn btn-outline-secondary" onClick={handleCancelEditing} disabled={saving || uploadingAvatar}>
+                Hủy chỉnh sửa
+              </button>
+            ) : null}
           </div>
+
+          {editing ? (
+            <div className="alert alert-info py-2">
+              Bạn đang ở chế độ chỉnh sửa. Nhấn Lưu thông tin để áp dụng thay đổi.
+            </div>
+          ) : null}
 
           <section className="employer-avatar-panel mb-3">
             <img
@@ -549,7 +587,7 @@ const EmployerAccount = () => {
                   type="button"
                   className="btn btn-outline-secondary"
                   onClick={() => avatarInputRef.current?.click()}
-                  disabled={uploadingAvatar}
+                  disabled={uploadingAvatar || !editing}
                 >
                   Chọn ảnh
                 </button>
@@ -557,7 +595,7 @@ const EmployerAccount = () => {
                   type="button"
                   className="btn btn-primary"
                   onClick={handleAvatarUpload}
-                  disabled={!avatarFile || uploadingAvatar}
+                  disabled={!avatarFile || uploadingAvatar || !editing}
                 >
                   {uploadingAvatar ? 'Đang tải lên...' : 'Cập nhật avatar'}
                 </button>
@@ -566,7 +604,7 @@ const EmployerAccount = () => {
                     type="button"
                     className="btn btn-outline-secondary"
                     onClick={clearPendingAvatar}
-                    disabled={uploadingAvatar}
+                    disabled={uploadingAvatar || !editing}
                   >
                     Bỏ chọn
                   </button>
@@ -586,15 +624,15 @@ const EmployerAccount = () => {
               <div className="row g-3 mb-2 employer-profile-grid">
                 <div className="col-md-6">
                   <label className="form-label">Họ tên</label>
-                  <input className="form-control" value={form.fullName} onChange={onInput('fullName')} />
+                  <input className="form-control" value={form.fullName} onChange={onInput('fullName')} disabled={!editing} />
                 </div>
                 <div className="col-md-6">
                   <label className="form-label">Số điện thoại</label>
-                  <input className="form-control" value={form.phone} onChange={onInput('phone')} />
+                  <input className="form-control" value={form.phone} onChange={onInput('phone')} disabled={!editing} />
                 </div>
                 <div className="col-md-6">
                   <label className="form-label">Địa chỉ</label>
-                  <input className="form-control" value={form.address} onChange={onInput('address')} />
+                  <input className="form-control" value={form.address} onChange={onInput('address')} disabled={!editing} />
                 </div>
                 <div className="col-md-6 employer-profile-city">
                   <label className="form-label">Tỉnh / Thành phố</label>
@@ -603,11 +641,13 @@ const EmployerAccount = () => {
                       type="button"
                       className="jf-jobs-select-trigger"
                       onClick={() => {
+                        if (!editing) return;
                         setIsCityOpen((prev) => !prev);
                         setCityQuery('');
                       }}
                       aria-haspopup="listbox"
                       aria-expanded={isCityOpen}
+                      disabled={!editing}
                     >
                       <span className="jf-jobs-select-text">{selectedCityLabel}</span>
                       <i className="bi bi-chevron-down"></i>
@@ -651,18 +691,20 @@ const EmployerAccount = () => {
                 </div>
                 <div className="col-md-6">
                   <label className="form-label">Chức danh</label>
-                  <input className="form-control" value={form.position} onChange={onInput('position')} />
+                  <input className="form-control" value={form.position} onChange={onInput('position')} disabled={!editing} />
                 </div>
                 <div className="col-md-6">
                   <label className="form-label">Link cá nhân / Website</label>
-                  <input className="form-control" value={form.personalLink} onChange={onInput('personalLink')} />
+                  <input className="form-control" value={form.personalLink} onChange={onInput('personalLink')} disabled={!editing} />
                 </div>
               </div>
 
-              <div className="d-flex justify-content-end gap-2 employer-profile-actions">
-                <button className="btn btn-outline-secondary" onClick={() => window.location.reload()} disabled={saving}>Hủy</button>
-                <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu thông tin'}</button>
-              </div>
+              {editing ? (
+                <div className="d-flex justify-content-end gap-2 employer-profile-actions">
+                  <button className="btn btn-outline-secondary" onClick={handleCancelEditing} disabled={saving}>Hủy</button>
+                  <button className="btn btn-primary" onClick={handleSave} disabled={saving}>{saving ? 'Đang lưu...' : 'Lưu thông tin'}</button>
+                </div>
+              ) : null}
 
               <div className="employer-profile-divider my-4"></div>
 

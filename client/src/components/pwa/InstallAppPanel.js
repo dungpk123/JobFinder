@@ -86,13 +86,6 @@ const InstallAppPanel = () => {
 
   return (
     <section className="install-app-panel" aria-label="Cài đặt ứng dụng JobFinder">
-      <div className="install-app-panel__header">
-        <h6 className="install-app-panel__title">Cài đặt JobFinder</h6>
-        <p className="install-app-panel__subtitle">
-          Cài app để mở ở chế độ standalone, truy cập nhanh hơn và dùng được khi mạng yếu.
-        </p>
-      </div>
-
       <div className="install-app-panel__tabs" role="tablist" aria-label="Nền tảng cài đặt">
         <button
           type="button"

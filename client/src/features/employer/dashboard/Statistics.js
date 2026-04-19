@@ -61,7 +61,7 @@ const Statistics = () => {
 
     return (
         <div>
-            <h2 className="mb-4">Thống kê</h2>
+            <h2 className="mb-4 employer-page-title">Thống kê</h2>
 
             <div className="row g-3 mb-4">
                 <div className="col-md-3">
