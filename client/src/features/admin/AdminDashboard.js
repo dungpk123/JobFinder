@@ -14,12 +14,15 @@ import {
     LayoutDashboard,
     LogOut,
     Menu,
+    Moon,
     ShieldCheck,
+    Sun,
     UserRound,
     Users,
     X
 } from 'lucide-react';
 import { API_BASE as CLIENT_API_BASE } from '../../config/apiBase';
+import { useDarkMode } from '../../context/DarkModeContext';
 import AdminCompaniesPage from './pages/AdminCompaniesPage';
 import AdminJobsPage from './pages/AdminJobsPage';
 import AdminOverviewPage from './pages/AdminOverviewPage';
@@ -161,6 +164,7 @@ const resolvePageTitle = (pathname) => {
 const AdminDashboard = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const { isDarkMode, toggleDarkMode } = useDarkMode();
 
     const API_BASE = CLIENT_API_BASE;
     const token = String(localStorage.getItem('token') || '').trim();
@@ -615,6 +619,11 @@ const AdminDashboard = () => {
         navigate(path);
     };
 
+    const handleProfileMenuThemeToggle = () => {
+        toggleDarkMode();
+        setProfileMenuOpen(false);
+    };
+
     const isPathActive = (path, exact = false) => {
         if (exact) return location.pathname === path;
         return location.pathname === path || location.pathname.startsWith(`${path}/`);
@@ -794,6 +803,10 @@ const AdminDashboard = () => {
                                     <button type="button" className="admin-header-dropdown-item" onClick={() => handleProfileMenuNavigate('/admin/dashboard')}>
                                         <Bell size={16} />
                                         <span>Thông báo</span>
+                                    </button>
+                                    <button type="button" className="admin-header-dropdown-item" onClick={handleProfileMenuThemeToggle}>
+                                        {isDarkMode ? <Sun size={16} /> : <Moon size={16} />}
+                                        <span>{isDarkMode ? 'Giao diện sáng' : 'Giao diện tối'}</span>
                                     </button>
                                     <button
                                         type="button"

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import Header from './components/Header';
 import HomePage from './features/public/HomePage';
@@ -43,28 +43,8 @@ import AccountInstallPrompt from './components/pwa/AccountInstallPrompt';
 import FirebaseMessagingBridge from './components/FirebaseMessagingBridge';
 import MessageNotificationBridge from './components/MessageNotificationBridge';
 import { API_BASE } from './config/apiBase';
+import { DarkModeProvider, useDarkMode } from './context/DarkModeContext';
 import './App.css';
-
-const THEME_STORAGE_KEY = 'jobfinder-theme';
-
-const getPreferredTheme = () => {
-  if (typeof window === 'undefined') return 'light';
-
-  const stored = String(window.localStorage.getItem(THEME_STORAGE_KEY) || '').trim().toLowerCase();
-  if (stored === 'dark' || stored === 'light') {
-    return stored;
-  }
-
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-};
-
-const applyThemeToDocument = (theme) => {
-  if (typeof document === 'undefined') return;
-  const safeTheme = theme === 'dark' ? 'dark' : 'light';
-
-  document.documentElement.setAttribute('data-bs-theme', safeTheme);
-  document.documentElement.style.colorScheme = safeTheme;
-};
 
 const normalizeRoleValue = (value) => String(value || '')
   .trim()
@@ -104,7 +84,7 @@ const hasCareerGuideCreatePermission = (user) => {
 };
 
 function AppContent() {
-  const [theme, setTheme] = useState(getPreferredTheme);
+  const { isDarkMode, toggleDarkMode } = useDarkMode();
 
   const location = useLocation();
   const normalizedPath = location.pathname.length > 1
@@ -188,32 +168,6 @@ function AppContent() {
                           location.pathname.startsWith('/employer');
   const isAuthPage = ['/login', '/register', '/forgot-password', '/verify-otp', '/onboarding/role', '/onboarding/profile'].includes(normalizedPath);
   const showPublicChrome = !isDashboardPage && !isAuthPage;
-
-  useEffect(() => {
-    applyThemeToDocument(theme);
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
-    }
-  }, [theme]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return undefined;
-
-    const handleStorageSync = (event) => {
-      if (event.key !== THEME_STORAGE_KEY) return;
-      const nextTheme = String(event.newValue || '').trim().toLowerCase();
-      if (nextTheme === 'dark' || nextTheme === 'light') {
-        setTheme(nextTheme);
-      }
-    };
-
-    window.addEventListener('storage', handleStorageSync);
-    return () => window.removeEventListener('storage', handleStorageSync);
-  }, []);
-
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
-  };
 
   if (isGuestBlockedPath) {
     return <Navigate to="/login" replace state={{ from: location }} />;
@@ -313,25 +267,29 @@ function AppContent() {
       <MessageNotificationBridge />
       <AccountInstallPrompt />
       <PWAUpdatePrompt />
-      <button
-        type="button"
-        className="btn btn-outline-secondary btn-sm jobfinder-theme-toggle"
-        onClick={toggleTheme}
-        aria-label={theme === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
-        title={theme === 'dark' ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
-      >
-        <i className={`bi ${theme === 'dark' ? 'bi-sun-fill' : 'bi-moon-stars-fill'}`} aria-hidden="true"></i>
-        <span>{theme === 'dark' ? 'Giao diện sáng' : 'Giao diện tối'}</span>
-      </button>
+      {showPublicChrome && (
+        <button
+          type="button"
+          className="btn btn-outline-secondary btn-sm jobfinder-theme-toggle"
+          onClick={toggleDarkMode}
+          aria-label={isDarkMode ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
+          title={isDarkMode ? 'Chuyển sang giao diện sáng' : 'Chuyển sang giao diện tối'}
+        >
+          <i className={`bi ${isDarkMode ? 'bi-sun-fill' : 'bi-moon-stars-fill'}`} aria-hidden="true"></i>
+          <span>{isDarkMode ? 'Giao diện sáng' : 'Giao diện tối'}</span>
+        </button>
+      )}
     </div>
   );
 }
 
 function App() {
   return (
-    <Router>
-      <AppContent />
-    </Router>
+    <DarkModeProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </DarkModeProvider>
   );
 }
 
