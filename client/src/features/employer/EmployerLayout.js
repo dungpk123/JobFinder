@@ -211,6 +211,7 @@ const EmployerLayout = () => {
     const currentMenu = menuItems
         .filter((item) => isActive(item.path, item.exact))
         .sort((a, b) => b.path.length - a.path.length)[0] || menuItems[0];
+    const hidePageHeaderText = location.pathname === '/employer/account';
 
     const handleToggleSidebar = () => {
         if (window.matchMedia('(max-width: 991px)').matches) {
@@ -286,10 +287,12 @@ const EmployerLayout = () => {
                         >
                             <i className="bi bi-list"></i>
                         </button>
-                        <div>
-                            <h1 className="employer-header-title">{currentMenu?.label || 'Nhà tuyển dụng'}</h1>
-                            <p className="employer-header-subtitle">{currentMenu?.subtitle || 'Quản lý tuyển dụng'}</p>
-                        </div>
+                        {!hidePageHeaderText ? (
+                            <div>
+                                <h1 className="employer-header-title">{currentMenu?.label || 'Nhà tuyển dụng'}</h1>
+                                <p className="employer-header-subtitle">{currentMenu?.subtitle || 'Quản lý tuyển dụng'}</p>
+                            </div>
+                        ) : null}
                     </div>
 
                     <div className="employer-header-right">

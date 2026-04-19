@@ -708,8 +708,8 @@ const EmployerAccount = () => {
 
               <div className="employer-profile-divider my-4"></div>
 
-              <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-2">
-                <div>
+              <div className="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-2 w-100">
+                <div className="text-start flex-grow-1">
                   <h5 className="mb-1 employer-profile-section-title">Đổi mật khẩu</h5>
                 </div>
                 <button type="button" className="btn btn-outline-primary" onClick={openPasswordModal}>
@@ -745,10 +745,9 @@ const EmployerAccount = () => {
         >
           <div key={passwordModalKey} className="employer-password-modal card border-0" onClick={(event) => event.stopPropagation()}>
             <div className="card-body">
-              <div className="d-flex align-items-start justify-content-between gap-2 mb-3">
-                <div>
+              <div className="d-flex align-items-start justify-content-between gap-2 mb-3 w-100">
+                <div className="text-start flex-grow-1">
                   <h5 className="mb-1 employer-profile-section-title">Đổi mật khẩu</h5>
-                  <p className="text-muted mb-0">Nhập mật khẩu hiện tại và mật khẩu mới để tăng bảo mật.</p>
                 </div>
                 <button
                   type="button"
