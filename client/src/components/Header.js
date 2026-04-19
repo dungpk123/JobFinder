@@ -10,8 +10,17 @@ const readStoredUser = () => {
     }
 };
 
+const normalizeAvatarUrl = (value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:' && raw.startsWith('http://')) {
+        return `https://${raw.slice(7)}`;
+    }
+    return raw;
+};
+
 const withAvatarVersion = (url, version) => {
-    const raw = String(url || '').trim();
+    const raw = normalizeAvatarUrl(url);
     if (!raw) return '';
 
     const versionNumber = Number(version || 0);
@@ -78,11 +87,12 @@ const Header = () => {
 
     useEffect(() => {
         const syncUserFromStorage = (event) => {
+            const stored = readStoredUser();
             if (event?.detail && typeof event.detail === 'object') {
-                setCurrentUser(event.detail);
+                setCurrentUser({ ...(stored || {}), ...event.detail });
                 return;
             }
-            setCurrentUser(readStoredUser());
+            setCurrentUser(stored);
         };
 
         window.addEventListener('storage', syncUserFromStorage);

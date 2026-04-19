@@ -11,8 +11,19 @@ const readStoredUser = () => {
     }
 };
 
+const SIDEBAR_LOGO_URL = '/images/logo.png';
+
+const normalizeAvatarUrl = (value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:' && raw.startsWith('http://')) {
+        return `https://${raw.slice(7)}`;
+    }
+    return raw;
+};
+
 const withAvatarVersion = (url, version) => {
-    const raw = String(url || '').trim();
+    const raw = normalizeAvatarUrl(url);
     if (!raw) return '';
 
     const versionNumber = Number(version || 0);
@@ -38,7 +49,6 @@ const EmployerLayout = () => {
     const roleLabel = user?.role || user?.VaiTro || user?.vaiTro || user?.LoaiNguoiDung || 'Nhà tuyển dụng';
     const avatarRaw = String(user?.avatar || user?.avatarAbsoluteUrl || user?.AnhDaiDien || user?.avatarUrl || '').trim();
     const avatarUrl = withAvatarVersion(avatarRaw, user?.avatarUpdatedAt);
-    const initial = String(displayName || 'N').trim().charAt(0).toUpperCase();
 
     const handleLogout = async () => {
         const confirmed = await requestConfirm({
@@ -61,11 +71,12 @@ const EmployerLayout = () => {
 
     useEffect(() => {
         const refreshUser = (event) => {
+            const stored = readStoredUser();
             if (event?.detail && typeof event.detail === 'object') {
-                setUser(event.detail);
+                setUser({ ...stored, ...event.detail });
                 return;
             }
-            setUser(readStoredUser());
+            setUser(stored);
         };
 
         window.addEventListener('storage', refreshUser);
@@ -137,28 +148,17 @@ const EmployerLayout = () => {
             />
 
             <aside className={`employer-sidebar ${sidebarCollapsed ? 'collapsed' : ''} ${mobileMenuOpen ? 'mobile-open' : ''}`}>
-                <div className="employer-sidebar-user">
-                    <div className="employer-user-avatar">
-                        {avatarUrl ? (
-                            <img
-                                src={avatarUrl}
-                                alt={displayName}
-                                className="employer-user-avatar-image"
-                                onError={(event) => {
-                                    event.currentTarget.onerror = null;
-                                    event.currentTarget.src = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
-                                }}
-                            />
-                        ) : (
-                            initial
-                        )}
-                    </div>
-                    {!sidebarCollapsed && (
-                        <div className="employer-user-info">
-                            <h6>{displayName}</h6>
-                            <small>{roleLabel}</small>
-                        </div>
-                    )}
+                <div className="employer-sidebar-brand" title="JobFinder">
+                    <img
+                        src={SIDEBAR_LOGO_URL}
+                        alt="JobFinder"
+                        className="employer-sidebar-logo"
+                        onError={(event) => {
+                            event.currentTarget.onerror = null;
+                            event.currentTarget.src = 'https://i.postimg.cc/nhWfcVvh/logo.png';
+                        }}
+                    />
+                    {!sidebarCollapsed && <span>JobFinder</span>}
                 </div>
 
                 <nav className="employer-menu">

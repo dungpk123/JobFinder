@@ -103,7 +103,7 @@ const EmployerOverview = () => {
                 </div>
                 <Link to="/employer/jobs/create" className="btn btn-primary">
                     <i className="bi bi-plus-circle me-2"></i>
-                    Đăng tin tuyển dụng
+                    Tạo tin mới
                 </Link>
             </div>
             
@@ -161,58 +161,6 @@ const EmployerOverview = () => {
                             <p className="text-muted mb-2">CV đã lưu</p>
                             <Link to="/employer/cv-manage" className="btn btn-sm btn-outline-warning">
                                 Quản lý CV
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="row g-4 mb-4">
-                <div className="col-md-4">
-                    <div className="card border-0 shadow-sm">
-                        <div className="card-body">
-                            <h5 className="card-title">
-                                <i className="bi bi-search text-primary me-2"></i>
-                                Tìm kiếm ứng viên
-                            </h5>
-                            <p className="card-text text-muted">
-                                Tìm kiếm CV ứng viên phù hợp với yêu cầu tuyển dụng của bạn
-                            </p>
-                            <Link to="/employer/cv-search" className="btn btn-primary">
-                                Tìm kiếm ngay
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-md-4">
-                    <div className="card border-0 shadow-sm">
-                        <div className="card-body">
-                            <h5 className="card-title">
-                                <i className="bi bi-megaphone text-success me-2"></i>
-                                Đăng tin tuyển dụng
-                            </h5>
-                            <p className="card-text text-muted">
-                                Đăng tin tuyển dụng mới để tiếp cận nhiều ứng viên chất lượng
-                            </p>
-                            <Link to="/employer/jobs/create" className="btn btn-success">
-                                Đăng tin ngay
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-                <div className="col-md-4">
-                    <div className="card border-0 shadow-sm">
-                        <div className="card-body">
-                            <h5 className="card-title">
-                                <i className="bi bi-building text-info me-2"></i>
-                                Cập nhật thông tin
-                            </h5>
-                            <p className="card-text text-muted">
-                                Cập nhật thông tin công ty để thu hút ứng viên tiềm năng
-                            </p>
-                            <Link to="/employer/company" className="btn btn-info">
-                                Cập nhật
                             </Link>
                         </div>
                     </div>

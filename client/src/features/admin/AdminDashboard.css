@@ -1058,6 +1058,8 @@
 .admin-profile-card {
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
     gap: 0.8rem;
     border: 1px solid #e2e8f0;
     border-radius: 14px;
@@ -1074,6 +1076,48 @@
     place-items: center;
     color: #2563eb;
     background: #dbeafe;
+}
+
+.admin-profile-avatar-wrap {
+    width: 64px;
+    height: 64px;
+    border-radius: 16px;
+    border: 1px solid #dbe5f1;
+    background: #ffffff;
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.admin-profile-avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.admin-profile-card-copy {
+    flex: 1;
+    min-width: 200px;
+}
+
+.admin-profile-card-copy small {
+    display: block;
+    margin-top: 0.28rem;
+    color: #64748b;
+    font-size: 0.76rem;
+}
+
+.admin-profile-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.admin-profile-card-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
 }
 
 .admin-profile-card h3 {
@@ -1585,6 +1629,14 @@
 
     .admin-profile-grid {
         grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-profile-card {
+        align-items: flex-start;
+    }
+
+    .admin-profile-card-actions {
+        width: 100%;
     }
 
     .admin-profile-form-grid {

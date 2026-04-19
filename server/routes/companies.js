@@ -105,6 +105,27 @@ const listComments = async (employerId) => {
   });
 };
 
+const listRecentRatings = async (employerId) => {
+  await ensureRatingTable();
+  return new Promise((resolve, reject) => {
+    db.all(
+      `SELECT
+          dg.MaDanhGia AS id,
+          dg.SoSao AS stars,
+          dg.NgayDanhGia AS createdAt,
+          nd.MaNguoiDung AS userId,
+          nd.HoTen AS userName
+       FROM DanhGiaCongTy dg
+       JOIN NguoiDung nd ON nd.MaNguoiDung = dg.MaUngVien
+       WHERE dg.MaNhaTuyenDung = ?
+       ORDER BY datetime(dg.NgayDanhGia) DESC, dg.MaDanhGia DESC
+       LIMIT 50`,
+      [employerId],
+      (err, rows) => (err ? reject(err) : resolve(rows || []))
+    );
+  });
+};
+
 const insertCompanyReport = async ({ reporterId, employerId, reason, detail }) => {
   const sql = `INSERT INTO BaoCao (MaNguoiBaoCao, LoaiDoiTuong, MaDoiTuong, LyDo, ChiTiet, TrangThai, NgayBaoCao)
                VALUES (?, 'Công ty', ?, ?, ?, 'Chưa xử lý', datetime('now','localtime'))`;
@@ -139,9 +160,10 @@ router.get('/me/reviews', authenticateToken, authorizeRole(['Nhà tuyển dụng
       [employerId]
     );
 
-    const [rating, comments] = await Promise.all([
+    const [rating, comments, recentRatings] = await Promise.all([
       getRatingSummary(employerId),
-      listComments(employerId)
+      listComments(employerId),
+      listRecentRatings(employerId)
     ]);
 
     return res.json({
@@ -149,7 +171,8 @@ router.get('/me/reviews', authenticateToken, authorizeRole(['Nhà tuyển dụng
       employerId,
       company: normalizeLogoField(req, company || null),
       rating,
-      comments
+      comments,
+      recentRatings
     });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message || 'Server error' });

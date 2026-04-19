@@ -21,6 +21,10 @@
   box-shadow: 0 22px 44px rgba(15, 23, 42, 0.18);
 }
 
+.support-hero--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .support-hero-copy h1 {
   margin: 0.35rem 0 0.7rem;
   font-size: clamp(1.7rem, 3vw, 2.6rem);
@@ -198,6 +202,10 @@
   gap: 1rem;
 }
 
+.support-content-grid--single {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .support-panel {
   border-radius: 22px;
   border: 1px solid #dce8f4;
@@ -315,6 +323,26 @@
 .support-feed-type.application-accepted {
   background: #dcfce7;
   color: #166534;
+}
+
+.support-feed-type.application-received,
+.support-feed-type.application-update,
+.support-feed-type.application-review,
+.support-feed-type.application-offer,
+.support-feed-type.interview-invite,
+.support-feed-type.application-rejected {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.support-feed-type.company-comment {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.support-feed-type.company-rating {
+  background: #ffe4e6;
+  color: #be123c;
 }
 
 .support-feed-time {

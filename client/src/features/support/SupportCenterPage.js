@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { requestBrowserNotificationPermission } from '../../components/notificationUtils';
 import { useNotification } from '../../components/NotificationProvider';
+import { API_BASE as CLIENT_API_BASE } from '../../config/apiBase';
 import './SupportCenterPage.css';
 
 const normalizeText = (value) => String(value || '')
@@ -38,7 +39,79 @@ const formatDateTime = (value) => {
   });
 };
 
-const ACCEPTED_APPLICATION_STATUSES = new Set(['da nhan']);
+const FEED_TYPE_LABELS = {
+  message: 'Tin nhắn',
+  'application-received': 'Ứng tuyển',
+  'application-accepted': 'Đã nhận',
+  'application-update': 'Hồ sơ',
+  'application-review': 'Xem xét',
+  'application-offer': 'Đề nghị',
+  'application-rejected': 'Từ chối',
+  'interview-invite': 'Phỏng vấn',
+  'company-comment': 'Bình luận',
+  'company-rating': 'Đánh giá'
+};
+
+const trimText = (value, max = 180) => {
+  const text = String(value || '').trim();
+  if (!text) return '';
+  if (text.length <= max) return text;
+  return `${text.slice(0, Math.max(0, max - 3))}...`;
+};
+
+const normalizeRoleName = (user) => normalizeText(
+  user?.role
+  || user?.VaiTro
+  || user?.vaiTro
+  || user?.LoaiNguoiDung
+  || ''
+);
+
+const resolveCandidateStatusMeta = (statusValue) => {
+  const normalized = normalizeText(statusValue);
+  if (normalized === 'phong van') {
+    return {
+      type: 'interview-invite',
+      title: 'Bạn có lịch phỏng vấn mới',
+      label: FEED_TYPE_LABELS['interview-invite']
+    };
+  }
+  if (normalized === 'da nhan') {
+    return {
+      type: 'application-accepted',
+      title: 'Đơn ứng tuyển đã được chấp nhận',
+      label: FEED_TYPE_LABELS['application-accepted']
+    };
+  }
+  if (normalized === 'dang xem xet') {
+    return {
+      type: 'application-review',
+      title: 'Nhà tuyển dụng đang xem xét hồ sơ',
+      label: FEED_TYPE_LABELS['application-review']
+    };
+  }
+  if (normalized === 'de nghi') {
+    return {
+      type: 'application-offer',
+      title: 'Bạn nhận được đề nghị mới',
+      label: FEED_TYPE_LABELS['application-offer']
+    };
+  }
+  if (normalized === 'tu choi') {
+    return {
+      type: 'application-rejected',
+      title: 'Đơn ứng tuyển đã bị từ chối',
+      label: FEED_TYPE_LABELS['application-rejected']
+    };
+  }
+  return {
+    type: 'application-update',
+    title: 'Hồ sơ ứng tuyển có cập nhật mới',
+    label: FEED_TYPE_LABELS['application-update']
+  };
+};
+
+const buildFeedTypeLabel = (type) => FEED_TYPE_LABELS[type] || 'Thông báo';
 
 const buildMessageLink = (normalizedRole) => {
   if (normalizedRole === 'nha tuyen dung') return '/employer/messages';
@@ -46,14 +119,8 @@ const buildMessageLink = (normalizedRole) => {
   return '/login';
 };
 
-const quickLinks = [
-  { label: 'Tìm việc làm', to: '/jobs', icon: 'bi-search' },
-  { label: 'Mẫu CV', to: '/create-cv/templates', icon: 'bi-file-earmark-text' },
-  { label: 'Việc đã ứng tuyển', to: '/jobs/applied', icon: 'bi-file-earmark-check' },
-  { label: 'Cẩm nang nghề nghiệp', to: '/career-guide', icon: 'bi-journal-text' }
-];
-
 const SupportCenterPage = () => {
+  const API_BASE = CLIENT_API_BASE;
   const { notify } = useNotification();
   const [currentUser, setCurrentUser] = useState(() => readStoredUser());
   const [token, setToken] = useState(() => String(localStorage.getItem('token') || '').trim());
@@ -62,29 +129,22 @@ const SupportCenterPage = () => {
   const [feedError, setFeedError] = useState('');
   const [notificationFeed, setNotificationFeed] = useState([]);
 
-  const normalizedRole = normalizeText(
-    currentUser?.role
-    || currentUser?.VaiTro
-    || currentUser?.vaiTro
-    || currentUser?.LoaiNguoiDung
-    || ''
-  );
+  const normalizedRole = normalizeRoleName(currentUser);
   const messageLink = buildMessageLink(normalizedRole);
   const canReadPrivateNotifications = normalizedRole === 'nha tuyen dung' || normalizedRole === 'ung vien';
   const isLoggedIn = Boolean(token);
-
-  const unreadMessageCount = notificationFeed
-    .filter((item) => item.type === 'message')
-    .reduce((sum, item) => sum + Number(item.badgeCount || 0), 0);
-
-  const acceptedApplicationCount = notificationFeed
-    .filter((item) => item.type === 'application-accepted')
-    .length;
 
   useEffect(() => {
     if (typeof Notification !== 'undefined') {
       setPermissionState(Notification.permission);
     }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    });
   }, []);
 
   useEffect(() => {
@@ -108,8 +168,12 @@ const SupportCenterPage = () => {
 
   useEffect(() => {
     let cancelled = false;
+    let loadingInFlight = false;
+    let intervalId = null;
 
     const loadNotifications = async () => {
+      if (loadingInFlight) return;
+
       if (!token || !canReadPrivateNotifications) {
         setNotificationFeed([]);
         setFeedError('');
@@ -117,13 +181,14 @@ const SupportCenterPage = () => {
         return;
       }
 
+      loadingInFlight = true;
       setFeedLoading(true);
       setFeedError('');
 
       try {
         const headers = { Authorization: `Bearer ${token}` };
 
-        const inboxPromise = fetch('/messages/inbox', { headers })
+        const inboxPromise = fetch(`${API_BASE}/api/messages/inbox`, { headers })
           .then(async (response) => {
             if (!response.ok) return { success: false, inbox: [] };
             return response.json().catch(() => ({ success: false, inbox: [] }));
@@ -131,24 +196,46 @@ const SupportCenterPage = () => {
           .catch(() => ({ success: false, inbox: [] }));
 
         const applicationsPromise = normalizedRole === 'ung vien'
-          ? fetch('/applications/mine', { headers })
+          ? fetch(`${API_BASE}/applications/mine`, { headers })
             .then(async (response) => {
               if (!response.ok) return [];
               return response.json().catch(() => []);
             })
             .catch(() => [])
-          : Promise.resolve([]);
+          : normalizedRole === 'nha tuyen dung'
+            ? fetch(`${API_BASE}/applications`, { headers })
+              .then(async (response) => {
+                if (!response.ok) return [];
+                return response.json().catch(() => []);
+              })
+              .catch(() => [])
+            : Promise.resolve([]);
 
-        const [inboxPayload, applicationsPayload] = await Promise.all([inboxPromise, applicationsPromise]);
+        const employerReviewPromise = normalizedRole === 'nha tuyen dung'
+          ? fetch(`${API_BASE}/api/companies/me/reviews`, { headers })
+            .then(async (response) => {
+              if (!response.ok) return { success: false, comments: [], recentRatings: [] };
+              return response.json().catch(() => ({ success: false, comments: [], recentRatings: [] }));
+            })
+            .catch(() => ({ success: false, comments: [], recentRatings: [] }))
+          : Promise.resolve({ success: false, comments: [], recentRatings: [] });
+
+        const [inboxPayload, applicationsPayload, employerReviewPayload] = await Promise.all([
+          inboxPromise,
+          applicationsPromise,
+          employerReviewPromise
+        ]);
         if (cancelled) return;
 
         const inboxRows = Array.isArray(inboxPayload?.inbox) ? inboxPayload.inbox : [];
         const messageNotifications = inboxRows
-          .filter((row) => Number(row?.unread || 0) > 0)
           .map((row, index) => ({
             id: `msg-${row?.userId || index}`,
             type: 'message',
-            title: `Tin nhắn mới từ ${row?.name || 'Người dùng'}`,
+            typeLabel: buildFeedTypeLabel('message'),
+            title: Number(row?.unread || 0) > 0
+              ? `Bạn có ${Number(row?.unread || 0)} tin nhắn mới từ ${row?.name || 'Người dùng'}`
+              : `Tin nhắn mới từ ${row?.name || 'Người dùng'}`,
             description: String(row?.lastMessage || 'Bạn có tin nhắn mới.').trim() || 'Bạn có tin nhắn mới.',
             createdAt: row?.lastAt || '',
             timestamp: toTimestamp(row?.lastAt),
@@ -158,32 +245,105 @@ const SupportCenterPage = () => {
           }));
 
         const appRows = Array.isArray(applicationsPayload) ? applicationsPayload : [];
-        const acceptedNotifications = normalizedRole === 'ung vien'
+        const candidateApplicationNotifications = normalizedRole === 'ung vien'
           ? appRows
-            .filter((row) => ACCEPTED_APPLICATION_STATUSES.has(normalizeText(row?.TrangThai || row?.status)))
-            .map((row, index) => ({
-              id: `accepted-${row?.MaUngTuyen || index}`,
-              type: 'application-accepted',
-              title: 'Đơn ứng tuyển đã được chấp nhận',
-              description: `${row?.TenCongTy || 'Nhà tuyển dụng'} đã chấp nhận hồ sơ của bạn cho vị trí ${row?.TieuDe || 'đã ứng tuyển'}.`,
-              createdAt: row?.NgayNop || '',
-              timestamp: toTimestamp(row?.NgayNop),
-              badgeCount: 0,
-              actionLabel: 'Xem chi tiết',
-              actionTo: row?.MaTin ? `/jobs/${row.MaTin}` : '/jobs/applied'
-            }))
+            .map((row, index) => {
+              const statusMeta = resolveCandidateStatusMeta(row?.TrangThai || row?.status);
+              const statusText = String(row?.TrangThai || row?.status || '').trim();
+              const companyName = String(row?.TenCongTy || 'Nhà tuyển dụng').trim() || 'Nhà tuyển dụng';
+              const jobTitle = String(row?.TieuDe || 'vị trí đã ứng tuyển').trim() || 'vị trí đã ứng tuyển';
+              return {
+                id: `candidate-app-${row?.MaUngTuyen || row?.MaTin || index}`,
+                type: statusMeta.type,
+                typeLabel: statusMeta.label,
+                title: statusMeta.title,
+                description: `${companyName} cập nhật hồ sơ cho vị trí ${jobTitle}${statusText ? ` (${statusText})` : ''}.`,
+                createdAt: row?.NgayNop || '',
+                timestamp: toTimestamp(row?.NgayNop),
+                badgeCount: 0,
+                actionLabel: 'Xem chi tiết hồ sơ',
+                actionTo: '/jobs/applied'
+              };
+            })
           : [];
 
-        const merged = [...messageNotifications, ...acceptedNotifications]
+        const employerApplicationNotifications = normalizedRole === 'nha tuyen dung'
+          ? appRows
+            .map((row, index) => {
+              const candidateName = String(row?.TenUngVien || 'Ứng viên').trim() || 'Ứng viên';
+              const jobTitle = String(row?.TieuDe || 'tin tuyển dụng').trim() || 'tin tuyển dụng';
+              const statusText = String(row?.TrangThai || '').trim();
+              return {
+                id: `employer-app-${row?.MaUngTuyen || row?.MaTin || index}`,
+                type: 'application-received',
+                typeLabel: buildFeedTypeLabel('application-received'),
+                title: `Hồ sơ ứng tuyển mới cho ${jobTitle}`,
+                description: `${candidateName} vừa nộp hồ sơ${statusText ? ` (${statusText})` : ''}.`,
+                createdAt: row?.NgayNop || '',
+                timestamp: toTimestamp(row?.NgayNop),
+                badgeCount: 0,
+                actionLabel: 'Xem hồ sơ',
+                actionTo: '/employer/applications'
+              };
+            })
+          : [];
+
+        const commentRows = Array.isArray(employerReviewPayload?.comments) ? employerReviewPayload.comments : [];
+        const companyCommentNotifications = normalizedRole === 'nha tuyen dung'
+          ? commentRows.map((row, index) => {
+            const author = String(row?.userName || 'Ứng viên').trim() || 'Ứng viên';
+            return {
+              id: `company-comment-${row?.id || index}`,
+              type: 'company-comment',
+              typeLabel: buildFeedTypeLabel('company-comment'),
+              title: 'Bình luận mới về công ty',
+              description: `${author}: ${trimText(row?.content || 'Có bình luận mới về công ty của bạn.', 160)}`,
+              createdAt: row?.createdAt || '',
+              timestamp: toTimestamp(row?.createdAt),
+              badgeCount: 0,
+              actionLabel: 'Xem hồ sơ công ty',
+              actionTo: '/employer/company'
+            };
+          })
+          : [];
+
+        const ratingRows = Array.isArray(employerReviewPayload?.recentRatings) ? employerReviewPayload.recentRatings : [];
+        const companyRatingNotifications = normalizedRole === 'nha tuyen dung'
+          ? ratingRows.map((row, index) => {
+            const stars = Number(row?.stars || 0);
+            const author = String(row?.userName || 'Ứng viên').trim() || 'Ứng viên';
+            return {
+              id: `company-rating-${row?.id || index}`,
+              type: 'company-rating',
+              typeLabel: buildFeedTypeLabel('company-rating'),
+              title: `Công ty nhận thêm đánh giá ${stars > 0 ? `${stars}/5 sao` : 'mới'}`,
+              description: `${author} vừa gửi đánh giá cho công ty của bạn.`,
+              createdAt: row?.createdAt || '',
+              timestamp: toTimestamp(row?.createdAt),
+              badgeCount: 0,
+              actionLabel: 'Xem hồ sơ công ty',
+              actionTo: '/employer/company'
+            };
+          })
+          : [];
+
+        const merged = [
+          ...messageNotifications,
+          ...candidateApplicationNotifications,
+          ...employerApplicationNotifications,
+          ...companyCommentNotifications,
+          ...companyRatingNotifications
+        ]
           .sort((a, b) => (b.timestamp - a.timestamp));
 
-        setNotificationFeed(merged);
+        setNotificationFeed(merged.slice(0, 80));
       } catch (error) {
         if (!cancelled) {
           setFeedError(error?.message || 'Không thể tải danh sách thông báo.');
           setNotificationFeed([]);
         }
       } finally {
+        loadingInFlight = false;
         if (!cancelled) {
           setFeedLoading(false);
         }
@@ -192,10 +352,39 @@ const SupportCenterPage = () => {
 
     loadNotifications();
 
+    const refreshOnFocus = () => {
+      if (document.visibilityState === 'visible') {
+        loadNotifications();
+      }
+    };
+
+    const refreshOnVisible = () => {
+      if (document.visibilityState === 'visible') {
+        loadNotifications();
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      intervalId = window.setInterval(loadNotifications, 15000);
+      window.addEventListener('focus', refreshOnFocus);
+    }
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', refreshOnVisible);
+    }
+
     return () => {
       cancelled = true;
+      if (intervalId && typeof window !== 'undefined') {
+        window.clearInterval(intervalId);
+      }
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('focus', refreshOnFocus);
+      }
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', refreshOnVisible);
+      }
     };
-  }, [canReadPrivateNotifications, messageLink, normalizedRole, token]);
+  }, [API_BASE, canReadPrivateNotifications, messageLink, normalizedRole, token]);
 
   const handleEnableNotifications = async () => {
     const result = await requestBrowserNotificationPermission();
@@ -213,42 +402,23 @@ const SupportCenterPage = () => {
 
   return (
     <div className="support-center-page">
-      <section className="support-hero">
+      <section className="support-hero support-hero--single">
         <div className="support-hero-copy">
           <span className="support-eyebrow">Thông báo</span>
           <h1>Trung tâm thông báo kiểu job board hiện đại</h1>
           <p>
-            Giữ liên lạc giữa ứng viên và nhà tuyển dụng, bật thông báo hệ thống, và theo dõi các kênh liên hệ quan trọng.
+            Theo dõi toàn bộ thông báo trên JobFinder: tin nhắn, ứng tuyển, lịch phỏng vấn, đánh giá và bình luận công ty.
           </p>
           <div className="support-hero-actions">
             <button type="button" className="btn btn-primary support-primary-btn" onClick={handleEnableNotifications}>
               <i className="bi bi-bell me-2"></i>
               {permissionState === 'granted' ? 'Thông báo đã bật' : 'Bật thông báo thiết bị'}
             </button>
-            <Link to={messageLink} className="btn btn-outline-light support-secondary-btn">
-              <i className="bi bi-chat-dots me-2"></i>
-              Mở trang tin nhắn
-            </Link>
-          </div>
-        </div>
-
-        <div className="support-hero-panel">
-          <div className="support-status-card">
-            <div>
-              <small>Trạng thái thông báo</small>
-              <strong>{permissionState === 'granted' ? 'Đang hoạt động' : permissionState === 'denied' ? 'Đã từ chối' : 'Chưa cấp quyền'}</strong>
-            </div>
-            <i className="bi bi-phone"></i>
-          </div>
-          <div className="support-mini-list">
-            <div><i className="bi bi-check2-circle"></i> Tin nhắn chưa đọc: {unreadMessageCount}</div>
-            <div><i className="bi bi-check2-circle"></i> Hồ sơ được chấp nhận: {acceptedApplicationCount}</div>
-            <div><i className="bi bi-check2-circle"></i> Tổng thông báo mới: {notificationFeed.length}</div>
           </div>
         </div>
       </section>
 
-      <section className="support-content-grid">
+      <section className="support-content-grid support-content-grid--single">
         <div className="support-panel">
           <div className="support-panel-head">
             <h2>Thông báo mới</h2>
@@ -276,7 +446,7 @@ const SupportCenterPage = () => {
           {canReadPrivateNotifications && !feedLoading && !feedError && notificationFeed.length === 0 ? (
             <div className="support-empty-state">
               <h3>Chưa có thông báo mới</h3>
-              <p>Khi có tin nhắn mới hoặc hồ sơ ứng tuyển được nhà tuyển dụng chấp nhận, hệ thống sẽ hiển thị tại đây.</p>
+              <p>Khi có tin nhắn, cập nhật hồ sơ ứng tuyển, lịch phỏng vấn, đánh giá hoặc bình luận công ty, hệ thống sẽ hiển thị tại đây.</p>
             </div>
           ) : null}
 
@@ -286,7 +456,7 @@ const SupportCenterPage = () => {
                 <article key={item.id} className="support-feed-item">
                   <div className="support-feed-meta">
                     <span className={`support-feed-type ${item.type}`}>
-                      {item.type === 'message' ? 'Tin nhắn mới' : 'Đơn đã chấp nhận'}
+                      {item.typeLabel || buildFeedTypeLabel(item.type)}
                     </span>
                     <span className="support-feed-time">{formatDateTime(item.createdAt)}</span>
                   </div>
@@ -300,22 +470,6 @@ const SupportCenterPage = () => {
               ))}
             </div>
           ) : null}
-        </div>
-
-        <div className="support-panel">
-          <div className="support-panel-head">
-            <h2>Liên kết nhanh</h2>
-            <span>Đi đến tính năng thường dùng</span>
-          </div>
-          <div className="support-link-list">
-            {quickLinks.map((item) => (
-              <Link key={item.label} to={item.to} className="support-link-item">
-                <i className={`bi ${item.icon}`}></i>
-                <span>{item.label}</span>
-                <i className="bi bi-arrow-right-short"></i>
-              </Link>
-            ))}
-          </div>
         </div>
       </section>
 

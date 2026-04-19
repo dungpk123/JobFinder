@@ -15,6 +15,7 @@ import {
     LogOut,
     Menu,
     ShieldCheck,
+    UserRound,
     Users,
     X
 } from 'lucide-react';
@@ -38,8 +39,17 @@ const readStoredUser = () => {
     }
 };
 
+const normalizeAvatarUrl = (value) => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:' && raw.startsWith('http://')) {
+        return `https://${raw.slice(7)}`;
+    }
+    return raw;
+};
+
 const withAvatarVersion = (url, version) => {
-    const raw = String(url || '').trim();
+    const raw = normalizeAvatarUrl(url);
     if (!raw) return '';
 
     const versionNumber = Number(version || 0);
@@ -116,6 +126,7 @@ const getTemplateCreatedAt = (template) => parseDateSafe(
 
 const menuItems = [
     { key: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', to: '/admin/dashboard' },
+    { key: 'profile', icon: UserRound, label: 'Hồ sơ admin', to: '/admin/profile' },
     { key: 'users', icon: Users, label: 'Quản lý người dùng', to: '/admin/usersmanament' },
     { key: 'jobs', icon: BriefcaseBusiness, label: 'Quản lý tin tuyển dụng', to: '/admin/jobs' },
     { key: 'companies', icon: Building2, label: 'Quản lý công ty', to: '/admin/companies' },
@@ -158,11 +169,12 @@ const AdminDashboard = () => {
 
     useEffect(() => {
         const refreshUser = (event) => {
+            const stored = readStoredUser();
             if (event?.detail && typeof event.detail === 'object') {
-                setUser(event.detail);
+                setUser({ ...stored, ...event.detail });
                 return;
             }
-            setUser(readStoredUser());
+            setUser(stored);
         };
 
         window.addEventListener('storage', refreshUser);
@@ -755,15 +767,17 @@ const AdminDashboard = () => {
 
                             {profileMenuOpen && (
                                 <div className="admin-header-dropdown" role="menu">
+                                    <button type="button" className="admin-header-dropdown-item" onClick={() => handleProfileMenuNavigate('/admin/dashboard')}>
+                                        <LayoutDashboard size={16} />
+                                        <span>Dashboard</span>
+                                    </button>
+                                    <button type="button" className="admin-header-dropdown-item" onClick={() => handleProfileMenuNavigate('/admin/profile')}>
+                                        <UserRound size={16} />
+                                        <span>Hồ sơ của tôi</span>
+                                    </button>
                                     <button type="button" className="admin-header-dropdown-item" onClick={() => handleProfileMenuNavigate('/support')}>
                                         <Bell size={16} />
                                         <span>Thông báo</span>
-                                    </button>
-                                    <button type="button" className="admin-header-dropdown-item" onClick={() => handleProfileMenuNavigate('/admin/profile')}>
-                                        Hồ sơ của tôi
-                                    </button>
-                                    <button type="button" className="admin-header-dropdown-item" onClick={() => handleProfileMenuNavigate('/admin/dashboard')}>
-                                        Dashboard
                                     </button>
                                     <button
                                         type="button"

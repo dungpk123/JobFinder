@@ -51,6 +51,35 @@
     transition: width 0.24s ease, transform 0.24s ease;
 }
 
+.employer-sidebar-brand {
+    margin: 0.2rem 0.9rem 0.95rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    display: flex;
+    align-items: center;
+    gap: 0.72rem;
+    padding: 0.74rem;
+}
+
+.employer-sidebar-logo {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    object-fit: contain;
+    background: #ffffff;
+    border: 1px solid #edf2f7;
+    padding: 0.2rem;
+    flex-shrink: 0;
+}
+
+.employer-sidebar-brand span {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: 0.01em;
+}
+
 .employer-sidebar.collapsed {
     width: 92px;
 }
@@ -202,6 +231,7 @@
 
 .employer-sidebar.collapsed .employer-brand-copy,
 .employer-sidebar.collapsed .employer-user-info,
+.employer-sidebar.collapsed .employer-sidebar-brand span,
 .employer-sidebar.collapsed .employer-menu-item span,
 .employer-sidebar.collapsed .employer-logout-btn span {
     display: none;
@@ -209,6 +239,7 @@
 
 .employer-sidebar.collapsed .employer-sidebar-header,
 .employer-sidebar.collapsed .employer-sidebar-user,
+.employer-sidebar.collapsed .employer-sidebar-brand,
 .employer-sidebar.collapsed .employer-menu-item,
 .employer-sidebar.collapsed .employer-logout-btn {
     justify-content: center;

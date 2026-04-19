@@ -3,6 +3,37 @@ import InstallAppPanel from '../../../components/pwa/InstallAppPanel';
 
 const AVATAR_FALLBACK = 'https://cdn-icons-png.flaticon.com/512/149/149071.png';
 
+const readStoredUser = () => {
+  try {
+    return JSON.parse(localStorage.getItem('user') || '{}');
+  } catch {
+    return {};
+  }
+};
+
+const normalizeAvatarUrl = (value) => {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:' && raw.startsWith('http://')) {
+    return `https://${raw.slice(7)}`;
+  }
+  return raw;
+};
+
+const syncLocalUserSnapshot = (overrides = {}) => {
+  try {
+    const current = readStoredUser();
+    const next = {
+      ...current,
+      ...overrides
+    };
+    localStorage.setItem('user', JSON.stringify(next));
+    window.dispatchEvent(new CustomEvent('jobfinder:user-updated', { detail: next }));
+  } catch {
+    // Ignore local sync errors.
+  }
+};
+
 const createEmptyPasswords = () => ({ current: '', next: '', confirm: '' });
 const createHiddenPasswordFlags = () => ({ current: false, next: false, confirm: false });
 
@@ -52,7 +83,7 @@ const normalizeProvinceEntry = (entry) => {
 };
 
 const EmployerAccount = () => {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const user = readStoredUser();
   const token = localStorage.getItem('token') || '';
   const userId = user?.id || user?.MaNguoiDung || user?.userId || user?.userID || null;
 
@@ -86,7 +117,10 @@ const EmployerAccount = () => {
   const citySearchInputRef = useRef(null);
   const avatarInputRef = useRef(null);
   const avatarObjectUrlRef = useRef('');
-  const [avatarPreview, setAvatarPreview] = useState(user?.avatar || user?.AnhDaiDien || AVATAR_FALLBACK);
+  const initialProfileSyncRef = useRef(false);
+  const [avatarPreview, setAvatarPreview] = useState(
+    normalizeAvatarUrl(user?.avatar || user?.avatarAbsoluteUrl || user?.AnhDaiDien || user?.avatarUrl || '') || AVATAR_FALLBACK
+  );
   const [avatarFile, setAvatarFile] = useState(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
@@ -121,7 +155,7 @@ const EmployerAccount = () => {
           city: profile.city || '',
           position: profile.position || '',
           personalLink: profile.personalLink || '',
-          avatarUrl: profile.avatarAbsoluteUrl || profile.avatarUrl || ''
+          avatarUrl: normalizeAvatarUrl(profile.avatarAbsoluteUrl || profile.avatarUrl || '')
         };
 
         let cached = null;
@@ -144,7 +178,7 @@ const EmployerAccount = () => {
           : serverData;
 
         setForm(combined);
-        setAvatarPreview(combined.avatarUrl || AVATAR_FALLBACK);
+        setAvatarPreview(normalizeAvatarUrl(combined.avatarUrl) || AVATAR_FALLBACK);
 
         if (draftKey) {
           try {
@@ -250,17 +284,34 @@ const EmployerAccount = () => {
     return () => window.clearTimeout(id);
   }, [passwordModalOpen]);
 
-  const syncLocalUser = (overrides = {}) => {
-    try {
-      const current = JSON.parse(localStorage.getItem('user') || '{}');
-      const next = {
-        ...current,
-        ...overrides
-      };
-      localStorage.setItem('user', JSON.stringify(next));
-      window.dispatchEvent(new CustomEvent('jobfinder:user-updated', { detail: next }));
-    } catch (_) {}
-  };
+  useEffect(() => {
+    if (loading || initialProfileSyncRef.current) return;
+
+    const normalizedName = String(form.fullName || '').trim();
+    const normalizedAvatar = normalizeAvatarUrl(form.avatarUrl || '');
+
+    initialProfileSyncRef.current = true;
+
+    if (!normalizedName && !normalizedAvatar) return;
+
+    const stored = readStoredUser() || {};
+    const storedName = String(stored?.name || stored?.HoTen || '').trim();
+    const storedAvatar = normalizeAvatarUrl(
+      stored?.avatar || stored?.avatarAbsoluteUrl || stored?.AnhDaiDien || stored?.avatarUrl || ''
+    );
+
+    if (storedName === normalizedName && storedAvatar === normalizedAvatar) return;
+
+    syncLocalUserSnapshot({
+      name: normalizedName || storedName,
+      HoTen: normalizedName || storedName,
+      avatar: normalizedAvatar || storedAvatar,
+      AnhDaiDien: normalizedAvatar || storedAvatar,
+      avatarAbsoluteUrl: normalizedAvatar || storedAvatar,
+      avatarUrl: normalizedAvatar || storedAvatar,
+      avatarUpdatedAt: Date.now()
+    });
+  }, [loading, form.fullName, form.avatarUrl, user]);
 
   const clearPendingAvatar = () => {
     if (avatarObjectUrlRef.current) {
@@ -325,7 +376,7 @@ const EmployerAccount = () => {
         throw new Error(data.error || 'Không thể tải ảnh đại diện lên.');
       }
 
-      const uploadedAvatar = data.absoluteUrl || data.avatarUrl || '';
+      const uploadedAvatar = normalizeAvatarUrl(data.absoluteUrl || data.avatarUrl || '');
       const nextForm = { ...form, avatarUrl: uploadedAvatar };
       setForm(nextForm);
       setAvatarPreview(uploadedAvatar || AVATAR_FALLBACK);
@@ -346,7 +397,9 @@ const EmployerAccount = () => {
         avatarObjectUrlRef.current = '';
       }
 
-      syncLocalUser({
+      syncLocalUserSnapshot({
+        name: form.fullName || user?.name || user?.HoTen || '',
+        HoTen: form.fullName || user?.HoTen || user?.name || '',
         avatar: uploadedAvatar,
         AnhDaiDien: uploadedAvatar,
         avatarAbsoluteUrl: uploadedAvatar,
@@ -373,13 +426,14 @@ const EmployerAccount = () => {
     try {
       await updateProfile({ userId, ...form, avatar: form.avatarUrl || '' });
       setMessage('Đã lưu thông tin cá nhân.');
-      syncLocalUser({
+      const normalizedAvatar = normalizeAvatarUrl(form.avatarUrl || user?.avatar || user?.AnhDaiDien || '');
+      syncLocalUserSnapshot({
         name: form.fullName || user?.name || user?.HoTen || '',
         HoTen: form.fullName || user?.HoTen || user?.name || '',
-        avatar: form.avatarUrl || user?.avatar || user?.AnhDaiDien || '',
-        AnhDaiDien: form.avatarUrl || user?.AnhDaiDien || user?.avatar || '',
-        avatarAbsoluteUrl: form.avatarUrl || user?.avatarAbsoluteUrl || user?.avatarUrl || '',
-        avatarUrl: form.avatarUrl || user?.avatarUrl || user?.avatarAbsoluteUrl || '',
+        avatar: normalizedAvatar,
+        AnhDaiDien: normalizedAvatar,
+        avatarAbsoluteUrl: normalizedAvatar,
+        avatarUrl: normalizedAvatar,
         avatarUpdatedAt: Date.now()
       });
       if (draftKey) {
