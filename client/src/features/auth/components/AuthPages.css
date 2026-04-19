@@ -2,6 +2,7 @@
 
 .auth-page-root {
   min-height: 100vh;
+  color-scheme: light;
   background:
     radial-gradient(circle at 10% 6%, rgba(75, 175, 236, 0.17), transparent 48%),
     radial-gradient(circle at 92% 94%, rgba(52, 164, 236, 0.12), transparent 42%),
@@ -15,7 +16,7 @@
 }
 
 .auth-topbar {
-  padding: 12px 0 8px;
+  padding: 14px 0 10px;
 }
 
 .auth-topbar-inner {
@@ -36,15 +37,15 @@
 }
 
 .auth-brand img {
-  width: 38px;
-  height: 38px;
+  width: 56px;
+  height: 56px;
   object-fit: contain;
 }
 
 .auth-brand-text {
   font-family: 'Sora', 'Manrope', sans-serif;
   font-weight: 700;
-  font-size: 1.35rem;
+  font-size: 1.58rem;
   letter-spacing: -0.02em;
 }
 
@@ -140,7 +141,7 @@
 }
 
 .auth-form-column {
-  background: linear-gradient(180deg, #ffffff 0%, #fafdff 100%);
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
   padding: 40px 44px 36px;
   display: flex;
   flex-direction: column;
@@ -205,14 +206,15 @@
   width: 100%;
   height: 46px;
   border-radius: 12px;
-  border: 1px solid #d4e5f4;
-  background: #f0f7ff;
-  color: #102845;
+  border: 1px solid #c9dcef;
+  background: #f8fbff;
+  color: #163654;
   font-size: 0.95rem;
   font-weight: 600;
   outline: none;
   padding: 0 12px;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease;
 }
 
 .auth-select {
@@ -301,15 +303,29 @@
 }
 
 .auth-input::placeholder {
-  color: #8ea4bc;
+  color: #7995b1;
   font-weight: 500;
 }
 
 .auth-input:focus,
 .auth-select:focus {
-  border-color: #4ea8f0;
+  border-color: #3697e7;
   box-shadow: 0 0 0 4px rgba(78, 168, 240, 0.18);
-  background: #f7fbff;
+  background: #ffffff;
+  color: #102845;
+}
+
+.auth-input:-webkit-autofill,
+.auth-input:-webkit-autofill:hover,
+.auth-input:-webkit-autofill:focus,
+.auth-select:-webkit-autofill,
+.auth-select:-webkit-autofill:hover,
+.auth-select:-webkit-autofill:focus {
+  -webkit-text-fill-color: #163654;
+  -webkit-box-shadow: 0 0 0 1000px #f8fbff inset;
+  box-shadow: 0 0 0 1000px #f8fbff inset;
+  border: 1px solid #c9dcef;
+  transition: background-color 9999s ease-out 0s;
 }
 
 .auth-input-wrap {
@@ -692,7 +708,7 @@
 
 @media (max-width: 640px) {
   .auth-topbar {
-    padding: 14px 0 8px;
+    padding: 14px 0 10px;
   }
 
   .auth-topbar-inner {
@@ -701,12 +717,12 @@
   }
 
   .auth-brand img {
-    width: 38px;
-    height: 38px;
+    width: 48px;
+    height: 48px;
   }
 
   .auth-brand-text {
-    font-size: 1.35rem;
+    font-size: 1.44rem;
   }
 
   .auth-main {

@@ -57,21 +57,45 @@ const formatDateTime = (value) => {
     return date.toLocaleString('vi-VN');
 };
 
+const firstNonEmpty = (...values) => {
+    for (const value of values) {
+        if (value == null) continue;
+        const normalized = String(value).trim();
+        if (normalized) return normalized;
+    }
+    return '';
+};
+
+const resolveRoleLabel = (explicitRoleLabel, user = {}) => {
+    const preferred = String(explicitRoleLabel || '').trim();
+    if (preferred) return preferred;
+
+    const fallbackRole = firstNonEmpty(user?.VaiTro, user?.LoaiNguoiDung, user?.role);
+    const normalizedFallback = fallbackRole.toLowerCase();
+
+    if (normalizedFallback.includes('siêu') || normalizedFallback.includes('sieu') || normalizedFallback.includes('super')) {
+        return 'Siêu quản trị viên';
+    }
+
+    if (fallbackRole) return fallbackRole;
+    return 'Quản trị viên';
+};
+
 const resolveUserId = (user = {}) => {
     return user?.id || user?.MaNguoiDung || user?.userId || user?.userID || null;
 };
 
 const buildInitialForm = (user = {}) => ({
-    fullName: user?.full_name || user?.HoTen || user?.name || '',
-    email: user?.email || user?.Email || '',
-    phone: user?.phone || user?.SoDienThoai || '',
-    city: user?.city || '',
-    address: user?.address || user?.DiaChi || '',
-    position: user?.position || '',
-    personalLink: user?.personalLink || '',
+    fullName: firstNonEmpty(user?.full_name, user?.HoTen, user?.name),
+    email: firstNonEmpty(user?.email, user?.Email),
+    phone: firstNonEmpty(user?.phone, user?.SoDienThoai),
+    city: firstNonEmpty(user?.city, user?.ThanhPho),
+    address: firstNonEmpty(user?.address, user?.DiaChi),
+    position: firstNonEmpty(user?.position, user?.ChucDanh),
+    personalLink: firstNonEmpty(user?.personalLink, user?.LinkCaNhan),
     avatarUrl: normalizeAvatarUrl(user?.avatar || user?.avatarAbsoluteUrl || user?.AnhDaiDien || user?.avatarUrl || ''),
-    createdAt: user?.createdAt || '',
-    updatedAt: user?.updatedAt || ''
+    createdAt: firstNonEmpty(user?.createdAt, user?.NgayTao, user?.NguoiDungNgayTao),
+    updatedAt: firstNonEmpty(user?.updatedAt, user?.NgayCapNhat, user?.NguoiDungNgayCapNhat)
 });
 
 const AdminProfilePage = ({ user, roleLabel, greetingName }) => {
@@ -124,18 +148,19 @@ const AdminProfilePage = ({ user, roleLabel, greetingName }) => {
                 if (cancelled) return;
 
                 const profile = data.profile || {};
+                const fallbackForm = buildInitialForm(user);
                 const normalizedAvatar = normalizeAvatarUrl(profile.avatarAbsoluteUrl || profile.avatarUrl || '');
                 const nextForm = {
-                    fullName: profile.fullName || '',
-                    email: profile.email || '',
-                    phone: profile.phone || '',
-                    city: profile.city || '',
-                    address: profile.address || '',
-                    position: profile.position || '',
-                    personalLink: profile.personalLink || '',
-                    avatarUrl: normalizedAvatar,
-                    createdAt: profile.createdAt || '',
-                    updatedAt: profile.updatedAt || ''
+                    fullName: firstNonEmpty(profile.fullName, profile.HoTen, fallbackForm.fullName),
+                    email: firstNonEmpty(profile.email, profile.Email, fallbackForm.email),
+                    phone: firstNonEmpty(profile.phone, profile.SoDienThoai, fallbackForm.phone),
+                    city: firstNonEmpty(profile.city, profile.ThanhPho, fallbackForm.city),
+                    address: firstNonEmpty(profile.address, profile.DiaChi, fallbackForm.address),
+                    position: firstNonEmpty(profile.position, profile.ChucDanh, fallbackForm.position),
+                    personalLink: firstNonEmpty(profile.personalLink, profile.LinkCaNhan, fallbackForm.personalLink),
+                    avatarUrl: normalizedAvatar || fallbackForm.avatarUrl,
+                    createdAt: firstNonEmpty(profile.createdAt, profile.NgayTao, fallbackForm.createdAt),
+                    updatedAt: firstNonEmpty(profile.updatedAt, profile.NgayCapNhat, fallbackForm.updatedAt)
                 };
 
                 setForm(nextForm);
@@ -354,6 +379,13 @@ const AdminProfilePage = ({ user, roleLabel, greetingName }) => {
 
     const displayName = form.fullName || greetingName || 'Admin';
     const resolvedAvatar = withAvatarVersion(avatarPreview || form.avatarUrl || AVATAR_FALLBACK, user?.avatarUpdatedAt);
+    const resolvedRoleLabel = resolveRoleLabel(roleLabel, user);
+    const resolvedEmail = firstNonEmpty(form.email, user?.email, user?.Email) || '-';
+    const resolvedPhone = firstNonEmpty(form.phone, user?.phone, user?.SoDienThoai) || '-';
+    const resolvedCity = firstNonEmpty(form.city, user?.city, user?.ThanhPho) || '-';
+    const resolvedAddress = firstNonEmpty(form.address, user?.address, user?.DiaChi) || '-';
+    const resolvedCreatedAt = firstNonEmpty(form.createdAt, user?.createdAt, user?.NgayTao, user?.NguoiDungNgayTao);
+    const resolvedUpdatedAt = firstNonEmpty(form.updatedAt, user?.updatedAt, user?.NgayCapNhat, user?.NguoiDungNgayCapNhat);
 
     return (
         <section className="admin-profile-shell">
@@ -371,7 +403,7 @@ const AdminProfilePage = ({ user, roleLabel, greetingName }) => {
                 </div>
                 <div className="admin-profile-card-copy">
                     <h3>{displayName}</h3>
-                    <p>{roleLabel}</p>
+                    <p>{resolvedRoleLabel}</p>
                     <small>Ảnh JPG/PNG/WEBP, dung lượng tối đa 5MB.</small>
                 </div>
                 <div className="admin-profile-card-actions">
@@ -404,31 +436,31 @@ const AdminProfilePage = ({ user, roleLabel, greetingName }) => {
             <div className="admin-profile-grid">
                 <article className="admin-profile-item">
                     <span>Email</span>
-                    <strong>{form.email || '-'}</strong>
+                    <strong>{resolvedEmail}</strong>
                 </article>
                 <article className="admin-profile-item">
                     <span>Vai trò</span>
-                    <strong>{roleLabel}</strong>
+                    <strong>{resolvedRoleLabel}</strong>
                 </article>
                 <article className="admin-profile-item">
                     <span>Ngày tạo tài khoản</span>
-                    <strong>{formatDateTime(form.createdAt)}</strong>
+                    <strong>{formatDateTime(resolvedCreatedAt)}</strong>
                 </article>
                 <article className="admin-profile-item">
                     <span>Lần cập nhật gần nhất</span>
-                    <strong>{formatDateTime(form.updatedAt)}</strong>
+                    <strong>{formatDateTime(resolvedUpdatedAt)}</strong>
                 </article>
                 <article className="admin-profile-item">
                     <span>Số điện thoại</span>
-                    <strong>{form.phone || '-'}</strong>
+                    <strong>{resolvedPhone}</strong>
                 </article>
                 <article className="admin-profile-item">
                     <span>Thành phố</span>
-                    <strong>{form.city || '-'}</strong>
+                    <strong>{resolvedCity}</strong>
                 </article>
                 <article className="admin-profile-item">
                     <span>Địa chỉ</span>
-                    <strong>{form.address || '-'}</strong>
+                    <strong>{resolvedAddress}</strong>
                 </article>
                 <article className="admin-profile-item">
                     <span>Trạng thái</span>

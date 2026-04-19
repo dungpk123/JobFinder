@@ -59,6 +59,39 @@ const formatDate = (value) => {
     return date.toLocaleString('vi-VN');
 };
 
+const AVATAR_OVERLAY_SELECTORS = [
+    '.avatar-overlay',
+    '[data-field="avatarOverlay"]',
+    '[data-cv-avatar-overlay]'
+];
+
+const stripAvatarOverlayFromHtml = (value) => {
+    const raw = String(value || '');
+    if (!raw.trim()) return raw;
+
+    if (typeof DOMParser === 'undefined') {
+        return raw;
+    }
+
+    try {
+        const hasHtmlTag = /<html[\s>]/i.test(raw);
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(raw, 'text/html');
+
+        AVATAR_OVERLAY_SELECTORS.forEach((selector) => {
+            doc.querySelectorAll(selector).forEach((element) => element.remove());
+        });
+
+        if (hasHtmlTag && doc.documentElement) {
+            return `<!doctype html>\n${doc.documentElement.outerHTML}`;
+        }
+
+        return doc.body ? doc.body.innerHTML : raw;
+    } catch {
+        return raw;
+    }
+};
+
 const AdminTemplateManager = ({ API_BASE, authHeaders, requestConfirm, mode = 'list' }) => {
     const navigate = useNavigate();
     const location = useLocation();
@@ -100,6 +133,11 @@ const AdminTemplateManager = ({ API_BASE, authHeaders, requestConfirm, mode = 'l
         title: '',
         html: ''
     });
+
+    const sanitizedPreviewHtml = useMemo(
+        () => stripAvatarOverlayFromHtml(form.HtmlContent || ''),
+        [form.HtmlContent]
+    );
 
     const endpoint = useMemo(() => `${API_BASE}/api/admin/templates`, [API_BASE]);
     const authAuthorization = useMemo(() => String(authHeaders?.Authorization || ''), [authHeaders]);
@@ -245,7 +283,7 @@ const AdminTemplateManager = ({ API_BASE, authHeaders, requestConfirm, mode = 'l
             setModalPreview({
                 open: true,
                 title: detail.TenTemplate || 'Preview template',
-                html: detail.HtmlContent || ''
+                html: stripAvatarOverlayFromHtml(detail.HtmlContent || '')
             });
         } catch (err) {
             setError(err?.message || 'Không mở được preview');
@@ -401,7 +439,7 @@ const AdminTemplateManager = ({ API_BASE, authHeaders, requestConfirm, mode = 'l
                 description: String(form.MoTa || '').trim(),
                 thumbnailUrl: String(form.ThumbnailUrl || '').trim(),
                 style: normalizeTemplateStyle(form.PhongCachCV),
-                htmlContent: String(form.HtmlContent || ''),
+                htmlContent: stripAvatarOverlayFromHtml(String(form.HtmlContent || '')),
                 status: Number(form.TrangThai) === 0 ? 0 : 1
             };
 
@@ -741,10 +779,10 @@ const AdminTemplateManager = ({ API_BASE, authHeaders, requestConfirm, mode = 'l
                                             />
                                         ) : (
                                             <div className="admin-template-preview-pane">
-                                                {form.HtmlContent.trim() ? (
+                                                {sanitizedPreviewHtml.trim() ? (
                                                     <iframe
                                                         title="Quick Preview"
-                                                        srcDoc={form.HtmlContent}
+                                                        srcDoc={sanitizedPreviewHtml}
                                                         className="admin-template-preview-frame"
                                                         sandbox="allow-scripts"
                                                     />
@@ -758,10 +796,10 @@ const AdminTemplateManager = ({ API_BASE, authHeaders, requestConfirm, mode = 'l
 
                                 {editorTab === 'preview' && (
                                     <div className="admin-template-preview-pane">
-                                        {form.HtmlContent.trim() ? (
+                                        {sanitizedPreviewHtml.trim() ? (
                                             <iframe
                                                 title="Template Preview"
-                                                srcDoc={form.HtmlContent}
+                                                srcDoc={sanitizedPreviewHtml}
                                                 className="admin-template-preview-frame preview-tab"
                                                 sandbox="allow-scripts"
                                             />
