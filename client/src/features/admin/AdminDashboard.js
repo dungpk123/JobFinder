@@ -127,7 +127,7 @@ const getTemplateCreatedAt = (template) => parseDateSafe(
 const menuItems = [
     { key: 'dashboard', icon: LayoutDashboard, label: 'Dashboard', to: '/admin/dashboard' },
     { key: 'users', icon: Users, label: 'Quản lý người dùng', to: '/admin/usersmanament' },
-    { key: 'jobs', icon: BriefcaseBusiness, label: 'Quản lý tin tuyển dụng', to: '/admin/jobs' },
+    { key: 'jobs', icon: BriefcaseBusiness, label: 'Kiểm duyệt tin tuyển dụng', to: '/admin/jobs' },
     { key: 'companies', icon: Building2, label: 'Quản lý công ty', to: '/admin/companies' },
     {
         key: 'templates',
@@ -149,7 +149,7 @@ const SIDEBAR_LOGO_URL = 'https://i.postimg.cc/nhWfcVvh/logo.png';
 const resolvePageTitle = (pathname) => {
     if (pathname.startsWith('/admin/profile')) return 'Hồ sơ';
     if (pathname.startsWith('/admin/usersmanament')) return 'Quản lý người dùng';
-    if (pathname.startsWith('/admin/jobs')) return 'Quản lý tin tuyển dụng';
+    if (pathname.startsWith('/admin/jobs')) return 'Kiểm duyệt tin tuyển dụng';
     if (pathname.startsWith('/admin/companies')) return 'Quản lý công ty';
     if (pathname.startsWith('/admin/templates')) return 'Quản lý template CV';
     if (pathname.startsWith('/admin/reports')) return 'Báo cáo';
@@ -710,6 +710,22 @@ const AdminDashboard = () => {
                         );
                     })}
                 </div>
+
+                <div className="admin-sidebar-footer">
+                    <button
+                        type="button"
+                        className="admin-logout-btn"
+                        onClick={() => {
+                            handleSidebarItemClick();
+                            handleLogout();
+                        }}
+                        title="Đăng xuất"
+                        aria-label="Đăng xuất"
+                    >
+                        <LogOut size={18} strokeWidth={2.1} />
+                        <span>Đăng xuất</span>
+                    </button>
+                </div>
             </div>
 
             <div className={`admin-main ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
@@ -803,6 +819,7 @@ const AdminDashboard = () => {
                             path="dashboard"
                             element={
                                 <AdminOverviewPage
+                                    currentAdminName={greetingName}
                                     statsCards={statsCards}
                                     recentTemplateActivities={recentTemplateActivities}
                                     popularTemplates={popularTemplates}

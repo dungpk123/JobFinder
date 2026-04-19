@@ -536,6 +536,35 @@
     box-shadow: 0 24px 48px rgba(30, 64, 175, 0.28);
 }
 
+.admin-hero-banner-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.7rem;
+    flex-wrap: wrap;
+}
+
+.admin-hero-export-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.36rem;
+    border-color: rgba(255, 255, 255, 0.42) !important;
+    background: rgba(255, 255, 255, 0.15) !important;
+    color: #ffffff !important;
+}
+
+.admin-hero-export-btn:hover,
+.admin-hero-export-btn:focus-visible {
+    background: rgba(255, 255, 255, 0.24) !important;
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.62) !important;
+}
+
+.admin-hero-export-btn:disabled {
+    opacity: 0.72;
+    cursor: not-allowed;
+}
+
 .admin-hero-banner::after {
     content: '';
     position: absolute;
@@ -878,6 +907,14 @@
     flex-wrap: wrap;
     color: #475569;
     font-size: 0.82rem;
+}
+
+.admin-audit-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    flex-wrap: wrap;
 }
 
 .admin-audit-note {
@@ -1229,7 +1266,16 @@
 }
 
 .admin-profile-form-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
     margin-bottom: 0.8rem;
+}
+
+.admin-profile-form-head-copy {
+    min-width: 260px;
 }
 
 .admin-profile-form-head h4 {
@@ -1271,6 +1317,12 @@
     margin-top: 0.85rem;
     display: flex;
     justify-content: flex-end;
+    align-items: center;
+}
+
+.admin-profile-form-hint {
+    color: #64748b;
+    font-size: 0.82rem;
 }
 
 .admin-spin {
@@ -1454,6 +1506,22 @@
     gap: 0.65rem;
 }
 
+.admin-users-name-cell {
+    max-width: 260px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 600;
+}
+
+.admin-users-row-error {
+    display: block;
+    max-width: 240px;
+    margin-left: auto;
+    margin-right: auto;
+    text-align: center;
+}
+
 .admin-users-info-field {
     border: 1px solid #e7edf6;
     border-radius: 11px;
@@ -1561,6 +1629,51 @@
     border-color: #cbd5e1;
 }
 
+.admin-company-view-dialog {
+    max-width: 760px;
+}
+
+.admin-company-view-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem;
+}
+
+.admin-company-view-field {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+    padding: 0.62rem 0.72rem;
+}
+
+.admin-company-view-field span {
+    display: block;
+    margin-bottom: 0.2rem;
+    color: #64748b;
+    font-size: 0.76rem;
+    font-weight: 600;
+}
+
+.admin-company-view-field strong {
+    color: #0f172a;
+    font-size: 0.9rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.admin-company-view-field-span-2 {
+    grid-column: span 2;
+}
+
+.admin-company-view-actions {
+    margin-top: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
 @media (max-width: 767px) {
     .admin-users-view-layout {
         grid-template-columns: 1fr;
@@ -1644,6 +1757,10 @@
         display: none;
     }
 
+    .admin-hero-banner-head {
+        align-items: flex-start;
+    }
+
     .admin-header-page-title {
         font-size: 1rem;
     }
@@ -1695,5 +1812,13 @@
 
     .admin-report-modal {
         width: 100%;
+    }
+
+    .admin-company-view-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .admin-company-view-field-span-2 {
+        grid-column: auto;
     }
 }

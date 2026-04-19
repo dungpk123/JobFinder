@@ -92,7 +92,7 @@ const AdminJobsPage = ({ jobs, loading, canDelete, requestConfirm, onDeleteJob }
             <div className="card-header bg-white border-0 py-3">
                 <h5 className="mb-0 d-flex align-items-center gap-2">
                     <BriefcaseBusiness size={18} />
-                    <span>Quản lý tin tuyển dụng</span>
+                    <span>Kiểm duyệt tin tuyển dụng</span>
                 </h5>
             </div>
             <div className="table-responsive">

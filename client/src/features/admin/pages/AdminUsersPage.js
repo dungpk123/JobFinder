@@ -492,12 +492,13 @@ const AdminUsersPage = ({
                         <thead>
                             <tr>
                                 <th style={{ width: 80 }}>ID</th>
+                                <th style={{ width: 260 }}>Họ tên</th>
                                 <th>Email</th>
-                                <th>Họ tên</th>
                                 <th style={{ width: 180 }}>Vai trò</th>
                                 <th style={{ width: 160 }}>Trạng thái</th>
+                                <th style={{ width: 190 }}>Ngày tạo</th>
                                 <th style={{ width: 190 }}>Ngày xóa</th>
-                                <th style={{ width: 280 }}>Thao tác</th>
+                                <th style={{ width: 280 }} className="admin-action-col">Thao tác</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -509,15 +510,16 @@ const AdminUsersPage = ({
                                 return (
                                     <tr key={userId}>
                                         <td>{startIndex + index + 1}</td>
+                                        <td className="admin-users-name-cell" title={user.HoTen || '-'}>{user.HoTen || '-'}</td>
                                         <td>{user.Email}</td>
-                                        <td>{user.HoTen || '-'}</td>
                                         <td>
                                             <span className="badge rounded-pill text-bg-light border">{user.VaiTro || 'Ứng viên'}</span>
                                         </td>
                                         <td>{getStatusBadge(user)}</td>
+                                        <td>{formatDateTime(user.NgayTao)}</td>
                                         <td>{formatDateTime(user.NgayXoa)}</td>
-                                        <td>
-                                            <div className="d-flex flex-wrap gap-2">
+                                        <td className="admin-action-col">
+                                            <div className="admin-row-actions">
                                                 <button
                                                     type="button"
                                                     className="btn btn-sm btn-outline-info admin-action-icon-btn"
@@ -549,13 +551,13 @@ const AdminUsersPage = ({
                                                     {isDeleted ? <RotateCcw size={14} /> : <Trash2 size={14} />}
                                                 </button>
                                             </div>
-                                            {rowErrors[userId] ? <div className="text-danger small mt-1">{rowErrors[userId]}</div> : null}
+                                            {rowErrors[userId] ? <div className="text-danger small mt-1 admin-users-row-error">{rowErrors[userId]}</div> : null}
                                         </td>
                                     </tr>
                                 );
                             })}
                             {pagedUsers.length === 0 && !loading && (
-                                <tr><td colSpan={7} className="text-center text-muted py-4">Chưa có dữ liệu</td></tr>
+                                <tr><td colSpan={8} className="text-center text-muted py-4">Chưa có dữ liệu</td></tr>
                             )}
                         </tbody>
                     </table>

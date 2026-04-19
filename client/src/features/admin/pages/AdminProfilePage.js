@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, Save, ShieldCheck } from 'lucide-react';
+import { Camera, PencilLine, Save, ShieldCheck } from 'lucide-react';
 import InstallAppPanel from '../../../components/pwa/InstallAppPanel';
 import { API_BASE as CLIENT_API_BASE } from '../../../config/apiBase';
 
@@ -86,8 +86,11 @@ const AdminProfilePage = ({ user, roleLabel, greetingName }) => {
     const [error, setError] = useState('');
     const [message, setMessage] = useState('');
     const [form, setForm] = useState(() => buildInitialForm(user));
+    const [baselineForm, setBaselineForm] = useState(() => buildInitialForm(user));
     const [avatarPreview, setAvatarPreview] = useState(() => normalizeAvatarUrl(user?.avatar || user?.avatarAbsoluteUrl || user?.AnhDaiDien || user?.avatarUrl || '') || AVATAR_FALLBACK);
+    const [baselineAvatar, setBaselineAvatar] = useState(() => normalizeAvatarUrl(user?.avatar || user?.avatarAbsoluteUrl || user?.AnhDaiDien || user?.avatarUrl || '') || AVATAR_FALLBACK);
     const [avatarFile, setAvatarFile] = useState(null);
+    const [isEditing, setIsEditing] = useState(false);
 
     useEffect(() => () => {
         if (avatarObjectUrlRef.current) {
@@ -136,7 +139,11 @@ const AdminProfilePage = ({ user, roleLabel, greetingName }) => {
                 };
 
                 setForm(nextForm);
+                setBaselineForm(nextForm);
                 setAvatarPreview(normalizedAvatar || AVATAR_FALLBACK);
+                setBaselineAvatar(normalizedAvatar || AVATAR_FALLBACK);
+                setIsEditing(false);
+                setAvatarFile(null);
 
                 const storedUser = readStoredUser();
                 const fallbackName = storedUser?.name || storedUser?.HoTen || '';
@@ -179,19 +186,38 @@ const AdminProfilePage = ({ user, roleLabel, greetingName }) => {
         setForm((prev) => ({ ...prev, [key]: value }));
     };
 
-    const clearPendingAvatar = () => {
+    const clearPendingAvatar = (nextAvatarUrl = form.avatarUrl) => {
         if (avatarObjectUrlRef.current) {
             URL.revokeObjectURL(avatarObjectUrlRef.current);
             avatarObjectUrlRef.current = '';
         }
         setAvatarFile(null);
-        setAvatarPreview(form.avatarUrl || AVATAR_FALLBACK);
+        setAvatarPreview(nextAvatarUrl || AVATAR_FALLBACK);
         if (avatarInputRef.current) {
             avatarInputRef.current.value = '';
         }
     };
 
+    const handleStartEditing = () => {
+        setError('');
+        setMessage('');
+        setIsEditing(true);
+    };
+
+    const handleCancelEditing = () => {
+        setForm(baselineForm);
+        clearPendingAvatar(baselineAvatar);
+        setError('');
+        setMessage('');
+        setIsEditing(false);
+    };
+
     const handleAvatarSelect = (event) => {
+        if (!isEditing) {
+            setError('Nhấn "Chỉnh sửa hồ sơ" để thay đổi ảnh đại diện.');
+            return;
+        }
+
         const file = event.target.files?.[0];
         if (!file) return;
 
@@ -218,7 +244,7 @@ const AdminProfilePage = ({ user, roleLabel, greetingName }) => {
     };
 
     const handleAvatarUpload = async () => {
-        if (!userId || !avatarFile || uploadingAvatar) return;
+        if (!isEditing || !userId || !avatarFile || uploadingAvatar) return;
 
         setUploadingAvatar(true);
         setError('');
@@ -242,7 +268,9 @@ const AdminProfilePage = ({ user, roleLabel, greetingName }) => {
             const uploadedAvatar = normalizeAvatarUrl(data.absoluteUrl || data.avatarUrl || '');
 
             setForm((prev) => ({ ...prev, avatarUrl: uploadedAvatar }));
+            setBaselineForm((prev) => ({ ...prev, avatarUrl: uploadedAvatar }));
             setAvatarPreview(uploadedAvatar || AVATAR_FALLBACK);
+            setBaselineAvatar(uploadedAvatar || AVATAR_FALLBACK);
             setAvatarFile(null);
 
             if (avatarInputRef.current) {
@@ -272,7 +300,7 @@ const AdminProfilePage = ({ user, roleLabel, greetingName }) => {
     };
 
     const handleSaveProfile = async () => {
-        if (!userId || saving) return;
+        if (!isEditing || !userId || saving) return;
 
         setSaving(true);
         setError('');
@@ -313,6 +341,9 @@ const AdminProfilePage = ({ user, roleLabel, greetingName }) => {
                 avatarUpdatedAt: Date.now()
             });
 
+            setBaselineForm(form);
+            setBaselineAvatar(normalizedAvatar || AVATAR_FALLBACK);
+            setIsEditing(false);
             setMessage('Đã lưu hồ sơ admin thành công.');
         } catch (err) {
             setError(err?.message || 'Không thể lưu hồ sơ admin.');
@@ -351,15 +382,15 @@ const AdminProfilePage = ({ user, roleLabel, greetingName }) => {
                         className="d-none"
                         onChange={handleAvatarSelect}
                     />
-                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => avatarInputRef.current?.click()} disabled={uploadingAvatar}>
+                    <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => avatarInputRef.current?.click()} disabled={!isEditing || uploadingAvatar}>
                         <Camera size={14} />
                         <span>Chọn ảnh</span>
                     </button>
-                    <button type="button" className="btn btn-primary btn-sm" onClick={handleAvatarUpload} disabled={!avatarFile || uploadingAvatar}>
+                    <button type="button" className="btn btn-primary btn-sm" onClick={handleAvatarUpload} disabled={!isEditing || !avatarFile || uploadingAvatar}>
                         {uploadingAvatar ? 'Đang tải...' : 'Cập nhật avatar'}
                     </button>
                     {avatarFile ? (
-                        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={clearPendingAvatar} disabled={uploadingAvatar}>
+                        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => clearPendingAvatar()} disabled={!isEditing || uploadingAvatar}>
                             Bỏ chọn
                         </button>
                     ) : null}
@@ -410,14 +441,26 @@ const AdminProfilePage = ({ user, roleLabel, greetingName }) => {
 
             <section className="admin-profile-form">
                 <div className="admin-profile-form-head">
-                    <h4>Hồ sơ admin</h4>
-                    <p>Thông tin này sẽ hiển thị ở chip tài khoản và dropdown của khu vực quản trị.</p>
+                    <div className="admin-profile-form-head-copy">
+                        <h4>Hồ sơ admin</h4>
+                        <p>Thông tin này sẽ hiển thị ở chip tài khoản và dropdown của khu vực quản trị.</p>
+                    </div>
+                    {!isEditing ? (
+                        <button type="button" className="btn btn-outline-primary btn-sm d-inline-flex align-items-center gap-1" onClick={handleStartEditing}>
+                            <PencilLine size={14} />
+                            <span>Chỉnh sửa hồ sơ</span>
+                        </button>
+                    ) : (
+                        <button type="button" className="btn btn-outline-secondary btn-sm" onClick={handleCancelEditing} disabled={saving}>
+                            Hủy chỉnh sửa
+                        </button>
+                    )}
                 </div>
 
                 <div className="admin-profile-form-grid">
                     <label className="admin-profile-field">
                         <span>Họ tên</span>
-                        <input className="form-control" value={form.fullName} onChange={handleFieldChange('fullName')} />
+                        <input className="form-control" value={form.fullName} onChange={handleFieldChange('fullName')} disabled={!isEditing} />
                     </label>
                     <label className="admin-profile-field">
                         <span>Email</span>
@@ -425,31 +468,35 @@ const AdminProfilePage = ({ user, roleLabel, greetingName }) => {
                     </label>
                     <label className="admin-profile-field">
                         <span>Số điện thoại</span>
-                        <input className="form-control" value={form.phone} onChange={handleFieldChange('phone')} />
+                        <input className="form-control" value={form.phone} onChange={handleFieldChange('phone')} disabled={!isEditing} />
                     </label>
                     <label className="admin-profile-field">
                         <span>Thành phố</span>
-                        <input className="form-control" value={form.city} onChange={handleFieldChange('city')} />
+                        <input className="form-control" value={form.city} onChange={handleFieldChange('city')} disabled={!isEditing} />
                     </label>
                     <label className="admin-profile-field admin-profile-field-span-2">
                         <span>Địa chỉ</span>
-                        <input className="form-control" value={form.address} onChange={handleFieldChange('address')} />
+                        <input className="form-control" value={form.address} onChange={handleFieldChange('address')} disabled={!isEditing} />
                     </label>
                     <label className="admin-profile-field">
                         <span>Chức danh</span>
-                        <input className="form-control" value={form.position} onChange={handleFieldChange('position')} />
+                        <input className="form-control" value={form.position} onChange={handleFieldChange('position')} disabled={!isEditing} />
                     </label>
                     <label className="admin-profile-field">
                         <span>Link cá nhân / Website</span>
-                        <input className="form-control" value={form.personalLink} onChange={handleFieldChange('personalLink')} />
+                        <input className="form-control" value={form.personalLink} onChange={handleFieldChange('personalLink')} disabled={!isEditing} />
                     </label>
                 </div>
 
                 <div className="admin-profile-form-actions">
-                    <button type="button" className="btn btn-primary" onClick={handleSaveProfile} disabled={saving}>
-                        <Save size={14} className="me-2" />
-                        {saving ? 'Đang lưu...' : 'Lưu hồ sơ admin'}
-                    </button>
+                    {isEditing ? (
+                        <button type="button" className="btn btn-primary" onClick={handleSaveProfile} disabled={saving}>
+                            <Save size={14} className="me-2" />
+                            {saving ? 'Đang lưu...' : 'Lưu hồ sơ admin'}
+                        </button>
+                    ) : (
+                        <span className="admin-profile-form-hint">Nhấn "Chỉnh sửa hồ sơ" để thay đổi thông tin.</span>
+                    )}
                 </div>
             </section>
 
